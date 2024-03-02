@@ -1,4 +1,10 @@
 import "@nomicfoundation/hardhat-toolbox"
+import "@nomicfoundation/hardhat-ignition"
+import "@nomicfoundation/hardhat-ignition-ethers"
+import "@nomicfoundation/hardhat-ethers"
+import "@nomicfoundation/hardhat-chai-matchers"
+import "@nomicfoundation/hardhat-network-helpers"
+import "hardhat-gas-reporter"
 
 import { HardhatUserConfig } from "hardhat/config"
 
