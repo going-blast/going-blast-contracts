@@ -88,7 +88,20 @@ const config: HardhatUserConfig = {
 			mainnet: 0, // similarly on mainnet it will take the first account as deployer.
 		},
 		owner: {
-			default: 0,
+			default: 1,
+			mainnet: 1,
+		},
+		user1: {
+			default: 2,
+			mainnet: 2,
+		},
+		user2: {
+			default: 3,
+			mainnet: 3,
+		},
+		user3: {
+			default: 4,
+			mainnet: 4,
 		},
 	},
 	solidity: {

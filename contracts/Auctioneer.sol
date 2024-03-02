@@ -35,6 +35,7 @@ contract Auctioneer is Ownable, ReentrancyGuard {
     IERC20 public BID_TOKEN;
     uint256 public BID_INCREMENT;
     uint256 public BID_WINDOW;
+    uint256 public STARTING_BID;
 
     address public TREASURY;
     uint256 public TREASURY_CUT;
@@ -44,22 +45,33 @@ contract Auctioneer is Ownable, ReentrancyGuard {
     error AuctionNotOver();
     error InvalidAuctionId();
     error AlreadyFinalized();
-    error AuctionEnded();
+    error AuctionClosed();
     error AuctionNotOpen();
     error NotWinner();
-    error NotRecoverable();
+    error NotCancellable();
     error PermissionDenied();
     error TooSteep();
 
     event AuctionCreated(uint256 indexed _aid, address indexed _owner);
     event Bid(uint256 indexed _aid, address indexed _user, uint256 _bid);
     event AuctionFinalized(uint256 indexed _aid);
-    event AuctionRecovered(uint256 indexed _aid);
+    event AuctionCancelled(uint256 indexed _aid, address indexed _owner);
 
-    constructor(IERC20 _bidToken, uint256 _bidIncrement, uint256 _bidWindow) Ownable(msg.sender) {
+    constructor(IERC20 _bidToken, uint256 _bidIncrement, uint256 _bidWindow, uint256 _startingBid) Ownable(msg.sender) {
       BID_TOKEN = _bidToken;
       BID_INCREMENT = _bidIncrement;
       BID_WINDOW = _bidWindow;
+      STARTING_BID = _startingBid;
+    }
+
+    modifier validAuctionId(uint256 _aid) {
+      if (_aid >= auctions.length) revert InvalidAuctionId();
+      _;
+    }
+    modifier biddingOpen(uint256 _aid) {
+      if (block.timestamp < auctions[_aid].unlockTimestamp) revert AuctionNotOpen();
+      if (auctions[_aid].finalized || block.timestamp > (auctions[_aid].bidTimestamp + BID_WINDOW)) revert AuctionClosed();
+      _;
     }
 
     function setReceivers(address _treasury, uint256 _treasuryCut, address _pool, uint256 _poolCut) public onlyOwner {
@@ -75,11 +87,13 @@ contract Auctioneer is Ownable, ReentrancyGuard {
     function getAuctionCount() public view returns (uint256) {
       return auctions.length;
     }
-    function getAuction (uint256 _aid) public view returns (Auction memory) {
+    function getAuction (uint256 _aid) public view validAuctionId(_aid) returns (Auction memory) {
       return auctions[_aid];
     }
 
     function create(IERC20 _token, uint256 _amount, string memory _name, uint256 _unlockTimestamp) public onlyOwner nonReentrant {
+      _token.safeTransferFrom(msg.sender, address(this), _amount);
+      
       auctions.push(Auction({
         id: auctions.length,
 
@@ -90,37 +104,40 @@ contract Auctioneer is Ownable, ReentrancyGuard {
         unlockTimestamp: _unlockTimestamp,
         
         sum: 0,
-        bid: 0,
-        bidTimestamp: block.timestamp,
+        bid: STARTING_BID,
+        bidTimestamp: _unlockTimestamp,
         bidUser: msg.sender,
 
         finalized: false
       }));
 
-      emit AuctionCreated(auctions.length, msg.sender);      
+      emit AuctionCreated(auctions.length - 1, msg.sender);      
     }
 
-    function recover(uint256 _aid) public nonReentrant {
-      if (_aid > auctions.length) revert InvalidAuctionId();
-
+    function cancel(uint256 _aid) public validAuctionId(_aid) nonReentrant {
       Auction storage auction = auctions[_aid];
 
-      if (auction.bid > 0) revert NotRecoverable();
+      if (auction.bid > STARTING_BID) revert NotCancellable();
       if (msg.sender != auction.owner) revert PermissionDenied();
 
       auction.token.safeTransfer(auction.owner, auction.amount);
       auction.finalized = true;
 
-      emit AuctionRecovered(_aid);
+      emit AuctionCancelled(_aid, msg.sender);
     }
 
-    function bid(uint256 _aid) public {
-      if (_aid > auctions.length) revert InvalidAuctionId();
+    function biddingWindow(uint256 _aid) public view validAuctionId(_aid) returns (bool open, uint256 timeRemaining) {
+      Auction memory auction = auctions[_aid];
 
+      if (block.timestamp < auction.unlockTimestamp) return (false, 0);
+      if (auction.finalized || block.timestamp > (auction.bidTimestamp + BID_WINDOW)) return (false, 0);
+      
+      open = true;
+      timeRemaining = (auction.bidTimestamp + BID_WINDOW) - block.timestamp;
+    }
+
+    function bid(uint256 _aid) public validAuctionId(_aid) biddingOpen(_aid) nonReentrant {
       Auction storage auction = auctions[_aid];
-
-      if (block.timestamp < auction.unlockTimestamp) revert AuctionNotOpen();
-      if (auction.finalized || block.timestamp > (auction.bidTimestamp + BID_WINDOW)) revert AuctionEnded();
 
       auction.bid += BID_INCREMENT;
       auction.bidUser = msg.sender;
@@ -160,8 +177,7 @@ contract Auctioneer is Ownable, ReentrancyGuard {
       emit AuctionFinalized(auction.id);
     }
 
-    function claimWinnings(uint256 _aid) public nonReentrant {
-      if (_aid > auctions.length) revert InvalidAuctionId();
+    function claimWinnings(uint256 _aid) public validAuctionId(_aid) nonReentrant {
       Auction storage auction = auctions[_aid];
       if (msg.sender != auction.bidUser) revert NotWinner();
 
@@ -169,11 +185,10 @@ contract Auctioneer is Ownable, ReentrancyGuard {
       _finalizeAuction(auction);
     }
 
-    function finalizeOnBehalf(uint256 _aid) public nonReentrant {
+    function finalizeOnBehalf(uint256 _aid) public validAuctionId(_aid) nonReentrant {
       // Winner can't just hold auction hostage by not finalizing
       // But this wont be on the frontend, only the explorer
 
-      if (_aid > auctions.length) revert InvalidAuctionId();
       Auction storage auction = auctions[_aid];
 
       _validateAuctionEnded(auction);
