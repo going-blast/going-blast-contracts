@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "./IVaultReceiver.sol";
 
 struct Auction {
   uint256 id;
@@ -24,10 +25,6 @@ struct Auction {
   bool finalized;
 }
 
-interface IPoolReceiver {
-  function receiveCut(uint256 _amount) external;
-}
-
 contract Auctioneer is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -39,8 +36,8 @@ contract Auctioneer is Ownable, ReentrancyGuard {
 
     address public TREASURY;
     uint256 public TREASURY_CUT;
-    address public POOL;
-    uint256 public POOL_CUT;
+    address public VAULT;
+    uint256 public VAULT_CUT;
 
     error AuctionNotOver();
     error InvalidAuctionId();
@@ -51,6 +48,7 @@ contract Auctioneer is Ownable, ReentrancyGuard {
     error NotCancellable();
     error PermissionDenied();
     error TooSteep();
+    error ZeroAddress();
 
     event AuctionCreated(uint256 indexed _aid, address indexed _owner);
     event Bid(uint256 indexed _aid, address indexed _user, uint256 _bid);
@@ -74,14 +72,17 @@ contract Auctioneer is Ownable, ReentrancyGuard {
       _;
     }
 
-    function setReceivers(address _treasury, uint256 _treasuryCut, address _pool, uint256 _poolCut) public onlyOwner {
-      if (_treasuryCut + _poolCut > 5000) revert TooSteep();
+    function setReceivers(address _treasury, uint256 _treasuryCut, address _vault, uint256 _vaultCut) public onlyOwner {
+      if (_treasuryCut + _vaultCut > 5000) revert TooSteep();
+      if (_treasury == address(0) && _treasuryCut > 0) revert ZeroAddress();
+      if (_vault == address(0) && _vaultCut > 0) revert ZeroAddress();
+
 
       TREASURY = _treasury;
       TREASURY_CUT = _treasuryCut;
 
-      POOL = _pool;
-      POOL_CUT = _poolCut;
+      VAULT = _vault;
+      VAULT_CUT = _vaultCut;
     }
 
     function getAuctionCount() public view returns (uint256) {
@@ -161,15 +162,15 @@ contract Auctioneer is Ownable, ReentrancyGuard {
 
       // Distribute bids
       uint256 treasuryCut = TREASURY == address(0) ? 0 : auction.sum * TREASURY_CUT / 10000;
-      uint256 poolCut = POOL == address(0) ? 0 : auction.sum * POOL_CUT / 10000;
+      uint256 vaultCut = VAULT == address(0) ? 0 : auction.sum * VAULT_CUT / 10000;
 
-      BID_TOKEN.safeTransfer(auction.owner, auction.sum - treasuryCut - poolCut);
+      BID_TOKEN.safeTransfer(auction.owner, auction.sum - treasuryCut - vaultCut);
       if (treasuryCut > 0) {
         BID_TOKEN.safeTransfer(TREASURY, treasuryCut);
       }
-      if (poolCut > 0) {
-        BID_TOKEN.safeTransfer(POOL, poolCut);
-        IPoolReceiver(POOL).receiveCut(poolCut);
+      if (vaultCut > 0) {
+        BID_TOKEN.safeTransfer(VAULT, vaultCut);
+        IVaultReceiver(VAULT).receiveCut(vaultCut);
       }
 
       // Finalize      

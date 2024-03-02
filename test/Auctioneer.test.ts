@@ -14,7 +14,7 @@ describe.only("Auctioneer", () => {
 		const signers = await getNamedAccounts()
 
 		const deployer = await ethers.getSigner(signers.deployer)
-		const owner = await ethers.getSigner(signers.owner)
+		const treasury = await ethers.getSigner(signers.owner)
 		const user1 = await ethers.getSigner(signers.user1)
 		const user2 = await ethers.getSigner(signers.user2)
 		const user3 = await ethers.getSigner(signers.user3)
@@ -23,13 +23,13 @@ describe.only("Auctioneer", () => {
 		const WETH = await ethers.deployContract("BasicERC20", ["Fake WETH", "WETH", deployer], deployer)
 
 		await USD.mint(deployer.address, ethers.parseUnits("1000"))
-		await USD.mint(owner.address, ethers.parseUnits("1000"))
+		await USD.mint(treasury.address, ethers.parseUnits("1000"))
 		await USD.mint(user1.address, ethers.parseUnits("1000"))
 		await USD.mint(user2.address, ethers.parseUnits("1000"))
 		await USD.mint(user3.address, ethers.parseUnits("1000"))
 
 		await WETH.mint(deployer.address, ethers.parseUnits("2"))
-		await WETH.mint(owner.address, ethers.parseUnits("2"))
+		await WETH.mint(treasury.address, ethers.parseUnits("2"))
 		await WETH.mint(user1.address, ethers.parseUnits("2"))
 		await WETH.mint(user2.address, ethers.parseUnits("2"))
 		await WETH.mint(user3.address, ethers.parseUnits("2"))
@@ -37,35 +37,40 @@ describe.only("Auctioneer", () => {
 		const auctioneer = await ethers.deployContract(
 			"Auctioneer",
 			[USD.target, ethers.parseUnits("0.01"), 120, ethers.parseUnits("1")],
-			await ethers.getSigner(signers.deployer)
+			deployer
 		)
+		const vault = await ethers.deployContract("AuctioneerVault", [], deployer)
 
 		await USD.connect(deployer).approve(auctioneer.target, ethers.parseUnits("1000"))
-		await USD.connect(owner).approve(auctioneer.target, ethers.parseUnits("1000"))
+		await USD.connect(treasury).approve(auctioneer.target, ethers.parseUnits("1000"))
 		await USD.connect(user1).approve(auctioneer.target, ethers.parseUnits("1000"))
 		await USD.connect(user2).approve(auctioneer.target, ethers.parseUnits("1000"))
 		await USD.connect(user3).approve(auctioneer.target, ethers.parseUnits("1000"))
 
 		await WETH.connect(deployer).approve(auctioneer.target, ethers.parseUnits("1000"))
-		await WETH.connect(owner).approve(auctioneer.target, ethers.parseUnits("1000"))
+		await WETH.connect(treasury).approve(auctioneer.target, ethers.parseUnits("1000"))
 		await WETH.connect(user1).approve(auctioneer.target, ethers.parseUnits("1000"))
 		await WETH.connect(user2).approve(auctioneer.target, ethers.parseUnits("1000"))
 		await WETH.connect(user3).approve(auctioneer.target, ethers.parseUnits("1000"))
 
 		return {
 			auctioneer,
+			vault,
 			USD,
 			WETH,
-			deployer: await ethers.getSigner(signers.deployer),
-			owner: await ethers.getSigner(signers.owner),
-			user1: await ethers.getSigner(signers.user1),
-			user2: await ethers.getSigner(signers.user2),
-			user3: await ethers.getSigner(signers.user3),
+			deployer,
+			treasury,
+			user1,
+			user2,
+			user3,
 		}
 	})
 
-	const setupFixtureWithAuction = deployments.createFixture(async () => {
+	const setupFixtureWithAuctionAndCuts = deployments.createFixture(async () => {
 		const data = await setupFixture()
+
+		// Set cuts
+		await data.auctioneer.setReceivers(data.treasury.address, 3000, data.vault.target, 2000)
 
 		// Create auction
 		const unlockTimestamp = await topOfNextHourTimestamp()
@@ -74,12 +79,35 @@ describe.only("Auctioneer", () => {
 		return { ...data, auctionId: 0 }
 	})
 
-	it("setReceivers", async () => {
-		const { auctioneer, deployer, owner } = await setupFixture()
-		await expect(auctioneer.setReceivers(owner.address, 500, ethers.ZeroAddress, 0)).to.not.be.reverted
+	describe("setReceivers", async () => {
+		it("reverts if fees too high", async () => {
+			const { auctioneer, vault, deployer, treasury } = await setupFixture()
+			await expect(
+				auctioneer.setReceivers(treasury.address, 2500, vault.target, 2501)
+			).to.be.revertedWithCustomError(auctioneer, "TooSteep")
+		})
+		it("reverts if cut set without address", async () => {
+			const { auctioneer, deployer, treasury, vault } = await setupFixture()
+
+			await expect(
+				auctioneer.setReceivers(treasury.address, 500, ethers.ZeroAddress, 500)
+			).to.be.revertedWithCustomError(auctioneer, "ZeroAddress")
+
+			await expect(
+				auctioneer.setReceivers(ethers.ZeroAddress, 500, vault.target, 500)
+			).to.be.revertedWithCustomError(auctioneer, "ZeroAddress")
+		})
+		it("succeeds", async () => {
+			const { auctioneer, deployer, treasury, vault } = await setupFixture()
+			await expect(auctioneer.setReceivers(treasury.address, 500, vault.target, 1000)).to.not.be.reverted
+			expect(await auctioneer.TREASURY()).to.eq(treasury.address)
+			expect(await auctioneer.TREASURY_CUT()).to.eq(500)
+			expect(await auctioneer.VAULT()).to.eq(vault.target)
+			expect(await auctioneer.VAULT_CUT()).to.eq(1000)
+		})
 	})
 	it("create", async () => {
-		const { auctioneer, deployer, owner, WETH } = await setupFixture()
+		const { auctioneer, deployer, WETH } = await setupFixture()
 
 		const auctionId = 0
 		const unlockTimestamp = await topOfNextHourTimestamp()
@@ -110,7 +138,7 @@ describe.only("Auctioneer", () => {
 		expect(auction.amount).to.eq(ethers.parseUnits("1"))
 	})
 	it("cancel", async () => {
-		const { auctioneer, deployer, owner, user1, WETH } = await setupFixture()
+		const { auctioneer, deployer, user1, WETH } = await setupFixture()
 
 		// Create auction
 		let auctionId = 0
@@ -157,14 +185,14 @@ describe.only("Auctioneer", () => {
 	})
 	describe("bidWindow(uint256 _aid)", async () => {
 		it("revert invalid id", async () => {
-			const { auctioneer, deployer, owner, user1, WETH, USD, auctionId } = await setupFixtureWithAuction()
+			const { auctioneer, deployer, user1, WETH, USD, auctionId } = await setupFixtureWithAuctionAndCuts()
 			await expect(auctioneer.biddingWindow(auctionId + 1)).to.be.revertedWithCustomError(
 				auctioneer,
 				"InvalidAuctionId"
 			)
 		})
 		it("correct all the way through window", async () => {
-			const { auctioneer, deployer, owner, user1, WETH, USD, auctionId } = await setupFixtureWithAuction()
+			const { auctioneer, deployer, user1, WETH, USD, auctionId } = await setupFixtureWithAuctionAndCuts()
 
 			const { unlockTimestamp: unlockTimestampRaw } = await auctioneer.getAuction(auctionId)
 			const unlockTimestamp = parseInt(unlockTimestampRaw.toString())
@@ -194,21 +222,21 @@ describe.only("Auctioneer", () => {
 	})
 	describe("bid(uint256 _aid)", async () => {
 		it("revert invalid id", async () => {
-			const { auctioneer, deployer, owner, user1, WETH, USD, auctionId } = await setupFixtureWithAuction()
+			const { auctioneer, deployer, user1, WETH, USD, auctionId } = await setupFixtureWithAuctionAndCuts()
 			await expect(auctioneer.connect(user1).bid(auctionId + 1)).to.be.revertedWithCustomError(
 				auctioneer,
 				"InvalidAuctionId"
 			)
 		})
 		it("revert not open", async () => {
-			const { auctioneer, deployer, owner, user1, WETH, USD, auctionId } = await setupFixtureWithAuction()
+			const { auctioneer, deployer, user1, WETH, USD, auctionId } = await setupFixtureWithAuctionAndCuts()
 			await expect(auctioneer.connect(user1).bid(auctionId)).to.be.revertedWithCustomError(
 				auctioneer,
 				"AuctionNotOpen"
 			)
 		})
 		it("revert after bid window closes", async () => {
-			const { auctioneer, deployer, owner, user1, WETH, USD, auctionId } = await setupFixtureWithAuction()
+			const { auctioneer, deployer, user1, WETH, USD, auctionId } = await setupFixtureWithAuctionAndCuts()
 
 			const { unlockTimestamp } = await auctioneer.getAuction(auctionId)
 			await mineBlockWithTimestamp(parseInt(unlockTimestamp.toString()))
@@ -221,8 +249,8 @@ describe.only("Auctioneer", () => {
 				"AuctionClosed"
 			)
 		})
-		it("succeed", async () => {
-			const { auctioneer, deployer, owner, user1, WETH, USD, auctionId } = await setupFixtureWithAuction()
+		it("succeeds", async () => {
+			const { auctioneer, deployer, user1, WETH, USD, auctionId } = await setupFixtureWithAuctionAndCuts()
 
 			const userUsdInit = await USD.balanceOf(user1.address)
 
@@ -240,6 +268,135 @@ describe.only("Auctioneer", () => {
 			expect(auction.bid).to.eq(ethers.parseUnits("1.01"))
 			expect(auction.sum).to.eq(ethers.parseUnits("1.01"))
 			expect(auction.bidTimestamp).to.be.closeTo(unlockTimestamp, 2)
+		})
+	})
+	describe("claimWinnings(uint256 _aid) / finalizeOnBehalf(uint256 _aid)", async () => {
+		it("revert invalid id", async () => {
+			const { auctioneer, deployer, user1, WETH, USD, auctionId } = await setupFixtureWithAuctionAndCuts()
+			await expect(auctioneer.connect(user1).bid(auctionId + 1)).to.be.revertedWithCustomError(
+				auctioneer,
+				"InvalidAuctionId"
+			)
+		})
+		it("reverts if not ended", async () => {
+			const { auctioneer, vault, deployer, treasury, user1, user2, WETH, USD, auctionId } =
+				await setupFixtureWithAuctionAndCuts()
+
+			const { unlockTimestamp } = await auctioneer.getAuction(auctionId)
+			await mineBlockWithTimestamp(parseInt(unlockTimestamp.toString()))
+
+			await auctioneer.connect(user1).bid(auctionId)
+			await auctioneer.connect(user2).bid(auctionId)
+
+			await expect(auctioneer.connect(user2).claimWinnings(auctionId)).to.be.revertedWithCustomError(
+				auctioneer,
+				"AuctionNotOver"
+			)
+		})
+		it("reverts if already finalized", async () => {
+			const { auctioneer, vault, deployer, treasury, user1, user2, WETH, USD, auctionId } =
+				await setupFixtureWithAuctionAndCuts()
+
+			const { unlockTimestamp } = await auctioneer.getAuction(auctionId)
+			await mineBlockWithTimestamp(parseInt(unlockTimestamp.toString()))
+
+			await auctioneer.connect(user1).bid(auctionId)
+			await auctioneer.connect(user2).bid(auctionId)
+
+			const auction = await auctioneer.getAuction(auctionId)
+			await mineBlockWithTimestamp(parseInt(auction.bidTimestamp.toString()) + 120)
+
+			await expect(auctioneer.connect(user2).claimWinnings(auctionId))
+				.to.emit(auctioneer, "AuctionFinalized")
+				.withArgs(auctionId)
+
+			await expect(auctioneer.connect(user2).claimWinnings(auctionId)).to.be.revertedWithCustomError(
+				auctioneer,
+				"AlreadyFinalized"
+			)
+		})
+		it("claimWinnings reverts if not winning user", async () => {
+			const { auctioneer, vault, deployer, treasury, user1, user2, WETH, USD, auctionId } =
+				await setupFixtureWithAuctionAndCuts()
+
+			const { unlockTimestamp } = await auctioneer.getAuction(auctionId)
+			await mineBlockWithTimestamp(parseInt(unlockTimestamp.toString()))
+
+			await auctioneer.connect(user1).bid(auctionId)
+			await auctioneer.connect(user2).bid(auctionId)
+
+			const auction = await auctioneer.getAuction(auctionId)
+			await mineBlockWithTimestamp(parseInt(auction.bidTimestamp.toString()) + 120)
+
+			await expect(auctioneer.connect(user1).claimWinnings(auctionId)).to.be.revertedWithCustomError(
+				auctioneer,
+				"NotWinner"
+			)
+		})
+		it("claimWinnings succeeds", async () => {
+			const { auctioneer, vault, deployer, treasury, user1, user2, WETH, USD, auctionId } =
+				await setupFixtureWithAuctionAndCuts()
+
+			const { unlockTimestamp } = await auctioneer.getAuction(auctionId)
+			await mineBlockWithTimestamp(parseInt(unlockTimestamp.toString()))
+
+			for (let i = 0; i < 20; i++) {
+				await auctioneer.connect(user1).bid(auctionId)
+				await auctioneer.connect(user2).bid(auctionId)
+			}
+
+			let auction = await auctioneer.getAuction(auctionId)
+			await mineBlockWithTimestamp(parseInt(auction.bidTimestamp.toString()) + 120)
+
+			const user2WethInit = await WETH.balanceOf(user2)
+			const auctionUSD = auction.sum
+			expect(await USD.balanceOf(auctioneer.target)).to.eq(auctionUSD)
+
+			const ownerCut = (auctionUSD * 5000n) / 10000n
+			const treasuryCut = (auctionUSD * 3000n) / 10000n
+			const vaultCut = (auctionUSD * 2000n) / 10000n
+			const ownerUsdInit = await USD.balanceOf(deployer.address)
+			const treasuryUsdInit = await USD.balanceOf(treasury.address)
+			const vaultUsdInit = await USD.balanceOf(vault.target)
+
+			await expect(auctioneer.connect(user2).claimWinnings(auctionId))
+				.to.emit(auctioneer, "AuctionFinalized")
+				.withArgs(auctionId)
+
+			const user2WethFinal = await WETH.balanceOf(user2)
+			const ownerUsdFinal = await USD.balanceOf(deployer.address)
+			const treasuryUsdFinal = await USD.balanceOf(treasury.address)
+			const vaultUsdFinal = await USD.balanceOf(vault.target)
+
+			await expect(user2WethFinal - user2WethInit).to.eq(ethers.parseUnits("1"))
+			expect(await USD.balanceOf(auctioneer.target)).to.eq(0)
+
+			expect(ownerUsdFinal - ownerUsdInit).to.eq(ownerCut)
+			expect(treasuryUsdFinal - treasuryUsdInit).to.eq(treasuryCut)
+			expect(vaultUsdFinal - vaultUsdInit).to.eq(vaultCut)
+
+			// Auction data
+			auction = await auctioneer.getAuction(auctionId)
+			expect(auction.finalized).to.eq(true)
+		})
+		it("finalizeOnBehalf succeeds", async () => {
+			const { auctioneer, vault, deployer, treasury, user1, user2, WETH, USD, auctionId } =
+				await setupFixtureWithAuctionAndCuts()
+
+			const { unlockTimestamp } = await auctioneer.getAuction(auctionId)
+			await mineBlockWithTimestamp(parseInt(unlockTimestamp.toString()))
+
+			for (let i = 0; i < 20; i++) {
+				await auctioneer.connect(user1).bid(auctionId)
+				await auctioneer.connect(user2).bid(auctionId)
+			}
+
+			const auction = await auctioneer.getAuction(auctionId)
+			await mineBlockWithTimestamp(parseInt(auction.bidTimestamp.toString()) + 120)
+
+			await expect(auctioneer.connect(user1).finalizeOnBehalf(auctionId))
+				.to.emit(auctioneer, "AuctionFinalized")
+				.withArgs(auctionId)
 		})
 	})
 })

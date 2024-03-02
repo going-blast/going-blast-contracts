@@ -6,8 +6,9 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "./IVaultReceiver.sol";
 
-contract AuctioneerVault is Ownable, ReentrancyGuard {
+contract AuctioneerVault is Ownable, ReentrancyGuard, IVaultReceiver {
     using SafeERC20 for IERC20;
 
     IERC20 public auctionToken;
@@ -66,5 +67,12 @@ contract AuctioneerVault is Ownable, ReentrancyGuard {
         totalShares -= r;
 
         auctionToken.safeTransfer(msg.sender, r);
+    }
+
+
+
+
+    function receiveCut(uint256 _amount) public {
+      // TODO: Do something with this here
     }
 }

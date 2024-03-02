@@ -103,6 +103,14 @@ const config: HardhatUserConfig = {
 			default: 4,
 			mainnet: 4,
 		},
+		treasury: {
+			default: 4,
+			mainnet: 4,
+		},
+		pool: {
+			default: 4,
+			mainnet: 4,
+		},
 	},
 	solidity: {
 		compilers: [
