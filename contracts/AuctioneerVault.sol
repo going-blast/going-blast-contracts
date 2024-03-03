@@ -17,14 +17,7 @@ contract AuctioneerVault is Ownable, ReentrancyGuard, IVaultReceiver {
 
     uint256 public rewardPerShare;
     uint256 public totalDepositedAmount;
-    uint256 public REW_PRECISION = 1e12;
-
-    // VESTING
-    uint256 public VESTING_PERIOD = 24 * 60 * 60;
-    uint256 public vestPeriodStart;
-    uint256 public vestPeriodEnd;
-    uint256 public vestAmount;
-    uint256 public vestPerSecond;
+    uint256 public REW_PRECISION = 1e18;
 
     struct UserInfo {
         uint256 amount;
@@ -42,28 +35,8 @@ contract AuctioneerVault is Ownable, ReentrancyGuard, IVaultReceiver {
 
     constructor () Ownable(msg.sender) {}
 
-    // VESTING
-
-    function vestingTimeElapsed() internal view returns (uint256) {
-        uint256 elapsed = block.timestamp - vestPeriodStart;
-        return elapsed > VESTING_PERIOD ? VESTING_PERIOD : elapsed;
-    }
-    function vestingTimeRemaining() internal view returns (uint256) {
-        return VESTING_PERIOD - vestingTimeElapsed();
-    }
-    function rewardPerShareWithVested() internal view returns (uint256) {
-        return rewardPerShare + (vestPerSecond * vestingTimeElapsed());
-    }
     function receiveCut(uint256 _amount) public {
-        // Update rewardPerShare based on existing vesting
-        rewardPerShare = rewardPerShareWithVested();
-
-        // Set new debt
-        vestAmount = _amount + (vestPerSecond * vestingTimeRemaining());
-        vestPeriodStart = block.timestamp;
-        vestPeriodEnd = vestPeriodStart + VESTING_PERIOD;
-        vestPerSecond = vestAmount * REW_PRECISION / VESTING_PERIOD;
-
+        rewardPerShare += (_amount * REW_PRECISION) / totalDepositedAmount;
         emit ReceivedCut(_amount);
     }
 
@@ -78,7 +51,7 @@ contract AuctioneerVault is Ownable, ReentrancyGuard, IVaultReceiver {
 
         UserInfo storage user = userInfo[msg.sender];
         user.amount += _amount;
-        user.debt = user.amount * rewardPerShareWithVested() / REW_PRECISION;
+        user.debt = user.amount * rewardPerShare / REW_PRECISION;
 
         totalDepositedAmount += user.amount;
 
@@ -94,7 +67,7 @@ contract AuctioneerVault is Ownable, ReentrancyGuard, IVaultReceiver {
         UserInfo storage user = userInfo[msg.sender];
         if (_amount > user.amount) revert BadWithdrawal();
 
-        uint256 reward = user.amount * rewardPerShareWithVested() / REW_PRECISION;
+        uint256 reward = user.amount * rewardPerShare / REW_PRECISION;
         uint256 pending = reward - user.debt;
         USD.safeTransfer(msg.sender, pending);
 
@@ -104,7 +77,7 @@ contract AuctioneerVault is Ownable, ReentrancyGuard, IVaultReceiver {
             GAVEL.safeTransfer(msg.sender, _amount);
         }
 
-        user.debt = user.amount * rewardPerShareWithVested() / REW_PRECISION;
+        user.debt = user.amount * rewardPerShare / REW_PRECISION;
 
         emit Withdraw(msg.sender, _amount);
     }
