@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.20;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
+import { GavelToken } from "./GavelToken.sol";
 import "./IVaultReceiver.sol";
 
 struct Auction {
@@ -33,12 +35,15 @@ contract Auctioneer is Ownable, ReentrancyGuard {
     uint256 public BID_INCREMENT;
     uint256 public BID_WINDOW;
     uint256 public STARTING_BID;
+    uint256 public GAVEL_EMISSION_ON_BID;
+    GavelToken public GAVEL_TOKEN;
 
     address public TREASURY;
     uint256 public TREASURY_CUT;
     address public VAULT;
     uint256 public VAULT_CUT;
 
+    error EmissionTooHigh();
     error AuctionNotOver();
     error InvalidAuctionId();
     error AlreadyFinalized();
@@ -50,6 +55,7 @@ contract Auctioneer is Ownable, ReentrancyGuard {
     error TooSteep();
     error ZeroAddress();
 
+    event EmissionOnBidUpdated(uint256 _emissionOnBid);
     event AuctionCreated(uint256 indexed _aid, address indexed _owner);
     event Bid(uint256 indexed _aid, address indexed _user, uint256 _bid);
     event AuctionFinalized(uint256 indexed _aid);
@@ -70,6 +76,12 @@ contract Auctioneer is Ownable, ReentrancyGuard {
       if (block.timestamp < auctions[_aid].unlockTimestamp) revert AuctionNotOpen();
       if (auctions[_aid].finalized || block.timestamp > (auctions[_aid].bidTimestamp + BID_WINDOW)) revert AuctionClosed();
       _;
+    }
+
+    function setGavelEmissionOnBid(uint256 _emissionOnBid) public onlyOwner {
+      if (_emissionOnBid > 20000) revert EmissionTooHigh();
+      GAVEL_EMISSION_ON_BID = _emissionOnBid;
+      emit EmissionOnBidUpdated(_emissionOnBid);
     }
 
     function setReceivers(address _treasury, uint256 _treasuryCut, address _vault, uint256 _vaultCut) public onlyOwner {
@@ -147,6 +159,7 @@ contract Auctioneer is Ownable, ReentrancyGuard {
       auction.sum += auction.bid;
 
       BID_TOKEN.safeTransferFrom(msg.sender, address(this), auction.bid);
+      GAVEL_TOKEN.mint(msg.sender, (GAVEL_EMISSION_ON_BID  * 1e18) / 10000);
 
       emit Bid(_aid, msg.sender, auction.bid);
     }
