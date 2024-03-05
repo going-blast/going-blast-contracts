@@ -1,5 +1,5 @@
 {
-	"cSpell.words": ["solhint", "USDB"],
+	"cSpell.words": ["Finalizable", "solhint", "USDB"],
 	"editor.defaultFormatter": "esbenp.prettier-vscode",
 	"editor.formatOnSave": true
 }
