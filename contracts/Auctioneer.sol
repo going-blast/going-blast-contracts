@@ -13,8 +13,13 @@ import "./IVaultReceiver.sol";
 
 
 struct BidWindow {
+  uint256 windowOpenTimestamp;
+  uint256 windowCloseTimestamp;
+  uint256 timer; // 0 for no timer, >60 for other timers (1m / 2m / 5m)
+}
+struct BidWindowParams {
   uint256 duration;
-  uint256 window;
+  uint256 timer;
 }
 
 struct Auction {
@@ -44,7 +49,7 @@ struct AuctionParams {
   IERC20[] tokens;
   uint256 amounts;
   string name;
-  BidWindow[] windows;
+  BidWindowParams[] windows;
   uint256 unlockTimestamp;
 }
 
@@ -75,6 +80,7 @@ contract Auctioneer is Ownable, ReentrancyGuard {
     uint256 public bidIncrement;
     uint256 public startingBid;
     uint256 public privateAuctionRequirement;
+    uint256 public onceTwiceBlastBonusTime = 9;
 
     // EMISSIONS
     IERC20 public GO;
@@ -88,9 +94,14 @@ contract Auctioneer is Ownable, ReentrancyGuard {
     address public farm;
     uint256 public treasurySplit = 5000;
 
+    error TooManyAuctions();
+    error InvalidEmissionBP();
     error EmissionTooHigh();
     error AuctionNotOver();
     error InvalidAuctionLot();
+    error InvalidBidWindowCount();
+    error InvalidBidWindowDuration();
+    error InvalidBidWindowTimer();
     error TooManyTokens();
     error LengthMismatch();
     error NoTokens();
@@ -125,6 +136,15 @@ contract Auctioneer is Ownable, ReentrancyGuard {
     }
 
     // MODIFIERS
+
+    function _getBidWindowTimer(Auction memory auction) internal view returns (uint256) {
+      for (uint8 i = 0; i < auction.windows.length; i++) {
+        if (block.timestamp >= auction.windows[i].windowOpenTimestamp && block.timestamp <= auction.windows[i].windowCloseTimestamp) {
+          return auction.windows[i].timer;
+        }
+      }
+      return 0;
+    }
 
     function _getUserPrivateAuctionPermitted() internal view returns (bool) {
       return true;
@@ -174,33 +194,76 @@ contract Auctioneer is Ownable, ReentrancyGuard {
       emit StartedGoingBlast();
     }
 
-    function create(IERC20[] memory _tokens, uint256[] memory _amounts, string memory _name, uint256 _unlockTimestamp, bool _isPrivate) public onlyOwner nonReentrant {
-      if (_tokens.length > 4) revert TooManyTokens();
-      if (_tokens.length != _amounts.length) revert LengthMismatch();
-      if (_tokens.length == 0) revert NoTokens();
+    function createDailyAuctions(AuctionParams[] memory _params) public onlyOwner nonReentrant {
+      if (_params.length > 4) revert TooManyAuctions();
+
+      uint256 totalEmissionBP = 0;
+      for (uint8 i = 0; i < _params.length; i++) {
+        totalEmissionBP += _params.emissionBP;
+      }
+
+      // Most days, this will be 10000, an emission BP over 10000 means it is using emissions scheduled for other days
+      // Auctions for the remainder of the epoch will be reduced
+      // This will never overflow the emissions though, because the emission amount is calculated from remaining emissions
+      if (totalEmissionBP > 20000) revert InvalidEmissionBP();
+
+      for (uint8 i = 0; i < _params.length; i++) {
+        _createSingleAuction(_params[i]);
+      }
+    }
+
+    function _getEmissionForAuction(uint256 _bp) internal returns (uint256) {
+      // Get epoch
+      // Get number of days remaining in epoch
+      // day emission = Epoch emission / num days remaining
+      // return day emission * _bp / 10000
+      // unused emissions roll over to the remaining days
+      return 255;
+    }
+
+    // Transformation from params is a gas saving measure via caching the window start and end timestamps
+    function _transformBidWindowParams(uint256 _unlockTimestamp, BidWindowParams memory _windows) internal returns (BidWindow[] memory windows) {
+      uint256 timestamp = _unlockTimestamp;
+      for (uint8 i = 0; i < _windows.length; i++) {
+        if (_windows[i].duration == 0) revert InvalidBidWindowDuration();
+        if (_windows[i].timer > 0 && _windows[i].timer < 60) revert InvalidBidWindowTimer();
+        windows.push(BidWindow({
+          windowOpenTimestamp: timestamp,
+          windowCloseTimestamp: timestamp + _windows[i].duration,
+          timer: _windows[i].timer + onceTwiceBlastBonusTime
+        }));
+      }
+    }
+
+    function _createSingleAuction(AuctionParams memory _params) internal {
+      if (_params.tokens.length > 4) revert TooManyTokens();
+      if (_params.tokens.length != _params.amounts.length) revert LengthMismatch();
+      if (_params.tokens.length == 0) revert NoTokens();
+      if (_params.windows.length == 0 || _params.windows.length > 4) revert InvalidBidWindowCount();
 
       uint256 lot = auctions.length;
-      if (lot == 0) start(_unlockTimestamp);
+      if (lot == 0) start(_params.unlockTimestamp);
 
       // Transfer tokens from treasury
-      for (uint8 i = 0; i < _tokens.length; i++) {
-        _tokens[i].safeTransferFrom(msg.sender, address(this), _amounts[i]);
+      for (uint8 i = 0; i < _params.tokens.length; i++) {
+        _params.tokens[i].safeTransferFrom(treasury, address(this), _params.amounts[i]);
       }
-      
+
       auctions.push(Auction({
         lot: auctions.length,
-        isPrivate: _isPrivate,
-        emission: getEpochEmission(),
+        isPrivate: _params.isPrivate,
+        emission: _getEmissionForAuction(_params.emissionBP),
+        windows: _transformBidWindowParams(_params.unlockTimestamp, _params.windows),
         points: 0,
 
-        tokens: _tokens,
-        amounts: _amounts,
-        name: _name,
-        unlockTimestamp: _unlockTimestamp,
+        tokens: _params.tokens,
+        amounts: _params.amounts,
+        name: _params.name,
+        unlockTimestamp: _params.unlockTimestamp,
         
         sum: 0,
         bid: startingBid,
-        bidTimestamp: _unlockTimestamp,
+        bidTimestamp: _params.unlockTimestamp,
         bidUser: msg.sender,
 
         claimed: false,
