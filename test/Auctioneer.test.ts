@@ -7,6 +7,7 @@ import {
 	mineBlockWithTimestamp,
 	topOfNextHourTimestamp,
 } from "../utils/base"
+import { ZeroAddress } from "ethers"
 
 describe.only("Auctioneer", () => {
 	const setupFixture = deployments.createFixture(async () => {
@@ -70,7 +71,8 @@ describe.only("Auctioneer", () => {
 		const data = await setupFixture()
 
 		// Set cuts
-		await data.auctioneer.setReceivers(data.treasury.address, 3000, data.vault.target, 2000)
+		await data.auctioneer.setTreasury(data.treasury.address)
+		await data.auctioneer.setTreasurySplit(5000)
 
 		// Create auction
 		const unlockTimestamp = await topOfNextHourTimestamp()
@@ -79,12 +81,28 @@ describe.only("Auctioneer", () => {
 		return { ...data, auctionId: 0 }
 	})
 
+	describe("setTreasury", async () => {
+		it("reverts if zero address", async () => {
+			const { auctioneer, vault, deployer, treasury } = await setupFixture()
+			await expect(auctioneer.setTreasury(treasury.address)).to.be.revertedWithCustomError(
+				auctioneer,
+				"ZeroAddress"
+			)
+		})
+		it("succeeds", async () => {
+			const { auctioneer, vault, deployer, treasury } = await setupFixture()
+			await expect(auctioneer.setTreasury(treasury.address))
+				.to.emit(auctioneer, "UpdatedTreasury")
+				.withArgs(treasury.address)
+		})
+	})
 	describe("setReceivers", async () => {
 		it("reverts if fees too high", async () => {
 			const { auctioneer, vault, deployer, treasury } = await setupFixture()
-			await expect(
-				auctioneer.setReceivers(treasury.address, 2500, vault.target, 2501)
-			).to.be.revertedWithCustomError(auctioneer, "TooSteep")
+			await expect(auctioneer.setTreasury(treasury.address)).to.be.revertedWithCustomError(
+				auctioneer,
+				"ZeroAddress"
+			)
 		})
 		it("reverts if cut set without address", async () => {
 			const { auctioneer, deployer, treasury, vault } = await setupFixture()

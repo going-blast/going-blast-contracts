@@ -7,76 +7,22 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
-import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import { GavelToken } from "./GavelToken.sol";
 import "./IVaultReceiver.sol";
+import "./IAuctioneer.sol";
+import "./AuctionUtils.sol";
 
 
-enum BidWindowType { OPEN, TIMED, INFINITE }
-enum AuctionState{ WAITING, OPEN, FINALIZED }
 
-struct BidWindow {
-  BidWindowType windowType;
-  uint256 windowOpenTimestamp;
-  uint256 windowCloseTimestamp; // 0 for window that goes forever
-  uint256 timer; // 0 for no timer, >60 for other timers (1m / 2m / 5m)
-}
-struct BidWindowParams {
-  BidWindowType windowType;
-  uint256 duration;
-  uint256 timer;
-}
-
-struct Auction {
-  uint256 lot;
-  bool isPrivate; // whether the auction requires wallet / staked Gavel
-  uint256 emission; // token to be distributed through auction
-  BidWindow[] windows;
-  uint256 unlockTimestamp;
-
-  string name;
-  IERC20[] tokens;
-  uint256[] amounts;
-  
-  uint256 sum;
-  uint256 bid;
-  uint256 bidTimestamp;
-  address bidUser;
-  uint256 points; // sum of all points generated during auction
-
-  bool claimed;
-  AuctionState state;
-}
-
-
-struct AuctionParams {
-  bool isPrivate;
-  uint256 emissionBP; // Emission of this auction of the day's emission (usually 100%)
-  IERC20[] tokens;
-  uint256[] amounts;
-  string name;
-  BidWindowParams[] windows;
-  uint256 unlockTimestamp;
-}
-
-struct AuctionUser {
-  uint256 points;
-  bool claimed;
-}
-
-// 6 hour initial bidding window
-// Quick bid 2 hours (5 minute timer)
-// Super quick bid (2 minute timer to Inf)
-// MON-FRI normal public auctions (500 - 1k)
-// SAT public big auction (3-5k)
-// SUN private big auction (4-6k)
-
-contract Auctioneer is Ownable, ReentrancyGuard {
-    using EnumerableSet for EnumerableSet.AddressSet;
+contract Auctioneer is Ownable, ReentrancyGuard, IAuctioneer {
     using SafeERC20 for IERC20;
+    using AuctionUtils for Auction;
+    using AuctionParamsUtils for AuctionParams;
 
     // CORE
-    Auction[] public auctions;
+    uint256 public lotCount;
+    mapping(uint256 => Auction) public auctions;
+    mapping(uint256 => mapping(uint8 => BidWindow)) public auctionBidWindows;
     mapping(uint256 => mapping(address => AuctionUser)) public auctionUsers;
     uint256 public startTimestamp;
     uint256 epochDuration = 90 days;
@@ -100,38 +46,6 @@ contract Auctioneer is Ownable, ReentrancyGuard {
     address public farm;
     uint256 public treasurySplit = 5000;
 
-    error TooManyAuctions();
-    error InvalidEmissionBP();
-    error InvalidAuctionLot();
-    error InvalidWindowOrder();
-    error WindowTooShort();
-    error InvalidBidWindowCount();
-    error InvalidBidWindowTimer();
-    error LastWindowNotInfinite();
-    error MultipleInfiniteWindows();
-    error TooManyTokens();
-    error LengthMismatch();
-    error BiddingClosed();
-    error NoTokens();
-    error AuctionClosed();
-    error NotCancellable();
-    error TooSteep();
-    error ZeroAddress();
-    error PrivateAuction();
-    error UnlockAlreadyPassed();
-
-    event EmissionOnBidUpdated(uint256 _emissionOnBid);
-    event AuctionCreated(uint256 indexed _lot);
-    event Bid(uint256 indexed _lot, address indexed _user, uint256 _bid);
-    event AuctionFinalized(uint256 indexed _lot);
-    event AuctionLotClaimed(uint256 indexed _lot, address indexed _user, IERC20[] _tokens, uint256[] _amounts);
-    event UserClaimedLotEmissions(uint256 _lot, address indexed _user, uint256 _emissions);
-    event AuctionCancelled(uint256 indexed _lot, address indexed _owner);
-    event UpdatedTreasury(address indexed _treasury);
-    event UpdatedFarm(address indexed _farm);
-    event UpdatedTreasurySplit(uint256 _split);
-    event UpdatedPrivateAuctionRequirement(uint256 _requirement);
-    event StartedGoingBlast();
 
     constructor(IERC20 _usd, uint256 _bidIncrement, uint256 _startingBid, uint256 _privateRequirement) Ownable(msg.sender) {
       USD = _usd;
@@ -140,11 +54,8 @@ contract Auctioneer is Ownable, ReentrancyGuard {
       privateAuctionRequirement = _privateRequirement;
     }
 
-    // MODIFIERS
-
-
     modifier validAuctionLot(uint256 _lot) {
-      if (_lot >= auctions.length) revert InvalidAuctionLot();
+      if (_lot >= lotCount) revert InvalidAuctionLot();
       _;
     }
 
@@ -206,71 +117,12 @@ contract Auctioneer is Ownable, ReentrancyGuard {
       return _bp;
     }
 
-    // Transformation from params is a gas saving measure via caching the window start and end timestamps
-    // Validation of window parameters
-    function _transformAuctionBidWindows(AuctionParams memory _params) internal view returns (BidWindow[] memory) {
-      if (_params.unlockTimestamp < block.timestamp) revert UnlockAlreadyPassed();
-
-      // YES I KNOW that this is inefficient, this is an owner facing function.
-      // Legibility and clarity > once daily gas price.
-
-      // VALIDATE: Windows must flow from open -> timed -> infinite
-      BidWindowType runningType = BidWindowType.OPEN;
-      for (uint8 i = 0; i < _params.windows.length; i++) {
-        if (_params.windows[i].windowType < runningType) revert InvalidWindowOrder();
-        runningType = _params.windows[i].windowType; 
-      }
-
-      // VALIDATE: Last window must be infinite window
-      if (_params.windows[_params.windows.length - 1].windowType != BidWindowType.INFINITE) revert LastWindowNotInfinite();
-
-      // VALIDATE: Only one infinite window can exist
-      uint8 infCount = 0;
-      for (uint8 i = 0; i < _params.windows.length; i++) {
-        if (_params.windows[i].windowType == BidWindowType.INFINITE) infCount += 1;
-      }
-      if (infCount > 1) revert MultipleInfiniteWindows();
-
-      // VALIDATE: Windows must have a valid duration (if not infinite)
-      for (uint8 i = 0; i < _params.windows.length; i++) {
-        if (_params.windows[i].windowType != BidWindowType.INFINITE && _params.windows[i].duration < 1 hours) revert WindowTooShort();
-      }
-
-      // VALIDATE: Timed windows must have a valid timer
-      for (uint8 i = 0; i < _params.windows.length; i++) {
-        if (_params.windows[i].windowType != BidWindowType.OPEN && _params.windows[i].timer < 60 seconds) revert InvalidBidWindowTimer();
-      }
-
-      // Add transformed windows to auction
-      BidWindow[] memory windows = new BidWindow[](_params.windows.length);
-
-      uint256 openTimestamp = _params.unlockTimestamp;
-      for (uint8 i = 0; i < _params.windows.length; i++) {
-        uint256 closeTimestamp = openTimestamp + _params.windows[i].duration;
-        if (_params.windows[i].windowType == BidWindowType.INFINITE) {
-          closeTimestamp = openTimestamp + 315600000; // 10 years, hah
-        }
-
-        windows[i] = BidWindow({
-          windowType: _params.windows[i].windowType,
-          windowOpenTimestamp: openTimestamp,
-          windowCloseTimestamp: closeTimestamp,
-          timer: _params.windows[i].timer + onceTwiceBlastBonusTime
-        });
-
-        openTimestamp += _params.windows[i].duration;
-      }
-
-      return windows;
-    }
-
     function _createSingleAuction(AuctionParams memory _params) internal {
-      if (_params.tokens.length > 4) revert TooManyTokens();
-      if (_params.tokens.length != _params.amounts.length) revert LengthMismatch();
-      if (_params.tokens.length == 0) revert NoTokens();
-      if (_params.windows.length == 0 || _params.windows.length > 4) revert InvalidBidWindowCount();
-
-      uint256 lot = auctions.length;
+      _params.validateUnlock();
+      _params.validateTokens();
+      _params.validateBidWindows();
+      
+      uint256 lot = lotCount;
       if (lot == 0) start(_params.unlockTimestamp);
 
       // Transfer tokens from treasury
@@ -278,29 +130,28 @@ contract Auctioneer is Ownable, ReentrancyGuard {
         _params.tokens[i].safeTransferFrom(treasury, address(this), _params.amounts[i]);
       }
 
-      // Base Auction Data
-      auctions.push(Auction({
-        lot: auctions.length,
-        isPrivate: _params.isPrivate,
-        emission: _getEmissionForAuction(_params.emissionBP),
-        windows: _transformAuctionBidWindows(_params),
-        points: 0,
+      auctions[lot].lot = lot;
+      auctions[lot].isPrivate = _params.isPrivate;
+      auctions[lot].emission = _getEmissionForAuction(_params.emissionBP);
+      auctions[lot].addBidWindows(_params, onceTwiceBlastBonusTime);
+      // auctions[lot].points = 0;
 
-        tokens: _params.tokens,
-        amounts: _params.amounts,
-        name: _params.name,
-        unlockTimestamp: _params.unlockTimestamp,
+      auctions[lot].tokens = _params.tokens;
+      auctions[lot].amounts = _params.amounts;
+      auctions[lot].name = _params.name;
+      auctions[lot].unlockTimestamp = _params.unlockTimestamp;
         
-        sum: 0,
-        bid: startingBid,
-        bidTimestamp: _params.unlockTimestamp,
-        bidUser: msg.sender,
+      // auctions[lot].sum = 0;
+      auctions[lot].bid = startingBid;
+      auctions[lot].bidTimestamp = _params.unlockTimestamp;
+      auctions[lot].bidUser = msg.sender;
 
-        claimed: false,
-        state: AuctionState.WAITING
-      }));
+      // auctions[lot].claimed = false;
+      // auctions[lot].finalized = false;
 
-      emit AuctionCreated(auctions.length - 1);      
+
+      lotCount++;
+      emit AuctionCreated(lot);      
     }
 
     function cancel(uint256 _lot) public validAuctionLot(_lot) nonReentrant onlyOwner {
@@ -311,62 +162,12 @@ contract Auctioneer is Ownable, ReentrancyGuard {
       for (uint8 i = 0; i < auction.tokens.length; i++) {
         auction.tokens[i].safeTransfer(treasury, auction.amounts[i]);
       }
-      auction.state = AuctionState.FINALIZED;
+
+      auction.finalize();
 
       emit AuctionCancelled(_lot, msg.sender);
     }
 
-
-
-
-    function _getActiveWindow(Auction memory auction) internal view returns (int8) {
-      // Before auction opens, active window is -1
-      if (block.timestamp < auction.unlockTimestamp) return -1;
-      
-      // Check if timestamp is before the end of each window, if it is, return that windows index
-      for (uint8 i = 0; i < auction.windows.length; i++) {
-        if (block.timestamp < auction.windows[i].windowCloseTimestamp) return int8(i);
-      }
-
-      // Shouldn't ever get here, maybe in 10 years or so.
-      return int8(uint8(auction.windows.length - 1));
-    }
-
-    function _getIsBiddingOpen(Auction memory auction) internal view returns (bool) {
-      // Early escape if the auction has been finalized
-      if (auction.state == AuctionState.FINALIZED) return false;
-
-      int8 activeWindow = _getActiveWindow(auction);
-
-      if (activeWindow == -1) return false;
-      if (auction.windows[uint256(uint8(activeWindow))].windowType == BidWindowType.OPEN) return true;
-
-      // TODO: gas optimize
-      uint256 windowOpen = auction.windows[uint256(uint8(activeWindow))].windowOpenTimestamp;
-      uint256 lastBid = auction.bidTimestamp;
-      uint256 auctionWouldCloseAt = (windowOpen > lastBid ? windowOpen : lastBid) + auction.windows[uint256(uint8(activeWindow))].timer;
-
-      return block.timestamp < auctionWouldCloseAt;
-    }
-
-
-
-    function _getHasAuctionClosed(Auction storage auction) internal view returns (bool) {
-      // Early escape if the auction has been finalized
-      if (auction.state == AuctionState.FINALIZED) return false;
-
-      int8 activeWindow = _getActiveWindow(auction);
-
-      if (activeWindow == -1) return false;
-      if (auction.windows[uint256(uint8(activeWindow))].windowType == BidWindowType.OPEN) return false;
-
-      // TODO: gas optimize
-      uint256 windowOpen = auction.windows[uint256(uint8(activeWindow))].windowOpenTimestamp;
-      uint256 lastBid = auction.bidTimestamp;
-      uint256 auctionWouldCloseAt = (windowOpen > lastBid ? windowOpen : lastBid) + auction.windows[uint256(uint8(activeWindow))].timer;
-
-      return block.timestamp <= auctionWouldCloseAt;
-    }
 
 
 
@@ -376,12 +177,10 @@ contract Auctioneer is Ownable, ReentrancyGuard {
 
     function bid(uint256 _lot) public validAuctionLot(_lot) nonReentrant {
       Auction storage auction = auctions[_lot];
+      auction.validateBiddingOpen();
 
       // VALIDATE: User can participate in auction
       if (auction.isPrivate && !_getUserPrivateAuctionPermitted()) revert PrivateAuction();
-
-      // VALIDATE: Bidding is open
-      if (!_getIsBiddingOpen(auction)) revert BiddingClosed();
 
       auction.bid += bidIncrement;
       auction.bidUser = msg.sender;
@@ -400,7 +199,7 @@ contract Auctioneer is Ownable, ReentrancyGuard {
 
     function _finalizeAuction(Auction storage auction) internal {
       // Exit if already finalized
-      if (auction.state == AuctionState.FINALIZED) return;
+      if (auction.finalized) return;
 
       // Calculate distributions
       uint256 treasuryCut = auction.sum * treasurySplit / 10000;
@@ -422,7 +221,7 @@ contract Auctioneer is Ownable, ReentrancyGuard {
       }
 
       // Mark Finalized
-      auction.state = AuctionState.FINALIZED;
+      auction.finalized = true;
       emit AuctionFinalized(auction.lot);
     }
 
@@ -450,7 +249,7 @@ contract Auctioneer is Ownable, ReentrancyGuard {
       if (user.points == 0) return;
 
       // Calculate and distribute emissions
-      uint256 emissions = (user.points * 1e18) / auction.points;
+      uint256 emissions = auction.emission * (user.points * 1e18) / auction.points;
       GO.safeTransfer(msg.sender, emissions);
 
       // Mark claimed
@@ -464,11 +263,10 @@ contract Auctioneer is Ownable, ReentrancyGuard {
       }
     }
 
-    // Claims winnings and any tokens earned during auction
     function claimAuction(uint256 _lot) public validAuctionLot(_lot) nonReentrant {
       Auction storage auction = auctions[_lot];
 
-      if (!_getHasAuctionClosed(auction)) revert BiddingClosed();
+      auction.validateEnded();
 
       _finalizeAuction(auction);
       _claimLotWinnings(auction);
@@ -482,9 +280,6 @@ contract Auctioneer is Ownable, ReentrancyGuard {
     }
     function getAuctionTokenEarned(address _user, uint256 _lot) public view validAuctionLot(_lot) returns (uint256) {
       return (auctionUsers[_lot][_user].points * 1e18) / auctions[_lot].points;
-    }
-    function getAuctionCount() public view returns (uint256) {
-      return auctions.length;
     }
     function getAuction (uint256 _lot) public view validAuctionLot(_lot) returns (Auction memory) {
       return auctions[_lot];

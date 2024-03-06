@@ -36,3 +36,35 @@ export const topOfNextHourTimestamp = async () => {
 	const timestamp = await getTimestamp()
 	return timestamp + (3600 - (timestamp % 3600))
 }
+export const nextDay2PMTimestamp = async () => {
+	const timestamp = await getTimestamp()
+	const dayInS = 24 * 60 * 60
+	const hourInS = 60 * 60
+	return Math.floor(timestamp / dayInS) * dayInS + 14 * hourInS
+}
+
+enum BidWindowType {
+	OPEN = 0,
+	TIMED = 1,
+	INFINITE = 2,
+}
+
+type BidWindowParams = {
+	windowType: BidWindowType
+	duration: number
+	timer: number
+}
+
+type AuctionParams = {
+	isPrivate: boolean
+	emissionBP: number
+	tokens: string[]
+	amounts: string[]
+	name: string
+	windows: BidWindowParams[]
+	unlockTimestamp: number
+}
+
+export const getDailyAuctionParams = async (): AuctionParams[] => {
+	const unlockTimestamp = await nextDay2PMTimestamp()
+}
