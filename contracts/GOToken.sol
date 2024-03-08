@@ -6,11 +6,11 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 
-contract GavelToken is ERC20, Ownable, ERC20Permit {
+contract GOToken is ERC20, Ownable, ERC20Permit {
     constructor(address initialOwner)
-        ERC20("Gavel Going Blast", "GAVEL")
+        ERC20("GOing BLAST", "$GO")
         Ownable(initialOwner)
-        ERC20Permit("Gavel Going Blast")
+        ERC20Permit("GOing BLAST")
     {
         _mint(msg.sender, 200000e18);
     }

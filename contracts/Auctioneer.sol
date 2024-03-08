@@ -7,8 +7,8 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
-import { GavelToken } from "./GavelToken.sol";
-import "./IVaultReceiver.sol";
+import { GOToken } from "./GOToken.sol";
+import "./IAuctioneerFarm.sol";
 import "./IAuctioneer.sol";
 import "./AuctionUtils.sol";
 
@@ -32,6 +32,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, IAuctioneer {
     uint256 public bidIncrement;
     uint256 public startingBid;
     uint256 public privateAuctionRequirement;
+    uint256 public bidCost;
     uint256 public onceTwiceBlastBonusTime = 9;
 
     // EMISSIONS
@@ -39,16 +40,19 @@ contract Auctioneer is Ownable, ReentrancyGuard, IAuctioneer {
     uint256[8] emissionSharePerEpoch = [128, 64, 32, 16, 8, 4, 2, 1];
     uint256 emissionSharesTotal = 255;
     uint256 emissionPerShare = 255e18;
+    uint256[8] epochEmissionsRemaining = [0, 0, 0, 0, 0, 0, 0, 0];
 
-    uint256 bidPoints; // gas savings to prevent reassignment
+    // GAS SAVINGS
+    mapping(address => uint256) public userBalance;
 
     address public treasury;
     address public farm;
     uint256 public treasurySplit = 5000;
 
 
-    constructor(IERC20 _usd, uint256 _bidIncrement, uint256 _startingBid, uint256 _privateRequirement) Ownable(msg.sender) {
+    constructor(IERC20 _usd, uint256 _bidCost, uint256 _bidIncrement, uint256 _startingBid, uint256 _privateRequirement) Ownable(msg.sender) {
       USD = _usd;
+      bidCost = _bidCost;
       bidIncrement = _bidIncrement;
       startingBid = _startingBid;
       privateAuctionRequirement = _privateRequirement;
@@ -59,7 +63,11 @@ contract Auctioneer is Ownable, ReentrancyGuard, IAuctioneer {
       _;
     }
 
-    // SETTERS
+
+    ///////////////////
+    // ADMIN
+    ///////////////////
+
 
     function setTreasury(address _treasury) public onlyOwner {
       if (_treasury == address(0)) revert ZeroAddress();
@@ -83,12 +91,115 @@ contract Auctioneer is Ownable, ReentrancyGuard, IAuctioneer {
       emit UpdatedPrivateAuctionRequirement(_requirement);
     }
 
-    // CORE
 
-    function start(uint256 _unlockTimestamp) internal {
-      startTimestamp = _unlockTimestamp;
-      emit StartedGoingBlast();
+    ///////////////////
+    // INITIALIZATION
+    ///////////////////
+
+
+    function distributeEmissionsBetweenEpochs() internal {
+      uint256 totalToEmit = GO.balanceOf(address(this));
+      uint256 perShare = totalToEmit * 1e18 / emissionSharesTotal;
+      for (uint8 i = 0; i < 8; i++) {
+        epochEmissionsRemaining[i] = perShare * emissionSharePerEpoch[i] / 1e18;
+      }
     }
+
+    function initializeAuctions(uint256 _unlockTimestamp) internal {
+      startTimestamp = _unlockTimestamp;
+      distributeEmissionsBetweenEpochs();
+      emit InitializedAuctions();
+    }
+
+
+    ///////////////////
+    // INTERNAL HELPERS
+    ///////////////////
+
+
+    function _getEpochAtTimestamp(uint256 timestamp) internal view returns (uint256 epoch) {
+      if (startTimestamp == 0 || timestamp < startTimestamp) return 0;
+      epoch = (timestamp - startTimestamp) / epochDuration;
+    }
+
+    function _getEpochDataAtTimestamp(uint256 timestamp) internal view returns (uint256 epoch, uint256 start, uint256 end, uint256 daysRemaining, uint256 emissionsRemaining, uint256 dailyEmission) {
+      epoch = _getEpochAtTimestamp(timestamp);
+
+      start = epoch * epochDuration;
+      end = (epoch + 1) * epochDuration;
+
+      if (timestamp > end) {
+        daysRemaining = 0;
+      } else {
+        daysRemaining = ((end - timestamp) / 1 days) + 1;
+      }
+
+      // Emissions only exist for first 8 epochs, prevent array out of bounds
+      emissionsRemaining = epoch >= 8 ? 0 : epochEmissionsRemaining[epoch];
+
+      dailyEmission = (emissionsRemaining == 0 || daysRemaining == 0) ? 0 : emissionsRemaining / daysRemaining;
+    }
+
+    function _getEmissionForAuction(uint256 _unlockTimestamp, uint256 _bp) internal view returns (uint256) {
+      (,,,, uint256 emissionsRemaining, uint256 dailyEmission) = _getEpochDataAtTimestamp(_unlockTimestamp);
+      if (dailyEmission == 0) return 0;
+
+      // Modulate with auction _bp (percent of daily emission)
+      dailyEmission = dailyEmission * _bp / 10000;
+
+      // Check to prevent stealing emissions from next epoch
+      //  (would only happen if it's the last day of the epoch and _bp > 10000)
+      if (dailyEmission > emissionsRemaining) {
+        return emissionsRemaining;
+      }
+
+      return dailyEmission;
+    }
+
+    function _userGOBalance(address _user) internal view returns (uint256 bal) {
+      bal = GO.balanceOf(_user);
+      if (farm != address(0)) {
+        bal += IAuctioneerFarm(farm).getUserStakedGOBalance(_user);
+      }
+    }
+
+    function _getUserPrivateAuctionPermitted(address _user) internal view returns (bool) {
+      return _userGOBalance(_user) >= privateAuctionRequirement;
+    }
+
+    function _getDistributionAmounts(uint256 _toDistribute) internal view returns (uint256 treasuryDistribution, uint256 farmDistribution) {
+      // Calculate distributions
+      treasuryDistribution = _toDistribute * treasurySplit / 10000;
+      farmDistribution = _toDistribute - treasuryDistribution;
+
+      // Add unused farm distribution to treasury (if no farm set, send all funds to treasury)
+      if (farm == address(0)) {
+        treasuryDistribution += farmDistribution;
+        farmDistribution = 0;
+      }
+    }
+
+    function _distributeUSD(uint256 _amount) internal {
+      // Calculate distributions
+      (uint256 treasuryDistribution, uint256 farmDistribution) = _getDistributionAmounts(_amount);
+
+      // Distribute
+      if (treasuryDistribution > 0) {
+        USD.safeTransfer(treasury, treasuryDistribution);
+      }
+      
+      // If farm not set, farm distribution will be 0
+      if (farmDistribution > 0) {
+        USD.safeTransfer(farm, farmDistribution);
+        IAuctioneerFarm(farm).receiveUSDDistribution();
+      }
+    }
+
+    ///////////////////
+    // CORE
+    ///////////////////
+
+    // CREATE
 
     function createDailyAuctions(AuctionParams[] memory _params) public onlyOwner nonReentrant {
       if (_params.length > 4) revert TooManyAuctions();
@@ -108,22 +219,13 @@ contract Auctioneer is Ownable, ReentrancyGuard, IAuctioneer {
       }
     }
 
-    function _getEmissionForAuction(uint256 _bp) internal pure returns (uint256) {
-      // Get epoch
-      // Get number of days remaining in epoch
-      // day emission = Epoch emission / num days remaining
-      // return day emission * _bp / 10000
-      // unused emissions roll over to the remaining days
-      return _bp;
-    }
-
     function _createSingleAuction(AuctionParams memory _params) internal {
       _params.validateUnlock();
       _params.validateTokens();
       _params.validateBidWindows();
       
       uint256 lot = lotCount;
-      if (lot == 0) start(_params.unlockTimestamp);
+      if (lot == 0) initializeAuctions(_params.unlockTimestamp);
 
       // Transfer tokens from treasury
       for (uint8 i = 0; i < _params.tokens.length; i++) {
@@ -132,92 +234,147 @@ contract Auctioneer is Ownable, ReentrancyGuard, IAuctioneer {
 
       auctions[lot].lot = lot;
       auctions[lot].isPrivate = _params.isPrivate;
-      auctions[lot].emission = _getEmissionForAuction(_params.emissionBP);
+
+      // Emissions
+      uint256 epoch = _getEpochAtTimestamp(_params.unlockTimestamp);
+      uint256 totalEmission = _getEmissionForAuction(_params.unlockTimestamp, _params.emissionBP);
+      // Only emit during first 8 epochs
+      if (epoch < 8 && totalEmission > 0) {
+        // Validated not to underflow in _getEmissionForAuction
+        epochEmissionsRemaining[epoch] -= totalEmission;
+        auctions[lot].biddersEmission = totalEmission * 90 / 100;
+        auctions[lot].treasuryEmission = totalEmission * 10 / 100;
+      }
+
       auctions[lot].addBidWindows(_params, onceTwiceBlastBonusTime);
-      // auctions[lot].points = 0;
+      auctions[lot].bids = 0;
 
       auctions[lot].tokens = _params.tokens;
       auctions[lot].amounts = _params.amounts;
       auctions[lot].name = _params.name;
       auctions[lot].unlockTimestamp = _params.unlockTimestamp;
         
-      // auctions[lot].sum = 0;
+      auctions[lot].sum = 0;
       auctions[lot].bid = startingBid;
       auctions[lot].bidTimestamp = _params.unlockTimestamp;
       auctions[lot].bidUser = msg.sender;
 
-      // auctions[lot].claimed = false;
-      // auctions[lot].finalized = false;
+      auctions[lot].claimed = false;
+      auctions[lot].finalized = false;
 
 
       lotCount++;
       emit AuctionCreated(lot);      
     }
 
-    function cancel(uint256 _lot) public validAuctionLot(_lot) nonReentrant onlyOwner {
+    // CANCEL
+
+    function cancelAuction(uint256 _lot) public validAuctionLot(_lot) nonReentrant onlyOwner {
       Auction storage auction = auctions[_lot];
 
-      if (auction.bid > startingBid) revert NotCancellable();
+      // Can only cancel the auction if it doesn't have any bids yet
+      if (auction.bids > 0) revert NotCancellable();
 
+      // Return lot to treasury
       for (uint8 i = 0; i < auction.tokens.length; i++) {
         auction.tokens[i].safeTransfer(treasury, auction.amounts[i]);
       }
 
-      auction.finalize();
+      // Return emissions to epoch of auction
+      uint256 epoch = _getEpochAtTimestamp(auction.unlockTimestamp);
+      
+      // Prevent array out of bounds
+      if (epoch < 8) {
+        epochEmissionsRemaining[epoch] += (auction.biddersEmission + auction.treasuryEmission);
+        auction.biddersEmission = 0;
+        auction.treasuryEmission = 0;
+      }
 
+      auction.finalize();
       emit AuctionCancelled(_lot, msg.sender);
     }
 
+    // BID
 
-
-
-    function _getUserPrivateAuctionPermitted() internal pure returns (bool) {
-      return true;
-    }
-
-    function bid(uint256 _lot) public validAuctionLot(_lot) nonReentrant {
+    function bid(uint256 _lot, bool _forceWallet) public validAuctionLot(_lot) nonReentrant {
       Auction storage auction = auctions[_lot];
       auction.validateBiddingOpen();
 
       // VALIDATE: User can participate in auction
-      if (auction.isPrivate && !_getUserPrivateAuctionPermitted()) revert PrivateAuction();
+      if (auction.isPrivate && !_getUserPrivateAuctionPermitted(msg.sender)) revert PrivateAuction();
 
+      // Update auction with new bid
       auction.bid += bidIncrement;
       auction.bidUser = msg.sender;
       auction.bidTimestamp = block.timestamp;
+      auction.sum += bidCost;
       
-      auction.sum += auction.bid;
+      // Give user bid point
+      auction.bids += 1;
+      auctionUsers[_lot][msg.sender].bids += 1;
 
-      bidPoints = 1e36 / auction.bid;
-      auction.points += bidPoints;
-      auctionUsers[_lot][msg.sender].points += bidPoints;
-
-      USD.safeTransferFrom(msg.sender, address(this), auction.bid);
+      if (!_forceWallet && userBalance[msg.sender] > bidCost) {
+        userBalance[msg.sender] -= bidCost;
+      } else {
+        USD.safeTransferFrom(msg.sender, address(this), bidCost);
+      }
 
       emit Bid(_lot, msg.sender, auction.bid);
     }
 
-    function _finalizeAuction(Auction storage auction) internal {
+    // CLAIM
+
+    function claimAuction(uint256 _lot, bool _forceWallet) public validAuctionLot(_lot) nonReentrant {
+      Auction storage auction = auctions[_lot];
+
+      auction.validateEnded();
+
+      claimLotWinnings(auction, _forceWallet);
+      finalizeAuction(auction);
+      claimEmissions(auction);
+    }
+
+    function claimLotWinnings(Auction storage auction, bool _forceWallet) internal {
+      // Exit if claiming not available
+      if (msg.sender != auction.bidUser || auction.claimed) return;
+
+      // Transfer lot to last bidder (this comes first so it shows up first in etherscan)
+      for (uint8 i = 0; i < auction.tokens.length; i++) {
+        auction.tokens[i].safeTransfer(auction.bidUser, auction.amounts[i]);
+      }
+
+      // Pay for lot from pre-deposited balance
+      if (!_forceWallet && userBalance[msg.sender] >= auction.bid) {
+        userBalance[msg.sender] -= auction.bid;
+
+      // Pay for lot from mixed
+      } else if (!_forceWallet && userBalance[msg.sender] > 0) {
+        USD.safeTransferFrom(msg.sender, address(this), auction.bid - userBalance[msg.sender]);
+        userBalance[msg.sender] = 0;
+
+      // Pay for lot entirely from wallet
+      } else {
+        USD.safeTransferFrom(msg.sender, address(this), auction.bid);
+      }
+
+      // Distribute payment
+      _distributeUSD(auction.bid);
+
+      // Mark Claimed
+      auction.claimed = true;
+      emit AuctionLotClaimed(auction.lot, msg.sender, auction.tokens, auction.amounts);
+    }
+
+    function finalizeAuction(Auction storage auction) internal {
       // Exit if already finalized
       if (auction.finalized) return;
 
-      // Calculate distributions
-      uint256 treasuryCut = auction.sum * treasurySplit / 10000;
-      uint256 vaultCut = auction.sum - treasuryCut;
+      // Distribute bids
+      _distributeUSD(auction.sum);
 
-      // Add unused vault distribution to treasury
-      if (farm == address(0)) {
-        treasuryCut += vaultCut;
-        vaultCut = 0;
-      }
-
-      // Distribute
-      if (treasuryCut > 0) {
-        USD.safeTransfer(treasury, treasuryCut);
-      }
-      if (vaultCut > 0) {
-        USD.safeTransfer(farm, vaultCut);
-        IVaultReceiver(farm).receiveCut(vaultCut);
+      // Send emissions to treasury
+      if (auction.treasuryEmission > 0) {
+        GO.safeTransfer(treasury, auction.treasuryEmission);
       }
 
       // Mark Finalized
@@ -225,31 +382,17 @@ contract Auctioneer is Ownable, ReentrancyGuard, IAuctioneer {
       emit AuctionFinalized(auction.lot);
     }
 
-    function _claimLotWinnings(Auction storage auction) internal {
-      // Exit if claiming not available
-      if (msg.sender != auction.bidUser || auction.claimed) return;
-
-      // Winnings to last bidder
-      for (uint8 i = 0; i < auction.tokens.length; i++) {
-        auction.tokens[i].safeTransfer(auction.bidUser, auction.amounts[i]);
-      }
-
-      // Mark Claimed
-      auction.claimed = true;
-      emit AuctionLotClaimed(auction.lot, msg.sender, auction.tokens, auction.amounts);
-    }
-
-    function _claimEmissions(Auction storage auction) internal {
+    function claimEmissions(Auction storage auction) internal {
       AuctionUser storage user = auctionUsers[auction.lot][msg.sender];
 
       // Exit if user already claimed emissions from auction
       if (user.claimed) return;
       
       // Exit early if nothing to claim
-      if (user.points == 0) return;
+      if (user.bids == 0) return;
 
       // Calculate and distribute emissions
-      uint256 emissions = auction.emission * (user.points * 1e18) / auction.points;
+      uint256 emissions = auction.biddersEmission * (user.bids * 1e18) / auction.bids;
       GO.safeTransfer(msg.sender, emissions);
 
       // Mark claimed
@@ -257,40 +400,43 @@ contract Auctioneer is Ownable, ReentrancyGuard, IAuctioneer {
       emit UserClaimedLotEmissions(auction.lot, msg.sender, emissions);
     }
 
-    function claimManyAuctions(uint256[] memory _lots) public nonReentrant {
-      for (uint256 i = 0; i < _lots.length; i++) {
-        claimAuction(_lots[i]);
-      }
+    ///////////////////
+    // GAS SAVINGS
+    ///////////////////
+
+    function addBalance(uint256 _amount) public nonReentrant {
+      if (_amount > GO.balanceOf(msg.sender)) revert BadDeposit();
+
+      USD.safeTransferFrom(msg.sender, address(this), _amount);
+      userBalance[msg.sender] += _amount;
+
+      emit AddedBalance(msg.sender, _amount);
+    }
+    function withdrawBalance(uint256 _amount) public nonReentrant {
+      if (_amount > userBalance[msg.sender]) revert BadWithdrawal();
+
+      USD.safeTransferFrom(address(this), msg.sender, _amount);
+      userBalance[msg.sender] -= _amount;
+
+      emit WithdrewBalance(msg.sender, _amount);
     }
 
-    function claimAuction(uint256 _lot) public validAuctionLot(_lot) nonReentrant {
-      Auction storage auction = auctions[_lot];
 
-      auction.validateEnded();
-
-      _finalizeAuction(auction);
-      _claimLotWinnings(auction);
-      _claimEmissions(auction);
-    }
-
+    ///////////////////
     // VIEW
+    ///////////////////
 
-    function getUserAuctionPoints(address _user, uint256 _lot) public view validAuctionLot(_lot) returns (uint256) {
-      return auctionUsers[_lot][_user].points;
+    function getBidsData(address _user, uint256 _lot) public view validAuctionLot(_lot) returns (uint256 userBids, uint256 auctionBids) {
+      userBids = auctionUsers[_lot][_user].bids;
+      auctionBids = auctions[_lot].bids;
     }
     function getAuctionTokenEarned(address _user, uint256 _lot) public view validAuctionLot(_lot) returns (uint256) {
-      return (auctionUsers[_lot][_user].points * 1e18) / auctions[_lot].points;
+      // Prevent div by 0
+      if (auctionUsers[_lot][_user].bids == 0 || auctions[_lot].bids == 0) return 0;
+
+      return (auctionUsers[_lot][_user].bids * auctions[_lot].biddersEmission) / auctions[_lot].bids;
     }
-    function getAuction (uint256 _lot) public view validAuctionLot(_lot) returns (Auction memory) {
-      return auctions[_lot];
-    }
-    function getEpoch() public view returns (uint256) {
-      if (block.timestamp < startTimestamp) return 0;
-      return block.timestamp - startTimestamp / epochDuration;
-    }
-    function getEpochEmission() public view returns (uint256) {
-      uint256 epoch = getEpoch();
-      if (epoch >= 8) return 0;
-      return emissionSharePerEpoch[getEpoch()];
+    function getCurrentEpochData() public view returns (uint256 epoch, uint256 start, uint256 end, uint256 daysRemaining, uint256 emissionsRemaining, uint256 dailyEmission) {
+      return _getEpochDataAtTimestamp(block.timestamp);
     }
 }

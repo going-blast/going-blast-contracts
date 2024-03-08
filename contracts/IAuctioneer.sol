@@ -35,7 +35,8 @@ struct BidWindow {
 struct Auction {
   uint256 lot;
   bool isPrivate; // whether the auction requires wallet / staked Gavel
-  uint256 emission; // token to be distributed through auction
+  uint256 biddersEmission; // token to be distributed through auction to bidders
+  uint256 treasuryEmission; // token to be distributed to treasury at end of auction (10% of total emission)
   BidWindow[] windows;
   uint256 unlockTimestamp;
 
@@ -47,14 +48,14 @@ struct Auction {
   uint256 bid;
   uint256 bidTimestamp;
   address bidUser;
-  uint256 points; // sum of all points generated during auction
+  uint256 bids; // number of bids during auction
 
   bool claimed;
   bool finalized;
 }
 
 struct AuctionUser {
-  uint256 points;
+  uint256 bids;
   bool claimed;
 }
 
@@ -78,6 +79,8 @@ error TooSteep();
 error ZeroAddress();
 error PrivateAuction();
 error UnlockAlreadyPassed();
+error BadDeposit();
+error BadWithdrawal();
 
 interface IAuctioneer {
 
@@ -91,6 +94,8 @@ interface IAuctioneer {
   event UpdatedFarm(address indexed _farm);
   event UpdatedTreasurySplit(uint256 _split);
   event UpdatedPrivateAuctionRequirement(uint256 _requirement);
-  event StartedGoingBlast();
+  event InitializedAuctions();
+  event AddedBalance(address _user, uint256 _amount);
+  event WithdrewBalance(address _user, uint256 _amount);
   
 }
