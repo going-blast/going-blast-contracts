@@ -16,3 +16,7 @@ deployments/*
 
 # IDE
 .idea
+
+# Foundry
+out/
+out.json

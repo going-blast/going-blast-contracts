@@ -4,6 +4,7 @@ import "@nomicfoundation/hardhat-ignition-ethers"
 import "@nomicfoundation/hardhat-ethers"
 import "@nomicfoundation/hardhat-chai-matchers"
 import "@nomicfoundation/hardhat-network-helpers"
+import "@nomicfoundation/hardhat-foundry"
 import "hardhat-gas-reporter"
 
 import { HardhatUserConfig } from "hardhat/config"
