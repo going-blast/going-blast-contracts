@@ -26,6 +26,8 @@ contract Auctioneer is Ownable, ReentrancyGuard, IAuctioneer {
     mapping(uint256 => mapping(address => AuctionUser)) public auctionUsers;
     uint256 public startTimestamp;
     uint256 epochDuration = 90 days;
+    mapping(address => string) public userAlias;
+    mapping(string => address) public aliasUser;
 
     // BID PARAMS
     IERC20 public USD;
@@ -319,7 +321,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, IAuctioneer {
         USD.safeTransferFrom(msg.sender, address(this), bidCost);
       }
 
-      emit Bid(_lot, msg.sender, auction.bid);
+      emit Bid(_lot, msg.sender, auction.bid, userAlias[msg.sender]);
     }
 
     // CLAIM
@@ -401,8 +403,25 @@ contract Auctioneer is Ownable, ReentrancyGuard, IAuctioneer {
     }
 
     ///////////////////
-    // GAS SAVINGS
+    // USER
     ///////////////////
+
+    // NAME
+
+    function setAlias(string memory _alias) public {
+      if (bytes(_alias).length < 3 || bytes(_alias).length > 9) revert InvalidAlias();
+      if (aliasUser[_alias] != address(0)) revert AliasTaken();
+
+      // Clear out old alias if it exists
+      if (bytes(userAlias[msg.sender]).length != 0) {
+        aliasUser[userAlias[msg.sender]] = address(0);
+      }
+
+      userAlias[msg.sender] = _alias;
+      aliasUser[_alias] = msg.sender;
+    }
+
+    // GAS SAVINGS
 
     function addBalance(uint256 _amount) public nonReentrant {
       if (_amount > GO.balanceOf(msg.sender)) revert BadDeposit();

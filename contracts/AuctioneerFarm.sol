@@ -14,101 +14,203 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm {
 
     IERC20 public GO;
     IERC20 public USD;
-    uint256 usdBal;
+    IERC20 public GO_LP;
     uint256 public lockPeriod;
 
-    uint256 public rewardPerShare;
-    uint256 public totalDepositedAmount;
     uint256 public REW_PRECISION = 1e18;
+
+    // USD rewards from auctions
+    uint256 usdBal;
+    uint256 public usdRewardPerShare;
+
+    // GO rewards from staking
+    uint256 public goPerSecond;
+    uint256 public goRewardPerShare;
+    uint256 public goLastRewardTimestamp;
+
+    // Deposits
+    uint256 public totalDepositedAmount;
+    uint256 public totalDepositedAmountLP;
+    uint256 public lpBonus = 20000;
 
     struct UserInfo {
         uint256 amount;
-        uint256 debt;
+        uint256 amountLP;
+
+        uint256 debtUSD;
+        uint256 debtGO;
     }
     mapping(address => UserInfo) public userInfo;
 
     error DepositStillLocked();
     error BadWithdrawal();
     error BadDeposit();
+    error OutsideRange();
 
-    event Deposit(address indexed _user, uint256 _amount);
-    event Withdraw(address indexed _user, uint256 _amount);
+    event UpdatedGOEmission(uint256 _goPerSecond);
+    event UpdatedLPBonus(uint256 _lpBonus);
     event ReceivedUSDDistribution(uint256 _amount);
 
+    event Deposit(address indexed _user, uint256 _amount, uint256 _amountLP);
+    event Withdraw(address indexed _user, uint256 _amount, uint256 _amountLP);
+    event Harvested(address indexed _user, uint256 _usdHarvested, uint256 _goHarvested);
+
     constructor () Ownable(msg.sender) {}
+
+    // ADMIN
+
+    function setGOEmission(uint256 _goPerSecond) public onlyOwner {
+        uint256 totalStaked = _totalEffectiveStaked();
+
+        // Bring goRewardPerShare current before updating emission
+        if (block.timestamp > goLastRewardTimestamp && totalStaked != 0) {
+            uint256 multiplier = block.timestamp - goLastRewardTimestamp;
+            uint256 goReward = goPerSecond * multiplier;
+            goRewardPerShare = goRewardPerShare + (goReward * REW_PRECISION) / totalStaked;
+        }
+
+        goPerSecond = _goPerSecond;
+        goLastRewardTimestamp = block.timestamp;
+
+        emit UpdatedGOEmission(goPerSecond);
+    }
+
+    function setLPBonus(uint256 _lpBonus) public onlyOwner {
+        if (_lpBonus < 10000 || _lpBonus > 30000) revert OutsideRange();
+
+        lpBonus = _lpBonus;
+        emit UpdatedLPBonus(_lpBonus);
+    }
+
+    // UTILS
+
+    function _userEffectiveStaked(UserInfo memory user) internal view returns (uint256) {
+        return user.amount + (user.amountLP * lpBonus) / 10000;
+    }
+    function _totalEffectiveStaked() internal view returns (uint256) {
+        return totalDepositedAmount + (totalDepositedAmountLP * lpBonus) / 10000;
+    }
+
+    function _updateUserDebts(UserInfo memory user) internal view {
+        user.debtUSD = _userEffectiveStaked(user) * usdRewardPerShare / REW_PRECISION;
+        user.debtGO = _userEffectiveStaked(user) * goRewardPerShare / REW_PRECISION;
+    }
 
     // AUCTION INTERACTIONS
 
     function receiveUSDDistribution() external override {
         uint256 newBal = USD.balanceOf(address(this));
         uint256 increase = newBal - usdBal;
-        rewardPerShare += (increase * REW_PRECISION) / totalDepositedAmount;
+        usdRewardPerShare += (increase * REW_PRECISION) / _totalEffectiveStaked();
         usdBal = newBal;
+
         emit ReceivedUSDDistribution(increase);
     }
 
     function getUserStakedGOBalance(address _user) external override view returns (uint256) {
-        return userInfo[_user].amount;
+        return _userEffectiveStaked(userInfo[_user]);
     }
 
 
     // DEPOSIT
 
     function depositAll() external {
-        deposit(GO.balanceOf(msg.sender));
+        deposit(GO.balanceOf(msg.sender), GO_LP.balanceOf(msg.sender));
     }
-    function deposit(uint _amount) public nonReentrant {
+    function deposit(uint256 _amount, uint256 _amountLP) public nonReentrant {
         if (_amount > GO.balanceOf(msg.sender)) revert BadDeposit();
+        if (address(GO_LP) != address(0) && _amountLP > GO_LP.balanceOf(msg.sender)) revert BadDeposit();
 
         UserInfo storage user = userInfo[msg.sender];
-        GO.safeTransferFrom(msg.sender, address(this), _amount);
+_harvest(user);
 
-        // Harvest USD rewards (MUST SET DEBT AFTER DEPOSIT - user.amount yet to increase)
-        harvest();
+        if (_amount > 0) {
+            GO.safeTransferFrom(msg.sender, address(this), _amount);
+        }
+        if (address(GO_LP) != address(0) && _amountLP > 0) {
+            GO_LP.safeTransferFrom(msg.sender, address(this), _amountLP);
+        }
 
         user.amount += _amount;
+        user.amountLP += _amountLP;
         totalDepositedAmount += _amount;
+        totalDepositedAmountLP += _amountLP;
 
         // (MUST SET DEBT AFTER DEPOSIT - user.amount has been increased)
-        user.debt = user.amount * rewardPerShare / REW_PRECISION;
+        _updateUserDebts(user);
 
-        emit Deposit(msg.sender, _amount);
+        emit Deposit(msg.sender, _amount, _amountLP);
     }
 
     // WITHDRAW
 
     function withdrawAll() external {
-        withdraw(userInfo[msg.sender].amount);
+        withdraw(userInfo[msg.sender].amount, userInfo[msg.sender].amountLP);
     }
-    function withdraw(uint256 _amount) public nonReentrant {
+    function withdraw(uint256 _amount, uint256 _amountLP) public nonReentrant {
         UserInfo storage user = userInfo[msg.sender];
         if (_amount > user.amount) revert BadWithdrawal();
+        if (_amountLP > user.amountLP) revert BadWithdrawal();
 
-        // Harvest USD rewards (MUST SET DEBT AFTER WITHDRAWAL - user.amount yet to reduce)
-        harvest();
+        _harvest(user);
 
         if (_amount > 0) {
             user.amount -= _amount;
             totalDepositedAmount -= _amount;
             GO.safeTransfer(msg.sender, _amount);
         }
+        if (_amountLP > 0) {
+            user.amountLP -= _amountLP;
+            totalDepositedAmountLP -= _amountLP;
+            GO_LP.safeTransfer(msg.sender, _amountLP);
+        }
 
         // (MUST SET DEBT AFTER WITHDRAWAL - user.amount has been reduced)
-        user.debt = user.amount * rewardPerShare / REW_PRECISION;
+        _updateUserDebts(user);
 
-        emit Withdraw(msg.sender, _amount);
+        emit Withdraw(msg.sender, _amount, _amountLP);
     }
 
     // HARVEST
 
+    function _pendingUSD(UserInfo memory user) internal view returns (uint256) {
+        return (_userEffectiveStaked(user) * usdRewardPerShare / REW_PRECISION) - user.debtGO;
+    }
+
+    function _pendingGO(UserInfo memory user) internal returns (uint256) {
+        uint256 totalStaked = _totalEffectiveStaked();
+
+        // Must take into account streaming emissions, and update goRewardPerShare
+        if (block.timestamp > goLastRewardTimestamp && totalStaked != 0) {
+            uint256 emission = goPerSecond * (block.timestamp - goLastRewardTimestamp);
+            goRewardPerShare = goRewardPerShare + (emission * REW_PRECISION) / totalStaked;
+        }
+
+        return (_userEffectiveStaked(user) * goRewardPerShare / REW_PRECISION) - user.debtGO;
+    }
+
+    function _harvest(UserInfo storage user) internal {
+        // USD
+        uint256 pendingUSD = _pendingUSD(user);
+        USD.safeTransfer(msg.sender, pendingUSD);
+        usdBal -= pendingUSD;
+
+        // GO
+        uint256 pendingGO = _pendingGO(user);
+        GO.safeTransfer(msg.sender, pendingGO);
+
+        emit Harvested(msg.sender, pendingUSD, pendingGO);
+    }
+
     function harvest() public nonReentrant {
         UserInfo storage user = userInfo[msg.sender];
 
-        uint256 reward = user.amount * rewardPerShare / REW_PRECISION;
-        uint256 pending = reward - user.debt;
-        USD.safeTransfer(msg.sender, pending);
-        usdBal -= pending;
+        _harvest(user);
+        _updateUserDebts(user);
+    }
 
-        user.debt = user.amount * rewardPerShare / REW_PRECISION;
+    function pending(address _user) public returns (uint256 pendingUSD, uint256 pendingGO) {
+        pendingUSD = _pendingUSD(userInfo[_user]);
+        pendingGO = _pendingGO(userInfo[_user]);
     }
 }

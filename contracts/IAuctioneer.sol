@@ -81,11 +81,13 @@ error PrivateAuction();
 error UnlockAlreadyPassed();
 error BadDeposit();
 error BadWithdrawal();
+error InvalidAlias();
+error AliasTaken();
 
 interface IAuctioneer {
 
   event AuctionCreated(uint256 indexed _lot);
-  event Bid(uint256 indexed _lot, address indexed _user, uint256 _bid);
+  event Bid(uint256 indexed _lot, address indexed _user, uint256 _bid, string _alias);
   event AuctionFinalized(uint256 indexed _lot);
   event AuctionLotClaimed(uint256 indexed _lot, address indexed _user, IERC20[] _tokens, uint256[] _amounts);
   event UserClaimedLotEmissions(uint256 _lot, address indexed _user, uint256 _emissions);
