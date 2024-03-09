@@ -479,6 +479,8 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents {
 
 		userAlias[msg.sender] = _alias;
 		aliasUser[_alias] = msg.sender;
+
+		emit UpdatedAlias(msg.sender, _alias);
 	}
 
 	// GAS SAVINGS

@@ -105,4 +105,5 @@ interface AuctioneerEvents {
 	event InitializedAuctions();
 	event AddedBalance(address _user, uint256 _amount);
 	event WithdrewBalance(address _user, uint256 _amount);
+	event UpdatedAlias(address _user, string _alias);
 }
