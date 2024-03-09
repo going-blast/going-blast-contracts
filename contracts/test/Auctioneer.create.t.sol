@@ -42,33 +42,6 @@ contract AuctioneerCreateTest is AuctioneerHelper, Test, AuctioneerEvents {
 		IERC20(address(WETH)).approve(address(auctioneer), type(uint256).max);
 	}
 
-	function _getNextDay2PMTimestamp() public view returns (uint256) {
-		return ((block.timestamp / 1 days) + 1) * block.timestamp + 14 hours;
-	}
-
-	function _getBaseSingleAuctionParams() public view returns (AuctionParams memory params) {
-		address[] memory tokens = new address[](1);
-		tokens[0] = ETH_ADDR;
-
-		uint256[] memory amounts = new uint256[](1);
-		amounts[0] = 1e18;
-
-		BidWindowParams[] memory windows = new BidWindowParams[](3);
-		windows[0] = BidWindowParams({ windowType: BidWindowType.OPEN, duration: 6 hours, timer: 0 });
-		windows[1] = BidWindowParams({ windowType: BidWindowType.TIMED, duration: 2 hours, timer: 2 minutes });
-		windows[2] = BidWindowParams({ windowType: BidWindowType.INFINITE, duration: 0, timer: 1 minutes });
-
-		params = AuctionParams({
-			isPrivate: false,
-			emissionBP: 10000,
-			tokens: tokens,
-			amounts: amounts,
-			name: "First Auction",
-			windows: windows,
-			unlockTimestamp: _getNextDay2PMTimestamp()
-		});
-	}
-
 	// CREATE
 	function test_createDailyAuctions_RevertWhen_CallerIsNotOwner() public {
 		vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, address(0)));

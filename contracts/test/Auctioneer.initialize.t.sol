@@ -41,10 +41,6 @@ contract AuctioneerCreateTest is AuctioneerHelper, Test, AuctioneerEvents {
 
 	// INITIALIZE
 
-	function _getNextDay2PMTimestamp() public view returns (uint256) {
-		return ((block.timestamp / 1 days) + 1) * block.timestamp + 14 hours;
-	}
-
 	function test_initialize_RevertWhen_GONotYetReceived() public {
 		auctioneer = new Auctioneer(USD, GO, WETH, 1e18, 1e16, 1e18, 20e18);
 

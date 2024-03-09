@@ -74,6 +74,9 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents {
 		privateAuctionRequirement = _privateRequirement;
 	}
 
+	// Fallback
+	receive() external payable {}
+
 	modifier validAuctionLot(uint256 _lot) {
 		if (_lot >= lotCount) revert InvalidAuctionLot();
 		_;
@@ -230,11 +233,16 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents {
 		}
 	}
 
-	function _transferLotToken(address _token, address _to, uint256 _amount) internal {
+	function _transferLotToken(address _token, address _to, uint256 _amount, bool _shouldUnwrap) internal {
 		if (_token == ETH) {
-			// If lot token is ETH, it is held in contract as WETH, and needs to be unwrapped before being sent to user
-			IWETH(WETH).withdraw(_amount);
-			payable(_to).transfer(_amount);
+			if (_shouldUnwrap) {
+				// If lot token is ETH, it is held in contract as WETH, and needs to be unwrapped before being sent to user
+				IWETH(WETH).withdraw(_amount);
+				(bool sent, bytes memory data) = _to.call{ value: _amount }("");
+				if (!sent) revert ETHTransferFailed();
+			} else {
+				IERC20(address(WETH)).safeTransfer(_to, _amount);
+			}
 		} else {
 			// Transfer as default ERC20
 			IERC20(_token).safeTransfer(_to, _amount);
@@ -320,15 +328,18 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents {
 
 	// CANCEL
 
-	function cancelAuction(uint256 _lot) public validAuctionLot(_lot) nonReentrant onlyOwner {
+	function cancelAuction(uint256 _lot, bool _shouldUnwrap) public validAuctionLot(_lot) nonReentrant onlyOwner {
 		Auction storage auction = auctions[_lot];
+
+		// Cannot cancel already cancelled auction
+		if (auction.finalized) revert NotCancellable();
 
 		// Can only cancel the auction if it doesn't have any bids yet
 		if (auction.bids > 0) revert NotCancellable();
 
 		// Return lot to treasury
 		for (uint8 i = 0; i < auction.tokens.length; i++) {
-			_transferLotToken(auction.tokens[i], treasury, auction.amounts[i]);
+			_transferLotToken(auction.tokens[i], treasury, auction.amounts[i], _shouldUnwrap);
 		}
 
 		// Return emissions to epoch of auction
@@ -375,23 +386,23 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents {
 
 	// CLAIM
 
-	function claimAuction(uint256 _lot, bool _forceWallet) public validAuctionLot(_lot) nonReentrant {
+	function claimAuction(uint256 _lot, bool _forceWallet, bool _shouldUnwrap) public validAuctionLot(_lot) nonReentrant {
 		Auction storage auction = auctions[_lot];
 
 		auction.validateEnded();
 
-		claimLotWinnings(auction, _forceWallet);
+		claimLotWinnings(auction, _forceWallet, _shouldUnwrap);
 		finalizeAuction(auction);
 		claimEmissions(auction);
 	}
 
-	function claimLotWinnings(Auction storage auction, bool _forceWallet) internal {
+	function claimLotWinnings(Auction storage auction, bool _forceWallet, bool _shouldUnwrap) internal {
 		// Exit if claiming not available
 		if (msg.sender != auction.bidUser || auction.claimed) return;
 
 		// Transfer lot to last bidder (this comes first so it shows up first in etherscan)
 		for (uint8 i = 0; i < auction.tokens.length; i++) {
-			_transferLotToken(auction.tokens[i], auction.bidUser, auction.amounts[i]);
+			_transferLotToken(auction.tokens[i], auction.bidUser, auction.amounts[i], _shouldUnwrap);
 		}
 
 		// Pay for lot from pre-deposited balance

@@ -88,6 +88,7 @@ error BadDeposit();
 error BadWithdrawal();
 error InvalidAlias();
 error AliasTaken();
+error ETHTransferFailed();
 
 interface AuctioneerEvents {
 	event Initialized();
