@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
-import "../Auctioneer.sol";
+import { Auctioneer } from "../Auctioneer.sol";
 import "../IAuctioneer.sol";
 import { GOToken } from "../GOToken.sol";
 import { AuctioneerHelper } from "./Auctioneer.base.t.sol";
@@ -41,31 +41,39 @@ contract AuctioneerCreateTest is AuctioneerHelper, Test, AuctioneerEvents {
 
 	// INITIALIZE
 
+	function _getNextDay2PMTimestamp() public view returns (uint256) {
+		return ((block.timestamp / 1 days) + 1) * block.timestamp + 14 hours;
+	}
+
 	function test_initialize_RevertWhen_GONotYetReceived() public {
 		auctioneer = new Auctioneer(USD, GO, WETH, 1e18, 1e16, 1e18, 20e18);
 
 		vm.expectRevert(GONotYetReceived.selector);
 
-		auctioneer.initialize();
+		auctioneer.initialize(_getNextDay2PMTimestamp());
 	}
 	function test_initialize_RevertWhen_AlreadyInitialized() public {
-		auctioneer.initialize();
+		auctioneer.initialize(_getNextDay2PMTimestamp());
 
 		vm.expectRevert(AlreadyInitialized.selector);
 
-		auctioneer.initialize();
+		auctioneer.initialize(_getNextDay2PMTimestamp());
 	}
 
 	function test_initialize_ExpectEmit_Initialized() public {
 		vm.expectEmit(false, false, false, false);
 		emit Initialized();
 
-		auctioneer.initialize();
+		auctioneer.initialize(_getNextDay2PMTimestamp());
 	}
 
 	function test_initialize_EmissionsSetCorrectly() public {
-		auctioneer.initialize();
+		uint256 startTimestamp = _getNextDay2PMTimestamp();
+		auctioneer.initialize(startTimestamp);
 
+		assertEq(auctioneer.startTimestamp(), startTimestamp);
+
+		assertGt(auctioneer.epochEmissionsRemaining(0), 0);
 		assertApproxEqAbs(auctioneer.epochEmissionsRemaining(0), auctioneer.epochEmissionsRemaining(1) * 2, 10);
 		assertApproxEqAbs(auctioneer.epochEmissionsRemaining(1), auctioneer.epochEmissionsRemaining(2) * 2, 10);
 		assertApproxEqAbs(auctioneer.epochEmissionsRemaining(2), auctioneer.epochEmissionsRemaining(3) * 2, 10);

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
-import "../Auctioneer.sol";
+import { Auctioneer } from "../Auctioneer.sol";
 import "../IAuctioneer.sol";
 import { GOToken } from "../GOToken.sol";
 import { AuctioneerHelper } from "./Auctioneer.base.t.sol";
@@ -28,7 +28,7 @@ contract AuctioneerCreateTest is AuctioneerHelper, Test, AuctioneerEvents {
 		GO.safeTransfer(address(farm), (GO.totalSupply() * 500) / 10000);
 
 		// Initialize after receiving GO token
-		auctioneer.initialize();
+		auctioneer.initialize(_getNextDay2PMTimestamp());
 
 		// Give WETH to treasury
 		vm.deal(treasury, 10e18);
@@ -59,7 +59,7 @@ contract AuctioneerCreateTest is AuctioneerHelper, Test, AuctioneerEvents {
 		windows[2] = BidWindowParams({ windowType: BidWindowType.INFINITE, duration: 0, timer: 1 minutes });
 
 		params = AuctionParams({
-			isPrivate: true,
+			isPrivate: false,
 			emissionBP: 10000,
 			tokens: tokens,
 			amounts: amounts,
@@ -100,7 +100,7 @@ contract AuctioneerCreateTest is AuctioneerHelper, Test, AuctioneerEvents {
 		vm.prank(presale);
 		GO.safeTransfer(address(auctioneer), 1e18);
 
-		auctioneer.initialize();
+		auctioneer.initialize(_getNextDay2PMTimestamp());
 
 		// EXECUTE
 		vm.expectRevert(TreasuryNotSet.selector);
@@ -339,11 +339,104 @@ contract AuctioneerCreateTest is AuctioneerHelper, Test, AuctioneerEvents {
 		auctioneer.createDailyAuctions(params);
 	}
 
-	// TESTS
-	// [x] Validate unlock
-	// [x] Validate tokens
-	// [x] Validate bid windows
-	// [ ] Auction created with correct data
-	// [ ] Lot incremented correctly
-	// [ ] Epoch emissions reduced by auction emission
+	// SUCCESSES
+
+	function test_createDailyAuctions_createSingleAuction_ExpectEmit_AuctionCreated() public {
+		vm.expectEmit(true, false, false, false);
+		emit AuctionCreated(0);
+
+		AuctionParams[] memory params = new AuctionParams[](1);
+		params[0] = _getBaseSingleAuctionParams();
+
+		auctioneer.createDailyAuctions(params);
+	}
+
+	function test_createDailyAuctions_createSingleAuction_SuccessfulUpdateOfContractState() public {
+		AuctionParams[] memory params = new AuctionParams[](1);
+		AuctionParams memory auction = _getBaseSingleAuctionParams();
+		params[0] = auction;
+
+		uint256 lotCount = auctioneer.lotCount();
+
+		uint256 day = auction.unlockTimestamp / 1 days;
+		uint256 auctionsTodayInit = auctioneer.auctionsPerDay(day);
+		uint256 auctionsTodayEmissionsBP = auctioneer.dailyCumulativeEmissionBP(day);
+
+		uint256 treasuryWethBal = WETH.balanceOf(treasury);
+		uint256 auctioneerWethBal = WETH.balanceOf(address(auctioneer));
+
+		uint256 expectedEmission = auctioneer.epochEmissionsRemaining(0) / 90;
+		uint256 emissionsRemaining = auctioneer.epochEmissionsRemaining(0);
+
+		auctioneer.createDailyAuctions(params);
+
+		assertEq(auctioneer.lotCount(), lotCount + 1);
+
+		assertEq(auctioneer.auctionsPerDay(day), auctionsTodayInit + 1);
+		assertEq(auctioneer.dailyCumulativeEmissionBP(day), auctionsTodayEmissionsBP + 10000);
+
+		assertEq(WETH.balanceOf(treasury), treasuryWethBal - 1e18);
+		assertEq(WETH.balanceOf(address(auctioneer)), auctioneerWethBal + 1e18);
+
+		assertEq(auctioneer.epochEmissionsRemaining(0), emissionsRemaining - expectedEmission);
+	}
+
+	function test_createDailyAuctions_createSingleAuction_SuccessfulCreationOfAuctionData() public {
+		AuctionParams[] memory params = new AuctionParams[](1);
+		params[0] = _getBaseSingleAuctionParams();
+
+		uint256 expectedEmission = auctioneer.epochEmissionsRemaining(0) / 90;
+
+		auctioneer.createDailyAuctions(params);
+
+		Auction memory auction = auctioneer.getAuction(0);
+
+		assertEq(auction.lot, 0);
+		assertEq(auction.isPrivate, false);
+		assertEq(auction.biddersEmission + auction.treasuryEmission, expectedEmission);
+		assertApproxEqAbs(auction.biddersEmission, auction.treasuryEmission * 9, 10);
+		assertEq(auction.tokens, params[0].tokens);
+		assertEq(auction.amounts, params[0].amounts);
+		assertEq(auction.unlockTimestamp, params[0].unlockTimestamp);
+		assertEq(auction.bids, 0);
+		assertEq(auction.sum, 0);
+		assertEq(auction.bid, auctioneer.startingBid());
+		assertEq(auction.bidTimestamp, params[0].unlockTimestamp);
+		assertEq(auction.bidUser, sender);
+		assertEq(auction.claimed, false);
+		assertEq(auction.finalized, false);
+
+		assertEq(auction.windows.length, params[0].windows.length, "Param and Auction window number should match");
+
+		// Window types
+		for (uint8 i = 0; i < params[0].windows.length; i++) {
+			assertEq(
+				uint8(auction.windows[i].windowType),
+				uint8(params[0].windows[i].windowType),
+				"Window types should match"
+			);
+		}
+
+		// Timers
+		for (uint8 i = 0; i < params[0].windows.length; i++) {
+			// Timed windows get a 9 second bonus window at the end
+			// Open windows should have timer set to 0 (no timer)
+			uint256 expectedTimer = params[0].windows[i].windowType == BidWindowType.OPEN
+				? 0
+				: params[0].windows[i].timer + 9;
+
+			assertEq(auction.windows[i].timer, expectedTimer, "Param and Auction window timer should match");
+		}
+
+		// Start and stop timestamps
+		uint256 startTimestamp = params[0].unlockTimestamp;
+		for (uint8 i = 0; i < params[0].windows.length; i++) {
+			assertEq(auction.windows[i].windowOpenTimestamp, startTimestamp, "Auction window start should be correct");
+			uint256 trueWindowDuration = params[0].windows[i].windowType == BidWindowType.INFINITE
+				? 315600000
+				: params[0].windows[i].duration;
+			startTimestamp += trueWindowDuration;
+			assertEq(auction.windows[i].windowCloseTimestamp, startTimestamp, "Auction window end should be correct");
+		}
+	}
 }

@@ -71,12 +71,14 @@ library AuctionUtils {
 				closeTimestamp = openTimestamp + 315600000; // 10 years, hah
 			}
 
+			uint256 timer = _params.windows[i].windowType == BidWindowType.OPEN ? 0 : _params.windows[i].timer + _bonusTime;
+
 			auction.windows.push(
 				BidWindow({
 					windowType: _params.windows[i].windowType,
 					windowOpenTimestamp: openTimestamp,
 					windowCloseTimestamp: closeTimestamp,
-					timer: _params.windows[i].timer + _bonusTime
+					timer: timer
 				})
 			);
 
@@ -128,7 +130,12 @@ library AuctionParamsUtils {
 
 		// VALIDATE: Timed windows must have a valid timer
 		for (uint8 i = 0; i < _params.windows.length; i++) {
+			// TIMED and INFINITE windows should have a timer >= 60 seconds
 			if (_params.windows[i].windowType != BidWindowType.OPEN && _params.windows[i].timer < 60 seconds)
+				revert InvalidBidWindowTimer();
+
+			// OPEN windows should have a timer of 0 (no timer)
+			if (_params.windows[i].windowType == BidWindowType.OPEN && _params.windows[i].timer != 0)
 				revert InvalidBidWindowTimer();
 		}
 	}

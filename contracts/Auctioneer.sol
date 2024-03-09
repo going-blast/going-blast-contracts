@@ -111,9 +111,8 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents {
 
 	function distributeEmissionsBetweenEpochs() internal {
 		uint256 totalToEmit = GO.balanceOf(address(this));
-		uint256 perShare = (totalToEmit * 1e18) / emissionSharesTotal;
 		for (uint8 i = 0; i < 8; i++) {
-			epochEmissionsRemaining[i] = (perShare * emissionSharePerEpoch[i]) / 1e18;
+			epochEmissionsRemaining[i] = (totalToEmit * emissionSharePerEpoch[i]) / emissionSharesTotal;
 		}
 	}
 
@@ -122,9 +121,10 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents {
 		distributeEmissionsBetweenEpochs();
 	}
 
-	function initialize() public onlyOwner {
+	function initialize(uint256 _unlockTimestamp) public onlyOwner {
 		if (GO.balanceOf(address(this)) == 0) revert GONotYetReceived();
 		if (initialized) revert AlreadyInitialized();
+		initializeAuctions(_unlockTimestamp);
 		initialized = true;
 		emit Initialized();
 	}
@@ -499,6 +499,9 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents {
 	) public view validAuctionLot(_lot) returns (uint256 userBids, uint256 auctionBids) {
 		userBids = auctionUsers[_lot][_user].bids;
 		auctionBids = auctions[_lot].bids;
+	}
+	function getAuction(uint256 _lot) public view validAuctionLot(_lot) returns (Auction memory) {
+		return auctions[_lot];
 	}
 	function getAuctionTokenEarned(address _user, uint256 _lot) public view validAuctionLot(_lot) returns (uint256) {
 		// Prevent div by 0

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
-import "../Auctioneer.sol";
+import { Auctioneer } from "../Auctioneer.sol";
 import "../IAuctioneer.sol";
 import { GOToken } from "../GOToken.sol";
 import { AuctioneerHelper } from "./Auctioneer.base.t.sol";
