@@ -22,6 +22,8 @@ struct AuctionParams {
 	uint256 emissionBP; // Emission of this auction of the day's emission (usually 100%)
 	address[] tokens;
 	uint256[] amounts;
+	address[] nfts;
+	uint256[] nftIds;
 	string name;
 	BidWindowParams[] windows;
 	uint256 unlockTimestamp;
@@ -49,6 +51,8 @@ struct Auction {
 	string name;
 	address[] tokens;
 	uint256[] amounts;
+	address[] nfts;
+	uint256[] nftIds;
 	uint256 sum;
 	uint256 bid;
 	uint256 bidTimestamp;

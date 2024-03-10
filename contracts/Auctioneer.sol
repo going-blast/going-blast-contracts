@@ -6,6 +6,7 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IWETH } from "./WETH9.sol";
 import { IAuctioneerFarm } from "./IAuctioneerFarm.sol";
@@ -340,7 +341,12 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents {
 			IERC20(token).safeTransferFrom(treasury, address(this), _params.amounts[i]);
 		}
 
-		Auction storage auction = auction;
+		// Transfer nfts from treasury
+		for (uint8 i = 0; i < _params.nfts.length; i++) {
+			IERC721(_params.nfts[i]).safeTransferFrom(treasury, address(this), _params.nftIds[i]);
+		}
+
+		Auction storage auction = auctions[lot];
 
 		auction.lot = lot;
 		auction.isPrivate = _params.isPrivate;
@@ -360,6 +366,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents {
 		auction.bids = 0;
 
 		auction.tokens = _params.tokens;
+		auction.nfts = _params.nfts;
 		auction.amounts = _params.amounts;
 		auction.name = _params.name;
 		auction.unlockTimestamp = _params.unlockTimestamp;
@@ -471,6 +478,11 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents {
 		// Transfer lot to last bidder (this comes first so it shows up first in etherscan)
 		for (uint8 i = 0; i < auction.tokens.length; i++) {
 			_transferLotToken(auction.tokens[i], auction.bidUser, auction.amounts[i], _shouldUnwrap);
+		}
+
+		// Transfer lot nfts to last bidder
+		for (uint8 i = 0; i < auction.nfts.length; i++) {
+			IERC721(auction.nfts[i]).transferFrom(address(this), msg.sender, auction.nftIds[i]);
 		}
 
 		// Pay for lot from pre-deposited balance
