@@ -280,7 +280,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents {
 		// An emission BP over 10000 means it is using emissions scheduled for other days
 		// Auction emissions for the remainder of the epoch will be reduced
 		// This will never overflow the emissions though, because the emission amount is calculated from remaining emissions
-		if ((dailyCumulativeEmissionBP[day] + _params.emissionBP) > 20000)
+		if ((dailyCumulativeEmissionBP[day] + _params.emissionBP) > 30000)
 			revert InvalidDailyEmissionBP(dailyCumulativeEmissionBP[day], _params.emissionBP, _paramIndex);
 		dailyCumulativeEmissionBP[day] += _params.emissionBP;
 
@@ -515,6 +515,9 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents {
 	}
 	function getAuction(uint256 _lot) public view validAuctionLot(_lot) returns (Auction memory) {
 		return auctions[_lot];
+	}
+	function getAuctionUser(uint256 _lot, address _user) public view validAuctionLot(_lot) returns (AuctionUser memory) {
+		return auctionUsers[_lot][_user];
 	}
 	function getAuctionTokenEarned(address _user, uint256 _lot) public view validAuctionLot(_lot) returns (uint256) {
 		// Prevent div by 0

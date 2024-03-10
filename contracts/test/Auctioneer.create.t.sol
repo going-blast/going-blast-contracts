@@ -133,7 +133,7 @@ contract AuctioneerCreateTest is AuctioneerHelper, Test, AuctioneerEvents {
 	}
 
 	function test_createDailyAuctions_createSingleAuction_RevertWhen_InvalidDailyEmissionBP() public {
-		vm.expectRevert(abi.encodeWithSelector(InvalidDailyEmissionBP.selector, 10000, 15000, 1));
+		vm.expectRevert(abi.encodeWithSelector(InvalidDailyEmissionBP.selector, 10000, 25000, 1));
 
 		AuctionParams[] memory params = new AuctionParams[](2);
 
@@ -141,7 +141,7 @@ contract AuctioneerCreateTest is AuctioneerHelper, Test, AuctioneerEvents {
 		params[0].emissionBP = 10000;
 
 		params[1] = _getBaseSingleAuctionParams();
-		params[1].emissionBP = 15000;
+		params[1].emissionBP = 25000;
 
 		auctioneer.createDailyAuctions(params);
 	}
