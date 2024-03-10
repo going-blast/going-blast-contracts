@@ -61,6 +61,10 @@ contract AuctioneerBidTest is AuctioneerHelper, Test, AuctioneerEvents {
 		AuctionParams[] memory params = new AuctionParams[](1);
 		params[0] = _getBaseSingleAuctionParams();
 		auctioneer.createDailyAuctions(params);
+
+		// For GAS test deposit funds into contract
+		vm.prank(user2);
+		auctioneer.addFunds(10e18);
 	}
 
 	function test_bid_RevertWhen_InvalidAuctionLot() public {
@@ -140,7 +144,6 @@ contract AuctioneerBidTest is AuctioneerHelper, Test, AuctioneerEvents {
 
 	function test_bid_Should_PullBidFundsFromWallet() public {
 		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
-		Auction memory auctionInit = auctioneer.getAuction(0);
 
 		uint256 bidCost = auctioneer.bidCost();
 		uint256 user1UsdBalInit = USD.balanceOf(user1);
@@ -150,24 +153,43 @@ contract AuctioneerBidTest is AuctioneerHelper, Test, AuctioneerEvents {
 		auctioneer.bid(0, true);
 
 		assertEq(USD.balanceOf(user1), user1UsdBalInit - bidCost, "Should remove funds from users wallet");
+		assertEq(USD.balanceOf(address(auctioneer)), auctioneerUsdBalInit + bidCost, "Should add funds to auctioneer");
+	}
+
+	function test_bid_Should_PullBidFundsFromBalance() public {
+		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
+
+		uint256 bidCost = auctioneer.bidCost();
+
+		// Deposit it wallet (This is tested more fully in Auctioneer.balance.t.sol)
+		vm.prank(user1);
+		auctioneer.addFunds(10e18);
+		uint256 user1UsdBalInit = USD.balanceOf(user1);
+		uint256 auctioneerUsdBalInit = USD.balanceOf(address(auctioneer));
+		uint256 user1DepositedBalance = auctioneer.userBalance(user1);
+
+		vm.prank(user1);
+		auctioneer.bid(0, false);
+
+		assertEq(USD.balanceOf(user1), user1UsdBalInit, "Should not remove funds from users wallet");
+		assertEq(auctioneer.userBalance(user1), user1DepositedBalance - bidCost, "Should remove funds from users balance");
 		assertEq(
 			USD.balanceOf(address(auctioneer)),
-			auctioneerUsdBalInit + bidCost,
-			"Should remove funds from users wallet"
+			auctioneerUsdBalInit,
+			"Should not add fund to auctioneer from users wallet"
 		);
 	}
 
-	function test_bid_GAS() public {
+	function test_bid_GAS_WALLET() public {
 		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
 		vm.prank(user1);
 		auctioneer.bid(0, true);
 	}
 
-	function test_bid_RevertWhen_PrivateAuctionNotMet() public {
-		// TODO
-	}
-
-	function test_bid_ExpectEmit_PrivateAuctionMet() public {
-		// TODO
+	// User 2 has deposited funds into contract
+	function test_bid_GAS_BALANCE() public {
+		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
+		vm.prank(user2);
+		auctioneer.bid(0, false);
 	}
 }

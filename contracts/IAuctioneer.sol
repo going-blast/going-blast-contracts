@@ -25,6 +25,7 @@ struct AuctionParams {
 	string name;
 	BidWindowParams[] windows;
 	uint256 unlockTimestamp;
+	uint256 lotValue;
 }
 
 // Storage
@@ -38,7 +39,9 @@ struct BidWindow {
 
 struct Auction {
 	uint256 lot;
+	uint256 day;
 	bool isPrivate; // whether the auction requires wallet / staked Gavel
+	uint256 lotValue; // Estimated value of the lot (1 ETH = 4000 USD)
 	uint256 biddersEmission; // token to be distributed through auction to bidders
 	uint256 treasuryEmission; // token to be distributed to treasury at end of auction (10% of total emission)
 	BidWindow[] windows;
@@ -53,6 +56,7 @@ struct Auction {
 	uint256 bids; // number of bids during auction
 	bool claimed;
 	bool finalized;
+	uint256 bidCost; // Frozen value to prevent updating bidCost from messing with revenue calculations
 }
 
 struct AuctionUser {
@@ -66,6 +70,7 @@ error AlreadyInitialized();
 error TreasuryNotSet();
 error TooManyAuctionsPerDay(uint256 auctionParamIndex);
 error InvalidDailyEmissionBP(uint256 dayEmission, uint256 auctionEmissionBP, uint256 auctionParamIndex);
+error Invalid();
 error InvalidAuctionLot();
 error InvalidWindowOrder();
 error WindowTooShort();
@@ -92,18 +97,21 @@ error ETHTransferFailed();
 
 interface AuctioneerEvents {
 	event Initialized();
+	event UpdatedStartingBid(uint256 _startingBid);
+	event UpdatedBidCost(uint256 _bidCost);
+	event UpdatedEarlyHarvestTax(uint256 _earlyHarvestTax);
 	event AuctionCreated(uint256 indexed _lot);
-	event Bid(uint256 indexed _lot, address indexed _user, uint256 _bid, string _alias);
+	event Bid(uint256 indexed _lot, address indexed _user, uint256 _multibid, uint256 _bid, string _alias);
 	event AuctionFinalized(uint256 indexed _lot);
 	event AuctionLotClaimed(uint256 indexed _lot, address indexed _user, address[] _tokens, uint256[] _amounts);
-	event UserClaimedLotEmissions(uint256 _lot, address indexed _user, uint256 _emissions);
+	event UserClaimedLotEmissions(uint256 _lot, address indexed _user, uint256 _userEmissions, uint256 _burnEmissions);
 	event AuctionCancelled(uint256 indexed _lot, address indexed _owner);
 	event UpdatedTreasury(address indexed _treasury);
 	event UpdatedFarm(address indexed _farm);
 	event UpdatedTreasurySplit(uint256 _split);
 	event UpdatedPrivateAuctionRequirement(uint256 _requirement);
 	event InitializedAuctions();
-	event AddedBalance(address _user, uint256 _amount);
-	event WithdrewBalance(address _user, uint256 _amount);
+	event AddedFunds(address _user, uint256 _amount);
+	event WithdrewFunds(address _user, uint256 _amount);
 	event UpdatedAlias(address _user, string _alias);
 }

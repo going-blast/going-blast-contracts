@@ -8,10 +8,6 @@ import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 
 contract GOToken is ERC20, Ownable, ERC20Permit {
 	constructor(address initialOwner) ERC20("GOing BLAST", "$GO") Ownable(initialOwner) ERC20Permit("GOing BLAST") {
-		_mint(msg.sender, 1000000e18);
-	}
-
-	function mint(address to, uint256 amount) public onlyOwner {
-		_mint(to, amount);
+		_mint(msg.sender, 10000000e18);
 	}
 }
