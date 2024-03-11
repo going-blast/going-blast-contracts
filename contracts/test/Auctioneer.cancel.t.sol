@@ -7,7 +7,7 @@ import "../IAuctioneer.sol";
 import { GOToken } from "../GOToken.sol";
 import { AuctioneerHelper } from "./Auctioneer.base.t.sol";
 import { AuctioneerFarm } from "../AuctioneerFarm.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { BasicERC20 } from "../BasicERC20.sol";
 import { WETH9 } from "../WETH9.sol";
 
@@ -86,7 +86,7 @@ contract AuctioneerCancelTest is AuctioneerHelper, Test, AuctioneerEvents {
 		// User bids
 		vm.warp(params[0].unlockTimestamp);
 		vm.prank(user1);
-		auctioneer.bid(0, false);
+		auctioneer.bid(0, 1, false);
 
 		// Revert on cancel
 		vm.expectRevert(NotCancellable.selector);
@@ -139,7 +139,7 @@ contract AuctioneerCancelTest is AuctioneerHelper, Test, AuctioneerEvents {
 		auctioneer.createDailyAuctions(params);
 
 		Auction memory auction = auctioneer.getAuction(0);
-		uint256 auctionTotalEmission = auction.biddersEmission + auction.treasuryEmission;
+		uint256 auctionTotalEmission = auction.emissions.biddersEmission + auction.emissions.treasuryEmission;
 		uint256 epoch0EmissionsRemaining = auctioneer.epochEmissionsRemaining(0);
 
 		auctioneer.cancelAuction(0, true);
@@ -159,7 +159,7 @@ contract AuctioneerCancelTest is AuctioneerHelper, Test, AuctioneerEvents {
 		);
 	}
 
-	function test_cancelAuction_ExpectRevert_BiddingOnCancelledAuction() public {
+	function test_cancelAuction_RevertWhen_BiddingOnCancelledAuction() public {
 		AuctionParams[] memory params = new AuctionParams[](1);
 		params[0] = _getBaseSingleAuctionParams();
 		auctioneer.createDailyAuctions(params);
@@ -169,10 +169,10 @@ contract AuctioneerCancelTest is AuctioneerHelper, Test, AuctioneerEvents {
 		// User bids and should revert
 		vm.expectRevert(BiddingClosed.selector);
 		vm.prank(user1);
-		auctioneer.bid(0, false);
+		auctioneer.bid(0, 1, false);
 	}
 
-	function test_cancelAuction_ExpectRevert_AlreadyCancelledNotCancellable() public {
+	function test_cancelAuction_RevertWhen_AlreadyCancelledNotCancellable() public {
 		AuctionParams[] memory params = new AuctionParams[](1);
 		params[0] = _getBaseSingleAuctionParams();
 		auctioneer.createDailyAuctions(params);

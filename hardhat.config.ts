@@ -114,9 +114,15 @@ const config: HardhatUserConfig = {
 		},
 	},
 	solidity: {
+		settings: {
+			viaIR: true,
+		},
 		compilers: [
 			{
 				version: "0.8.20",
+				settings: {
+					viaIR: true,
+				},
 			},
 		],
 	},

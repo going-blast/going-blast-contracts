@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 enum BidWindowType {
 	OPEN,
 	TIMED,
@@ -39,28 +37,38 @@ struct BidWindow {
 	uint256 timer; // 0 for no timer, >60 for other timers (1m / 2m / 5m)
 }
 
-struct Auction {
-	uint256 lot;
-	uint256 day;
-	bool isPrivate; // whether the auction requires wallet / staked Gavel
-	uint256 lotValue; // Estimated value of the lot (1 ETH = 4000 USD)
-	uint256 biddersEmission; // token to be distributed through auction to bidders
-	uint256 treasuryEmission; // token to be distributed to treasury at end of auction (10% of total emission)
-	BidWindow[] windows;
-	uint256 unlockTimestamp;
-	string name;
+struct AuctionLot {
+	uint256 estimatedValue; // Estimated value of the lot (1 ETH = 4000 USD)
 	address[] tokens;
 	uint256[] amounts;
 	address[] nfts;
 	uint256[] nftIds;
+}
+struct AuctionEmissions {
+	uint256 biddersEmission; // token to be distributed through auction to bidders
+	uint256 treasuryEmission; // token to be distributed to treasury at end of auction (10% of total emission)
+}
+struct AuctionBidData {
 	uint256 sum;
 	uint256 bid;
 	uint256 bidTimestamp;
 	address bidUser;
 	uint256 bids; // number of bids during auction
+	uint256 bidCost; // Frozen value to prevent updating bidCost from messing with revenue calculations
+}
+
+struct Auction {
+	uint256 lot;
+	uint256 day;
+	string name;
+	bool isPrivate; // whether the auction requires wallet / staked Gavel
+	uint256 unlockTimestamp;
+	BidWindow[] windows;
+	AuctionEmissions emissions;
+	AuctionLot rewards;
+	AuctionBidData bidData;
 	bool claimed;
 	bool finalized;
-	uint256 bidCost; // Frozen value to prevent updating bidCost from messing with revenue calculations
 }
 
 struct AuctionUser {
@@ -98,6 +106,7 @@ error BadWithdrawal();
 error InvalidAlias();
 error AliasTaken();
 error ETHTransferFailed();
+error MustBidAtLeastOnce();
 
 interface AuctioneerEvents {
 	event Initialized();

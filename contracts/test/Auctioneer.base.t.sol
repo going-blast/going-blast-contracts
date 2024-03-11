@@ -64,9 +64,12 @@ abstract contract AuctioneerHelper {
 
 		params = AuctionParams({
 			isPrivate: false,
+			lotValue: 4000e18,
 			emissionBP: 10000,
 			tokens: tokens,
 			amounts: amounts,
+			nfts: new address[](0),
+			nftIds: new uint256[](0),
 			name: "First Auction",
 			windows: windows,
 			unlockTimestamp: _getNextDay2PMTimestamp()

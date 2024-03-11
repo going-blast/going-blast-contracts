@@ -7,7 +7,7 @@ import "../IAuctioneer.sol";
 import { GOToken } from "../GOToken.sol";
 import { AuctioneerHelper } from "./Auctioneer.base.t.sol";
 import { AuctioneerFarm } from "../AuctioneerFarm.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { BasicERC20 } from "../BasicERC20.sol";
 import { WETH9 } from "../WETH9.sol";
 
@@ -69,12 +69,20 @@ contract AuctioneerBidTest is AuctioneerHelper, Test, AuctioneerEvents {
 
 	function test_bid_RevertWhen_InvalidAuctionLot() public {
 		vm.expectRevert(InvalidAuctionLot.selector);
-		auctioneer.bid(1, true);
+		auctioneer.bid(1, 1, true);
 	}
 
 	function test_bid_RevertWhen_AuctionNotYetOpen() public {
 		vm.expectRevert(BiddingClosed.selector);
-		auctioneer.bid(0, true);
+		auctioneer.bid(0, 1, true);
+	}
+
+	function test_bid_RevertWhen_MultibidIs0() public {
+		vm.expectRevert(MustBidAtLeastOnce.selector);
+
+		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
+		vm.prank(user1);
+		auctioneer.bid(0, 0, true);
 	}
 
 	function test_bid_RevertWhen_InsufficientBalance() public {
@@ -88,7 +96,7 @@ contract AuctioneerBidTest is AuctioneerHelper, Test, AuctioneerEvents {
 
 		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
 		vm.prank(user1);
-		auctioneer.bid(0, true);
+		auctioneer.bid(0, 1, true);
 	}
 
 	function test_bid_RevertWhen_InsufficientAllowance() public {
@@ -101,7 +109,7 @@ contract AuctioneerBidTest is AuctioneerHelper, Test, AuctioneerEvents {
 
 		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
 		vm.prank(user1);
-		auctioneer.bid(0, true);
+		auctioneer.bid(0, 1, true);
 	}
 
 	function test_bid_ExpectEmit_Bid() public {
@@ -113,11 +121,11 @@ contract AuctioneerBidTest is AuctioneerHelper, Test, AuctioneerEvents {
 		auctioneer.setAlias("XXXX");
 
 		vm.expectEmit(true, true, true, true);
-		emit Bid(0, user1, expectedBid, "XXXX");
+		emit Bid(0, user1, 1, expectedBid, "XXXX");
 
 		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
 		vm.prank(user1);
-		auctioneer.bid(0, true);
+		auctioneer.bid(0, 1, true);
 	}
 
 	function test_bid_Should_UpdateAuctionCorrectly() public {
@@ -125,17 +133,17 @@ contract AuctioneerBidTest is AuctioneerHelper, Test, AuctioneerEvents {
 		Auction memory auctionInit = auctioneer.getAuction(0);
 
 		vm.prank(user1);
-		auctioneer.bid(0, true);
+		auctioneer.bid(0, 1, true);
 
 		uint256 bidCost = auctioneer.bidCost();
 		uint256 bidIncrement = auctioneer.bidIncrement();
 		Auction memory auction = auctioneer.getAuction(0);
 
-		assertEq(auction.bidUser, user1, "User is marked as the bidder");
-		assertEq(auction.bidTimestamp, block.timestamp, "Bid timestamp is set correctly");
-		assertEq(auction.sum, auctionInit.sum + bidCost, "Bid cost is added to sum");
-		assertEq(auction.bid, auctionInit.bid + bidIncrement, "Bid is incremented by bidIncrement");
-		assertEq(auction.bids, auctionInit.bids + 1, "Bid is added to auction bid counter");
+		assertEq(auction.bidData.bidUser, user1, "User is marked as the bidder");
+		assertEq(auction.bidData.bidTimestamp, block.timestamp, "Bid timestamp is set correctly");
+		assertEq(auction.bidData.sum, auctionInit.bidData.sum + bidCost, "Bid cost is added to sum");
+		assertEq(auction.bidData.bid, auctionInit.bidData.bid + bidIncrement, "Bid is incremented by bidIncrement");
+		assertEq(auction.bidData.bids, auctionInit.bidData.bids + 1, "Bid is added to auction bid counter");
 
 		AuctionUser memory auctionUser = auctioneer.getAuctionUser(0, user1);
 
@@ -150,7 +158,7 @@ contract AuctioneerBidTest is AuctioneerHelper, Test, AuctioneerEvents {
 		uint256 auctioneerUsdBalInit = USD.balanceOf(address(auctioneer));
 
 		vm.prank(user1);
-		auctioneer.bid(0, true);
+		auctioneer.bid(0, 1, true);
 
 		assertEq(USD.balanceOf(user1), user1UsdBalInit - bidCost, "Should remove funds from users wallet");
 		assertEq(USD.balanceOf(address(auctioneer)), auctioneerUsdBalInit + bidCost, "Should add funds to auctioneer");
@@ -166,13 +174,13 @@ contract AuctioneerBidTest is AuctioneerHelper, Test, AuctioneerEvents {
 		auctioneer.addFunds(10e18);
 		uint256 user1UsdBalInit = USD.balanceOf(user1);
 		uint256 auctioneerUsdBalInit = USD.balanceOf(address(auctioneer));
-		uint256 user1DepositedBalance = auctioneer.userBalance(user1);
+		uint256 user1Funds = auctioneer.userFunds(user1);
 
 		vm.prank(user1);
-		auctioneer.bid(0, false);
+		auctioneer.bid(0, 1, false);
 
 		assertEq(USD.balanceOf(user1), user1UsdBalInit, "Should not remove funds from users wallet");
-		assertEq(auctioneer.userBalance(user1), user1DepositedBalance - bidCost, "Should remove funds from users balance");
+		assertEq(auctioneer.userFunds(user1), user1Funds - bidCost, "Should remove funds from users balance");
 		assertEq(
 			USD.balanceOf(address(auctioneer)),
 			auctioneerUsdBalInit,
@@ -183,13 +191,13 @@ contract AuctioneerBidTest is AuctioneerHelper, Test, AuctioneerEvents {
 	function test_bid_GAS_WALLET() public {
 		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
 		vm.prank(user1);
-		auctioneer.bid(0, true);
+		auctioneer.bid(0, 1, true);
 	}
 
 	// User 2 has deposited funds into contract
 	function test_bid_GAS_BALANCE() public {
 		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
 		vm.prank(user2);
-		auctioneer.bid(0, false);
+		auctioneer.bid(0, 1, false);
 	}
 }

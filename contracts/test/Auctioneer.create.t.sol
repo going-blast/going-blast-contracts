@@ -7,7 +7,7 @@ import "../IAuctioneer.sol";
 import { GOToken } from "../GOToken.sol";
 import { AuctioneerHelper } from "./Auctioneer.base.t.sol";
 import { AuctioneerFarm } from "../AuctioneerFarm.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { BasicERC20 } from "../BasicERC20.sol";
 import { WETH9 } from "../WETH9.sol";
 
@@ -364,20 +364,32 @@ contract AuctioneerCreateTest is AuctioneerHelper, Test, AuctioneerEvents {
 
 		Auction memory auction = auctioneer.getAuction(0);
 
-		assertEq(auction.lot, 0);
-		assertEq(auction.isPrivate, false);
-		assertEq(auction.biddersEmission + auction.treasuryEmission, expectedEmission);
-		assertApproxEqAbs(auction.biddersEmission, auction.treasuryEmission * 9, 10);
-		assertEq(auction.tokens, params[0].tokens);
-		assertEq(auction.amounts, params[0].amounts);
-		assertEq(auction.unlockTimestamp, params[0].unlockTimestamp);
-		assertEq(auction.bids, 0);
-		assertEq(auction.sum, 0);
-		assertEq(auction.bid, auctioneer.startingBid());
-		assertEq(auction.bidTimestamp, params[0].unlockTimestamp);
-		assertEq(auction.bidUser, sender);
-		assertEq(auction.claimed, false);
-		assertEq(auction.finalized, false);
+		assertEq(auction.lot, 0, "Auction lot should be 0");
+		assertEq(auction.isPrivate, false, "Auction should not be private");
+		assertApproxEqAbs(
+			auction.emissions.biddersEmission + auction.emissions.treasuryEmission,
+			expectedEmission,
+			10,
+			"Auction emission split matches"
+		);
+		assertApproxEqAbs(
+			auction.emissions.biddersEmission,
+			auction.emissions.treasuryEmission * 9,
+			10,
+			"Bidders emission is 90%, treasury 10%"
+		);
+		assertEq(auction.rewards.tokens, params[0].tokens, "Tokens match");
+		assertEq(auction.rewards.amounts, params[0].amounts, "Amounts match");
+		assertEq(auction.rewards.nfts, params[0].nfts, "Nfts Match");
+		assertEq(auction.rewards.nftIds, params[0].nftIds, "Nft Ids Match");
+		assertEq(auction.unlockTimestamp, params[0].unlockTimestamp, "Unlock timestamp set correctly");
+		assertEq(auction.bidData.bids, 0, "Bids should be 0");
+		assertEq(auction.bidData.sum, 0, "Sum should be 0");
+		assertEq(auction.bidData.bid, auctioneer.startingBid(), "Initial bid amount should be starting bid");
+		assertEq(auction.bidData.bidTimestamp, params[0].unlockTimestamp, "Last bid timestamp should be unlock timestamp");
+		assertEq(auction.bidData.bidUser, sender, "First bid should be counted as auction creator");
+		assertEq(auction.claimed, false, "Not claimed");
+		assertEq(auction.finalized, false, "Not finalized");
 
 		assertEq(auction.windows.length, params[0].windows.length, "Param and Auction window number should match");
 
