@@ -9,13 +9,13 @@ Tests to run (remaining)
 [ ] Auctioneer - NFTs
   [ ] NFTs are pulled from wallet into contract
 
-[ ] Auctioneer - Funds
-  [ ] Adding funds
-  [ ] Removing funds
+[x] Auctioneer - Funds
+  [x] Adding funds
+  [x] Removing funds
 
-[ ] Auctioneer - Bids
-  [ ] Multibid
-  [ ] Bid can come from funds
+[x] Auctioneer - Bids
+  [x] Multibid
+  [x] Bid can come from funds
 
 [ ] Auctioneer - Windows
   [ ] Auction does not end during open window

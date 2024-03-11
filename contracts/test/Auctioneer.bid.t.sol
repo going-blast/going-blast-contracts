@@ -164,7 +164,7 @@ contract AuctioneerBidTest is AuctioneerHelper, Test, AuctioneerEvents {
 		assertEq(USD.balanceOf(address(auctioneer)), auctioneerUsdBalInit + bidCost, "Should add funds to auctioneer");
 	}
 
-	function test_bid_Should_PullBidFundsFromBalance() public {
+	function test_bid_Should_PullBidFromFunds() public {
 		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
 
 		uint256 bidCost = auctioneer.bidCost();
@@ -186,6 +186,23 @@ contract AuctioneerBidTest is AuctioneerHelper, Test, AuctioneerEvents {
 			auctioneerUsdBalInit,
 			"Should not add fund to auctioneer from users wallet"
 		);
+	}
+
+	function test_bid_ExpectEmit_Multibid() public {
+		uint256 multibid = 9;
+		uint256 expectedBid = auctioneer.startingBid() + auctioneer.bidIncrement() * multibid;
+		uint256 expectedCost = auctioneer.getAuction(0).bidData.bidCost * multibid;
+
+		uint256 userUSDInit = USD.balanceOf(user1);
+
+		vm.expectEmit(true, true, true, true);
+		emit Bid(0, user1, multibid, expectedBid, "");
+
+		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
+		vm.prank(user1);
+		auctioneer.bid(0, multibid, true);
+
+		assertEq(USD.balanceOf(user1), userUSDInit - expectedCost, "Expected to pay cost * multibid");
 	}
 
 	function test_bid_GAS_WALLET() public {

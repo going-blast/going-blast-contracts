@@ -588,7 +588,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents {
 	function withdrawFunds(uint256 _amount) public nonReentrant {
 		if (_amount > userFunds[msg.sender]) revert BadWithdrawal();
 
-		USD.safeTransferFrom(address(this), msg.sender, _amount);
+		USD.safeTransfer(msg.sender, _amount);
 		userFunds[msg.sender] -= _amount;
 
 		emit WithdrewFunds(msg.sender, _amount);
