@@ -28,18 +28,52 @@ library AuctionUtils {
 		return int8(uint8(auction.windows.length - 1));
 	}
 
+	// Recursive fetcher of next bid cutoff timestamp
+	// Open window or negative window will look to next window
+	// Timed or infinite window will give timestamp to exit
+	function getWindowNextBidBy(Auction storage auction, int8 window) internal view returns (uint256) {
+		if (window == -1) return getWindowNextBidBy(auction, window + 1);
+		if (auction.windows[uint8(window)].windowType == BidWindowType.OPEN) return getWindowNextBidBy(auction, window + 1);
+
+		// Timed or infinite window
+		// max(last bid timestamp, window open timestamp) + window timer
+		// A bid 5 seconds before window closes will be given the timer of the current window, even if it overflows into next window
+		return
+			max(auction.bidData.bidTimestamp, auction.windows[uint8(window)].windowOpenTimestamp) +
+			auction.windows[uint8(window)].timer;
+	}
+
+	function getNextBidBy(Auction storage auction) internal view returns (uint256) {
+		return getWindowNextBidBy(auction, activeWindow(auction));
+	}
+
+	function activeWindowClosesAtTimestamp(Auction storage auction) internal view returns (uint256) {
+		// Early escape if the auction has been finalized
+		if (auction.finalized) return 0;
+
+		int8 window = activeWindow(auction);
+
+		if (window == -1) return 0;
+		if (auction.windows[uint8(window)].windowType == BidWindowType.OPEN)
+			return auction.windows[uint8(window)].windowCloseTimestamp;
+
+		uint256 closesAtTimestamp = max(
+			auction.windows[uint8(window)].windowCloseTimestamp,
+			auction.bidData.bidTimestamp + auction.windows[uint8(window)].timer
+		);
+
+		return closesAtTimestamp;
+	}
+
 	function isBiddingOpen(Auction storage auction) internal view returns (bool) {
 		// Early escape if the auction has been finalized
 		if (auction.finalized) return false;
 
+		// Early escape if auction yet to unlock
 		int8 window = activeWindow(auction);
-
 		if (window == -1) return false;
-		if (auction.windows[uint8(window)].windowType == BidWindowType.OPEN) return true;
 
-		uint256 closesAtTimestamp = max(auction.windows[uint8(window)].windowOpenTimestamp, auction.bidData.bidTimestamp);
-
-		return block.timestamp < closesAtTimestamp;
+		return block.timestamp <= getWindowNextBidBy(auction, window);
 	}
 	function validateBiddingOpen(Auction storage auction) internal view {
 		if (!isBiddingOpen(auction)) revert BiddingClosed();
@@ -49,14 +83,11 @@ library AuctionUtils {
 		// Early escape if the auction has been finalized
 		if (auction.finalized) return true;
 
+		// Early escape if auction not yet unlocked
 		int8 window = activeWindow(auction);
-
 		if (window == -1) return false;
-		if (auction.windows[uint8(window)].windowType == BidWindowType.OPEN) return false;
 
-		uint256 closesAtTimestamp = max(auction.windows[uint8(window)].windowOpenTimestamp, auction.bidData.bidTimestamp);
-
-		return block.timestamp > closesAtTimestamp;
+		return block.timestamp > getWindowNextBidBy(auction, window);
 	}
 	function validateEnded(Auction storage auction) internal view {
 		if (!isClosed(auction)) revert AuctionStillRunning();
@@ -99,31 +130,37 @@ library AuctionParamsUtils {
 	function validateBidWindows(AuctionParams memory _params) internal pure {
 		// VALIDATE: Acceptable number of bidding windows
 		if (_params.windows.length == 0 || _params.windows.length > 4) revert InvalidBidWindowCount();
+
 		// VALIDATE: Windows must flow from open -> timed -> infinite
 		BidWindowType runningType = BidWindowType.OPEN;
 		for (uint8 i = 0; i < _params.windows.length; i++) {
 			if (_params.windows[i].windowType < runningType) revert InvalidWindowOrder();
 			runningType = _params.windows[i].windowType;
 		}
+
 		// VALIDATE: Last window must be infinite window
 		if (_params.windows[_params.windows.length - 1].windowType != BidWindowType.INFINITE)
 			revert LastWindowNotInfinite();
+
 		// VALIDATE: Only one infinite window can exist
 		uint8 infCount = 0;
 		for (uint8 i = 0; i < _params.windows.length; i++) {
 			if (_params.windows[i].windowType == BidWindowType.INFINITE) infCount += 1;
 		}
 		if (infCount > 1) revert MultipleInfiniteWindows();
+
 		// VALIDATE: Windows must have a valid duration (if not infinite)
 		for (uint8 i = 0; i < _params.windows.length; i++) {
 			if (_params.windows[i].windowType != BidWindowType.INFINITE && _params.windows[i].duration < 1 hours)
 				revert WindowTooShort();
 		}
+
 		// VALIDATE: Timed windows must have a valid timer
 		for (uint8 i = 0; i < _params.windows.length; i++) {
 			// TIMED and INFINITE windows should have a timer >= 60 seconds
-			if (_params.windows[i].windowType != BidWindowType.OPEN && _params.windows[i].timer < 60 seconds)
+			if (_params.windows[i].windowType != BidWindowType.OPEN && _params.windows[i].timer < 30 seconds)
 				revert InvalidBidWindowTimer();
+
 			// OPEN windows should have a timer of 0 (no timer)
 			if (_params.windows[i].windowType == BidWindowType.OPEN && _params.windows[i].timer != 0)
 				revert InvalidBidWindowTimer();

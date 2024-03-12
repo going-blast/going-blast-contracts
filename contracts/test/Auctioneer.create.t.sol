@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
 import { Auctioneer } from "../Auctioneer.sol";
+import { AuctioneerHarness } from "./AuctioneerHarness.sol";
 import "../IAuctioneer.sol";
 import { GOToken } from "../GOToken.sol";
 import { AuctioneerHelper } from "./Auctioneer.base.t.sol";
@@ -55,7 +56,7 @@ contract AuctioneerCreateTest is AuctioneerHelper, Test, AuctioneerEvents {
 
 	function test_createDailyAuctions_RevertWhen_NotInitialized() public {
 		// SETUP
-		auctioneer = new Auctioneer(USD, GO, WETH, 1e18, 1e16, 1e18, 20e18);
+		auctioneer = new AuctioneerHarness(USD, GO, WETH, 1e18, 1e16, 1e18, 20e18);
 
 		// EXECUTE
 		vm.expectRevert(NotInitialized.selector);
@@ -68,7 +69,7 @@ contract AuctioneerCreateTest is AuctioneerHelper, Test, AuctioneerEvents {
 
 	function test_createDailyAuctions_RevertWhen_TreasuryNotSet() public {
 		// SETUP
-		auctioneer = new Auctioneer(USD, GO, WETH, 1e18, 1e16, 1e18, 20e18);
+		auctioneer = new AuctioneerHarness(USD, GO, WETH, 1e18, 1e16, 1e18, 20e18);
 
 		vm.prank(presale);
 		GO.safeTransfer(address(auctioneer), 1e18);

@@ -5,9 +5,8 @@ pragma experimental ABIEncoderV2;
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IWETH } from "./WETH9.sol";
 import { IAuctioneerFarm } from "./IAuctioneerFarm.sol";
 import "./IAuctioneer.sol";
@@ -391,6 +390,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents {
 			auction.bidData.bid = startingBid;
 			auction.bidData.bidTimestamp = _params.unlockTimestamp;
 			auction.bidData.bidUser = msg.sender;
+			auction.bidData.nextBidBy = auction.getNextBidBy();
 
 			// Frozen bidCost to prevent a change from messing up revenue calculations
 			auction.bidData.bidCost = bidCost;
@@ -444,6 +444,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents {
 		auction.bidData.bidTimestamp = block.timestamp;
 		auction.bidData.sum += auction.bidData.bidCost * _multibid;
 		auction.bidData.bids += _multibid;
+		auction.bidData.nextBidBy = auction.getNextBidBy();
 
 		// Give user bid point
 		auctionUsers[_lot][msg.sender].bids += _multibid;

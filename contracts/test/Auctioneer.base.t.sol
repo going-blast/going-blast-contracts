@@ -8,6 +8,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { AuctioneerFarm } from "../AuctioneerFarm.sol";
 import { BasicERC20 } from "../BasicERC20.sol";
 import { IWETH, WETH9 } from "../WETH9.sol";
+import { AuctioneerHarness } from "./AuctioneerHarness.sol";
 
 abstract contract AuctioneerHelper {
 	// DATA
@@ -27,7 +28,7 @@ abstract contract AuctioneerHelper {
 	address public user3 = address(102);
 	address public user4 = address(103);
 
-	Auctioneer public auctioneer;
+	AuctioneerHarness public auctioneer;
 	AuctioneerFarm public farm;
 	BasicERC20 public USD;
 	IWETH public WETH;
@@ -41,7 +42,7 @@ abstract contract AuctioneerHelper {
 		WETH = IWETH(address(new WETH9()));
 		GO = new GOToken(deployer);
 
-		auctioneer = new Auctioneer(USD, GO, WETH, 1e18, 1e16, 1e18, 20e18);
+		auctioneer = new AuctioneerHarness(USD, GO, WETH, 1e18, 1e16, 1e18, 20e18);
 	}
 
 	// UTILS

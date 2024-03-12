@@ -52,6 +52,7 @@ struct AuctionBidData {
 	uint256 sum;
 	uint256 bid;
 	uint256 bidTimestamp;
+	uint256 nextBidBy;
 	address bidUser;
 	uint256 bids; // number of bids during auction
 	uint256 bidCost; // Frozen value to prevent updating bidCost from messing with revenue calculations
