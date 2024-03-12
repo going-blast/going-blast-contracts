@@ -20,3 +20,4 @@ deployments/*
 # Foundry
 out/
 out.json
+coverage/

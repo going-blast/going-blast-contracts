@@ -14,7 +14,8 @@
 		"format:check": "prettier --check .",
 		"format:write": "prettier --write .",
 		"lint:check": "eslint .",
-		"lint:fix": "eslint --fix ."
+		"lint:fix": "eslint --fix .",
+		"forge:coverage": "forge coverage --report lcov && genhtml lcov.info --branch-coverage --output-dir coverage"
 	},
 	"author": "Kristjan Kosic <kristjan@protokol.com>",
 	"license": "MIT",
