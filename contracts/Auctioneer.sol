@@ -6,13 +6,14 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IWETH } from "./WETH9.sol";
 import { IAuctioneerFarm } from "./IAuctioneerFarm.sol";
 import "./IAuctioneer.sol";
 import { AuctionUtils, AuctionParamsUtils } from "./AuctionUtils.sol";
 
-contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents {
+contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiver {
 	using SafeERC20 for IERC20;
 	using EnumerableSet for EnumerableSet.UintSet;
 	using AuctionUtils for Auction;
@@ -81,8 +82,15 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents {
 		privateAuctionRequirement = _privateRequirement;
 	}
 
-	// Fallback
+	// RECEIVERS
+
 	receive() external payable {}
+
+	function onERC721Received(address, address, uint256, bytes calldata) external pure override returns (bytes4) {
+		return this.onERC721Received.selector;
+	}
+
+	// MODIFIERS
 
 	modifier validAuctionLot(uint256 _lot) {
 		if (_lot >= lotCount) revert InvalidAuctionLot();

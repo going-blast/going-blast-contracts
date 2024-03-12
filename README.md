@@ -17,12 +17,12 @@ Tests to run (remaining)
   [x] Multibid
   [x] Bid can come from funds
 
-[ ] Auctioneer - Windows
-  [ ] Auction does not end during open window
-  [ ] Ends during timed window if timer expires
-  [ ] Timed windows can end
-  [ ] Infinite windows cannot end
-  [ ] Transition from open window -> open window -> timed window -> timed window -> infinite window (covers all possibilities)
+[x] Auctioneer - Windows
+  [x] Auction does not end during open window
+  [x] Ends during timed window if timer expires
+  [x] Timed windows can end
+  [x] Infinite windows cannot end
+  [x] Transition from open window -> open window -> timed window -> timed window -> infinite window (covers all possibilities)
 
 [ ] Auctioneer - Winning lot
   [ ] Pays out all tokens
