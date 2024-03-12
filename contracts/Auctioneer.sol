@@ -271,7 +271,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents {
 		// Reduce treasury amount received if revenue outstripped lot value
 		if (revenue > (auction.rewards.estimatedValue * 11000) / 10000) {
 			reimbursement = (auction.rewards.estimatedValue * 11000) / 10000;
-			profit = ((auction.rewards.estimatedValue * 11000) / 10000) - revenue;
+			profit = revenue - reimbursement;
 		}
 
 		USD.safeTransfer(treasury, reimbursement);

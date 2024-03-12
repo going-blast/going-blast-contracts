@@ -67,11 +67,11 @@ contract AuctioneerWindowsTest is AuctioneerHelper, Test, AuctioneerEvents {
 
 	/*
 
-  [ ] Auction does not end during open window
-  [ ] Ends during timed window if timer expires
-  [ ] Timed windows can end
-  [ ] Infinite windows cannot end
-  [ ] Transition from open window -> open window -> timed window -> timed window -> infinite window (covers all possibilities)
+  [x] Auction does not end during open window
+  [x] Ends during timed window if timer expires
+  [x] Timed windows can end
+  [x] Infinite windows cannot end
+  [x] Transition from open window -> open window -> timed window -> timed window -> infinite window (covers all possibilities)
 
 	*/
 
@@ -98,9 +98,9 @@ contract AuctioneerWindowsTest is AuctioneerHelper, Test, AuctioneerEvents {
 	}
 
 	function test_windows_nextBidBy_PreUnlock() public {
-		assertEq(auctioneer.exposed_auction_activeWindow(0), -1, "Before auction unlocks active window is -1");
+		assertEq(auctioneer.exposed_auction_activeWindow(0), 0, "Before auction unlocks active window is 0");
 		assertEq(auctioneer.exposed_auction_isBiddingOpen(0), false, "Before auction unlocks, bidding closed");
-		assertEq(auctioneer.exposed_auction_isClosed(0), false, "Before action unlocks, not closed");
+		assertEq(auctioneer.exposed_auction_isEnded(0), false, "Before action unlocks, not closed");
 
 		uint256 nextBidBy = auctioneer.getAuction(0).bidData.nextBidBy;
 		uint256 expectedNextBidBy = auctioneer.getAuction(0).windows[0].windowCloseTimestamp +
@@ -118,7 +118,7 @@ contract AuctioneerWindowsTest is AuctioneerHelper, Test, AuctioneerEvents {
 
 		assertEq(auctioneer.exposed_auction_activeWindow(0), 0, "Auction unlocked, active window is 0");
 		assertEq(auctioneer.exposed_auction_isBiddingOpen(0), true, "Auction unlocked, bidding open");
-		assertEq(auctioneer.exposed_auction_isClosed(0), false, "Auction unlocked, not closed");
+		assertEq(auctioneer.exposed_auction_isEnded(0), false, "Auction unlocked, not closed");
 
 		uint256 nextBidBy = auctioneer.getAuction(0).bidData.nextBidBy;
 		uint256 expectedNextBidBy = auctioneer.getAuction(0).windows[0].windowCloseTimestamp +
@@ -138,7 +138,7 @@ contract AuctioneerWindowsTest is AuctioneerHelper, Test, AuctioneerEvents {
 
 		assertEq(auctioneer.exposed_auction_activeWindow(0), 1, "Auction open window ended, active window is 1 (timed)");
 		assertEq(auctioneer.exposed_auction_isBiddingOpen(0), true, "Auction open window ended, bidding open");
-		assertEq(auctioneer.exposed_auction_isClosed(0), false, "Auction open window ended, not closed");
+		assertEq(auctioneer.exposed_auction_isEnded(0), false, "Auction open window ended, not closed");
 
 		uint256 windowTimer = auctioneer.getAuction(0).windows[1].timer;
 		uint256 nextBidBy = auctioneer.getAuction(0).bidData.nextBidBy;
@@ -174,7 +174,7 @@ contract AuctioneerWindowsTest is AuctioneerHelper, Test, AuctioneerEvents {
 
 		assertEq(auctioneer.exposed_auction_activeWindow(0), 1, "Auction open window ended, active window is 1 (timed)");
 		assertEq(auctioneer.exposed_auction_isBiddingOpen(0), true, "Auction open window ended, bidding open");
-		assertEq(auctioneer.exposed_auction_isClosed(0), false, "Auction open window ended, not closed");
+		assertEq(auctioneer.exposed_auction_isEnded(0), false, "Auction open window ended, not closed");
 
 		uint256 windowTimer = auctioneer.getAuction(0).windows[1].timer;
 		uint256 nextBidBy = auctioneer.getAuction(0).bidData.nextBidBy;
@@ -190,19 +190,19 @@ contract AuctioneerWindowsTest is AuctioneerHelper, Test, AuctioneerEvents {
 			vm.warp(i);
 			if (i <= nextBidBy) {
 				assertEq(auctioneer.exposed_auction_isBiddingOpen(0), true, "Time tick bidding open");
-				assertEq(auctioneer.exposed_auction_isClosed(0), false, "Time tick bidding not closed");
+				assertEq(auctioneer.exposed_auction_isEnded(0), false, "Time tick bidding not closed");
 			} else {
 				assertEq(auctioneer.exposed_auction_isBiddingOpen(0), false, "Time tick bidding not open");
-				assertEq(auctioneer.exposed_auction_isClosed(0), true, "Time tick bidding closed");
+				assertEq(auctioneer.exposed_auction_isEnded(0), true, "Time tick bidding closed");
 				_bidShouldRevert(user1);
 			}
 		}
 	}
 
 	function test_windows_IntegrationTest() public {
-		assertEq(auctioneer.exposed_auction_activeWindow(0), -1, "Before auction unlocks active window is -1");
+		assertEq(auctioneer.exposed_auction_activeWindow(0), 0, "Before auction unlocks active window is 0");
 		assertEq(auctioneer.exposed_auction_isBiddingOpen(0), false, "Before auction unlocks, bidding closed");
-		assertEq(auctioneer.exposed_auction_isClosed(0), false, "Before action unlocks, not closed");
+		assertEq(auctioneer.exposed_auction_isEnded(0), false, "Before action unlocks, not closed");
 
 		_bidShouldRevert(user1);
 
@@ -213,13 +213,7 @@ contract AuctioneerWindowsTest is AuctioneerHelper, Test, AuctioneerEvents {
 
 		assertEq(auctioneer.exposed_auction_activeWindow(0), 0, "Auction unlocked, active window is 0");
 		assertEq(auctioneer.exposed_auction_isBiddingOpen(0), true, "Auction unlocked, bidding open");
-		assertEq(auctioneer.exposed_auction_isClosed(0), false, "Auction unlocked, not closed");
-		console.log(
-			"Timestamp %s, window %s, closesAtTimestamp %s",
-			block.timestamp,
-			uint8(auctioneer.exposed_auction_activeWindow(0)),
-			auctioneer.exposed_auction_activeWindowClosesAtTimestamp(0)
-		);
+		assertEq(auctioneer.exposed_auction_isEnded(0), false, "Auction unlocked, not closed");
 
 		_bidShouldEmit(user1);
 
@@ -229,7 +223,7 @@ contract AuctioneerWindowsTest is AuctioneerHelper, Test, AuctioneerEvents {
 
 		assertEq(auctioneer.exposed_auction_activeWindow(0), 0, "Auction unlocked, active window is 0 (open)");
 		assertEq(auctioneer.exposed_auction_isBiddingOpen(0), true, "Auction unlocked, bidding open");
-		assertEq(auctioneer.exposed_auction_isClosed(0), false, "Auction unlocked, not closed");
+		assertEq(auctioneer.exposed_auction_isEnded(0), false, "Auction unlocked, not closed");
 
 		_bidShouldEmit(user1);
 
@@ -239,7 +233,7 @@ contract AuctioneerWindowsTest is AuctioneerHelper, Test, AuctioneerEvents {
 
 		assertEq(auctioneer.exposed_auction_activeWindow(0), 1, "Auction open window ended, active window is 1 (timed)");
 		assertEq(auctioneer.exposed_auction_isBiddingOpen(0), true, "Auction open window ended, bidding open");
-		assertEq(auctioneer.exposed_auction_isClosed(0), false, "Auction open window ended, not closed");
+		assertEq(auctioneer.exposed_auction_isEnded(0), false, "Auction open window ended, not closed");
 
 		// Bid until end of window
 		timestamp = auctioneer.getAuction(0).windows[1].windowCloseTimestamp;
@@ -252,12 +246,29 @@ contract AuctioneerWindowsTest is AuctioneerHelper, Test, AuctioneerEvents {
 			"Auction timed window ended, active window is 2 (infinite)"
 		);
 		assertEq(auctioneer.exposed_auction_isBiddingOpen(0), true, "Auction open window ended, bidding open");
-		assertEq(auctioneer.exposed_auction_isClosed(0), false, "Auction open window ended, not closed");
+		assertEq(auctioneer.exposed_auction_isEnded(0), false, "Auction open window ended, not closed");
 
 		// Bid for 1 more hour
 		timestamp += 1 hours;
 		_bidUntil(user1, timer / 2, timestamp);
-	}
 
-	function test_openWindow_BiddingOpen() public {}
+		// Let bid lapse
+		uint256 nextBidBy = auctioneer.getAuction(0).bidData.nextBidBy;
+		for (uint256 i = block.timestamp; i <= nextBidBy + 1; i++) {
+			vm.warp(i);
+			if (i <= nextBidBy) {
+				assertEq(auctioneer.exposed_auction_isBiddingOpen(0), true, "Time tick bidding open");
+				assertEq(auctioneer.exposed_auction_isEnded(0), false, "Time tick bidding not closed");
+			} else {
+				assertEq(auctioneer.exposed_auction_isBiddingOpen(0), false, "Time tick bidding not open");
+				assertEq(auctioneer.exposed_auction_isEnded(0), true, "Time tick bidding closed");
+				_bidShouldRevert(user1);
+			}
+		}
+
+		// Finalize auction
+		vm.expectEmit(true, true, true, true);
+		emit AuctionFinalized(0);
+		auctioneer.finalizeAuction(0);
+	}
 }

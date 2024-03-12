@@ -15,82 +15,62 @@ library AuctionUtils {
 		auction.finalized = true;
 	}
 
-	function activeWindow(Auction storage auction) internal view returns (int8) {
-		// Before auction opens, active window is -1
-		if (block.timestamp < auction.unlockTimestamp) return -1;
+	function activeWindow(Auction storage auction) internal view returns (uint256) {
+		// Before auction opens, active window is 0
+		// This case gets caught by first window
 
 		// Check if timestamp is before the end of each window, if it is, return that windows index
-		for (uint8 i = 0; i < auction.windows.length; i++) {
-			if (block.timestamp < auction.windows[i].windowCloseTimestamp) return int8(i);
+		for (uint256 i = 0; i < auction.windows.length; i++) {
+			if (block.timestamp < auction.windows[i].windowCloseTimestamp) return i;
 		}
 
 		// Shouldn't ever get here, maybe in 10 years or so.
-		return int8(uint8(auction.windows.length - 1));
+		return auction.windows.length - 1;
 	}
 
 	// Recursive fetcher of next bid cutoff timestamp
 	// Open window or negative window will look to next window
 	// Timed or infinite window will give timestamp to exit
-	function getWindowNextBidBy(Auction storage auction, int8 window) internal view returns (uint256) {
-		if (window == -1) return getWindowNextBidBy(auction, window + 1);
-		if (auction.windows[uint8(window)].windowType == BidWindowType.OPEN) return getWindowNextBidBy(auction, window + 1);
+	function getWindowNextBidBy(Auction storage auction, uint256 window) internal view returns (uint256) {
+		if (auction.windows[window].windowType == BidWindowType.OPEN) return getWindowNextBidBy(auction, window + 1);
 
 		// Timed or infinite window
 		// max(last bid timestamp, window open timestamp) + window timer
 		// A bid 5 seconds before window closes will be given the timer of the current window, even if it overflows into next window
 		return
-			max(auction.bidData.bidTimestamp, auction.windows[uint8(window)].windowOpenTimestamp) +
-			auction.windows[uint8(window)].timer;
+			max(auction.bidData.bidTimestamp, auction.windows[window].windowOpenTimestamp) + auction.windows[window].timer;
 	}
 
 	function getNextBidBy(Auction storage auction) internal view returns (uint256) {
 		return getWindowNextBidBy(auction, activeWindow(auction));
 	}
 
-	function activeWindowClosesAtTimestamp(Auction storage auction) internal view returns (uint256) {
-		// Early escape if the auction has been finalized
-		if (auction.finalized) return 0;
-
-		int8 window = activeWindow(auction);
-
-		if (window == -1) return 0;
-		if (auction.windows[uint8(window)].windowType == BidWindowType.OPEN)
-			return auction.windows[uint8(window)].windowCloseTimestamp;
-
-		uint256 closesAtTimestamp = max(
-			auction.windows[uint8(window)].windowCloseTimestamp,
-			auction.bidData.bidTimestamp + auction.windows[uint8(window)].timer
-		);
-
-		return closesAtTimestamp;
-	}
-
 	function isBiddingOpen(Auction storage auction) internal view returns (bool) {
 		// Early escape if the auction has been finalized
 		if (auction.finalized) return false;
 
-		// Early escape if auction yet to unlock
-		int8 window = activeWindow(auction);
-		if (window == -1) return false;
+		// Early escape if auction not yet unlocked
+		if (block.timestamp < auction.unlockTimestamp) return false;
 
-		return block.timestamp <= getWindowNextBidBy(auction, window);
+		// Closed if nextBidBy is in future
+		return block.timestamp <= auction.bidData.nextBidBy;
 	}
 	function validateBiddingOpen(Auction storage auction) internal view {
 		if (!isBiddingOpen(auction)) revert BiddingClosed();
 	}
 
-	function isClosed(Auction storage auction) internal view returns (bool) {
+	function isEnded(Auction storage auction) internal view returns (bool) {
 		// Early escape if the auction has been finalized
 		if (auction.finalized) return true;
 
 		// Early escape if auction not yet unlocked
-		int8 window = activeWindow(auction);
-		if (window == -1) return false;
+		if (block.timestamp < auction.unlockTimestamp) return false;
 
-		return block.timestamp > getWindowNextBidBy(auction, window);
+		// Closed if nextBidBy is in past
+		return block.timestamp > auction.bidData.nextBidBy;
 	}
 	function validateEnded(Auction storage auction) internal view {
-		if (!isClosed(auction)) revert AuctionStillRunning();
+		if (!isEnded(auction)) revert AuctionStillRunning();
 	}
 
 	function addBidWindows(Auction storage auction, AuctionParams memory _params, uint256 _bonusTime) internal {

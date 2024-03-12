@@ -20,19 +20,14 @@ contract AuctioneerHarness is Auctioneer {
 		uint256 _privateRequirement
 	) Auctioneer(_usd, _go, _weth, _bidCost, _bidIncrement, _startingBid, _privateRequirement) {}
 
-	function exposed_auction_activeWindow(uint256 _lot) public view validAuctionLot(_lot) returns (int8) {
+	function exposed_auction_activeWindow(uint256 _lot) public view validAuctionLot(_lot) returns (uint256) {
 		return auctions[_lot].activeWindow();
 	}
 
 	function exposed_auction_isBiddingOpen(uint256 _lot) public view validAuctionLot(_lot) returns (bool) {
 		return auctions[_lot].isBiddingOpen();
 	}
-	function exposed_auction_isClosed(uint256 _lot) public view validAuctionLot(_lot) returns (bool) {
-		return auctions[_lot].isClosed();
-	}
-	function exposed_auction_activeWindowClosesAtTimestamp(
-		uint256 _lot
-	) public view validAuctionLot(_lot) returns (uint256) {
-		return auctions[_lot].activeWindowClosesAtTimestamp();
+	function exposed_auction_isEnded(uint256 _lot) public view validAuctionLot(_lot) returns (bool) {
+		return auctions[_lot].isEnded();
 	}
 }
