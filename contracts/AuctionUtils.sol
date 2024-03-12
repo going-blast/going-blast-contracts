@@ -105,6 +105,11 @@ library AuctionParamsUtils {
 		if (_params.tokens.length == 0) revert NoTokens();
 	}
 
+	function validateNFTs(AuctionParams memory _params) internal pure {
+		if (_params.nfts.length > 4) revert TooManyTokens();
+		if (_params.nfts.length != _params.nftIds.length) revert LengthMismatch();
+	}
+
 	// YES I KNOW that this is inefficient, this is an owner facing function.
 	// Legibility and clarity > once daily gas price.
 	function validateBidWindows(AuctionParams memory _params) internal pure {

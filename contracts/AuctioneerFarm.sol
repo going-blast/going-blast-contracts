@@ -96,6 +96,9 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm {
 	// AUCTION INTERACTIONS
 
 	function receiveUSDDistribution() external override {
+		// Nothing yet staked, leave the USD in here, it'll get scooped up in the next distribution
+		if (_totalEffectiveStaked() == 0) return;
+
 		uint256 newBal = USD.balanceOf(address(this));
 		uint256 increase = newBal - usdBal;
 		usdRewardPerShare += (increase * REW_PRECISION) / _totalEffectiveStaked();

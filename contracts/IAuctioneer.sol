@@ -108,6 +108,8 @@ error InvalidAlias();
 error AliasTaken();
 error ETHTransferFailed();
 error MustBidAtLeastOnce();
+error NotWinner();
+error AuctionLotAlreadyClaimed();
 
 interface AuctioneerEvents {
 	event Initialized();

@@ -6,8 +6,8 @@ Contracts / tests / deployments
 
 Tests to run (remaining)
 
-[ ] Auctioneer - NFTs
-  [ ] NFTs are pulled from wallet into contract
+[x] Auctioneer - NFTs
+  [x] NFTs are pulled from wallet into contract
 
 [x] Auctioneer - Funds
   [x] Adding funds
@@ -41,9 +41,6 @@ Tests to run (remaining)
   [ ] List of farms that can be harvested
   [ ] Farm harvest data & unlocks
 
-[ ] Auctioneer - Private Lots
-  [ ] Calculates GO correctly: (GO + GO staked) * 1 + (LP + LP staked) * 2
-  [ ] Private lot bidding unlocking on enough GO owned
 
 
 [ ] AuctioneerFarm - GO Emissions
@@ -61,5 +58,11 @@ Tests to run (remaining)
   [ ] Farm deposit lp / deposit all lp
   [ ] Farm withdraw lp / withdraw all lp
   [ ] Setting lp token
+
+
+
+[ ] Auctioneer - Private Lots
+  [ ] Calculates GO correctly: (GO + GO staked) * 1 + (LP + LP staked) * 2
+  [ ] Private lot bidding unlocking on enough GO owned
 
 ```

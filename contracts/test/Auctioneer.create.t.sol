@@ -308,7 +308,7 @@ contract AuctioneerCreateTest is AuctioneerHelper, Test, AuctioneerEvents {
 		AuctionParams[] memory params = new AuctionParams[](1);
 		params[0] = _getBaseSingleAuctionParams();
 
-		params[0].windows[2].timer = 59 seconds;
+		params[0].windows[2].timer = 29 seconds;
 
 		auctioneer.createDailyAuctions(params);
 	}

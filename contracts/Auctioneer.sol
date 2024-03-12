@@ -490,29 +490,38 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 	}
 
 	function claimLotWinnings(Auction storage auction, bool _forceWallet, bool _shouldUnwrap) internal {
-		// Exit if claiming not available
-		if (msg.sender != auction.bidData.bidUser || auction.claimed) return;
+		// User is not winner
+		if (msg.sender != auction.bidData.bidUser) revert NotWinner();
+
+		// Winner has already paid for and claimed the lot
+		if (auction.claimed) revert AuctionLotAlreadyClaimed();
+
 		// Transfer lot to last bidder (this comes first so it shows up first in etherscan)
 		for (uint8 i = 0; i < auction.rewards.tokens.length; i++) {
 			_transferLotToken(auction.rewards.tokens[i], auction.bidData.bidUser, auction.rewards.amounts[i], _shouldUnwrap);
 		}
+
 		// Transfer lot nfts to last bidder
 		for (uint8 i = 0; i < auction.rewards.nfts.length; i++) {
 			IERC721(auction.rewards.nfts[i]).transferFrom(address(this), msg.sender, auction.rewards.nftIds[i]);
 		}
-		// Pay for lot from pre-deposited balance
+
+		// Pay for lot
 		if (!_forceWallet && userFunds[msg.sender] >= auction.bidData.bid) {
+			// Pay for lot from pre-deposited balance
 			userFunds[msg.sender] -= auction.bidData.bid;
-			// Pay for lot from mixed
 		} else if (!_forceWallet && userFunds[msg.sender] > 0) {
+			// Pay for lot from mixed
 			USD.safeTransferFrom(msg.sender, address(this), auction.bidData.bid - userFunds[msg.sender]);
 			userFunds[msg.sender] = 0;
-			// Pay for lot entirely from wallet
 		} else {
+			// Pay for lot entirely from wallet
 			USD.safeTransferFrom(msg.sender, address(this), auction.bidData.bid);
 		}
+
 		// Distribute payment
 		_distributeProfitViaSplit(auction.bidData.bid);
+
 		// Mark Claimed
 		auction.claimed = true;
 		emit AuctionLotClaimed(auction.lot, msg.sender, auction.rewards.tokens, auction.rewards.amounts);

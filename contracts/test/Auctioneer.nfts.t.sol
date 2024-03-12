@@ -134,4 +134,8 @@ contract AuctioneerNFTsTest is AuctioneerHelper, Test, AuctioneerEvents {
 		assertEq(auctioneer.getAuction(0).rewards.nftIds[0], 3, "Nft 0 id added to auction");
 		assertEq(auctioneer.getAuction(0).rewards.nftIds[1], 1, "Nft 1 id added to auction");
 	}
+
+	// TODO: Ensure nfts returned if auction cancelled
+	// TODO: validate that nfts and nftIds have same length
+	// TODO: validate that user receives NFTs when claiming lot
 }

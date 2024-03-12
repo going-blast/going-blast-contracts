@@ -33,6 +33,8 @@ abstract contract AuctioneerHelper {
 	BasicERC20 public USD;
 	IWETH public WETH;
 	address public ETH_ADDR = address(0);
+	BasicERC20 public XXToken;
+	BasicERC20 public YYToken;
 	IERC20 public GO;
 
 	// SETUP
@@ -41,8 +43,11 @@ abstract contract AuctioneerHelper {
 		USD = new BasicERC20("USD", "USD");
 		WETH = IWETH(address(new WETH9()));
 		GO = new GOToken(deployer);
+		XXToken = new BasicERC20("XX", "XX");
+		YYToken = new BasicERC20("YY", "YY");
 
 		auctioneer = new AuctioneerHarness(USD, GO, WETH, 1e18, 1e16, 1e18, 20e18);
+		farm = new AuctioneerFarm();
 	}
 
 	// UTILS
@@ -66,6 +71,36 @@ abstract contract AuctioneerHelper {
 		params = AuctionParams({
 			isPrivate: false,
 			lotValue: 4000e18,
+			emissionBP: 10000,
+			tokens: tokens,
+			amounts: amounts,
+			nfts: new address[](0),
+			nftIds: new uint256[](0),
+			name: "First Auction",
+			windows: windows,
+			unlockTimestamp: _getNextDay2PMTimestamp()
+		});
+	}
+
+	function _getMultiTokenSingleAuctionParams() public view returns (AuctionParams memory params) {
+		address[] memory tokens = new address[](3);
+		tokens[0] = ETH_ADDR;
+		tokens[1] = address(XXToken);
+		tokens[2] = address(YYToken);
+
+		uint256[] memory amounts = new uint256[](3);
+		amounts[0] = 1e18;
+		amounts[1] = 100e18;
+		amounts[2] = 50e18;
+
+		BidWindowParams[] memory windows = new BidWindowParams[](3);
+		windows[0] = BidWindowParams({ windowType: BidWindowType.OPEN, duration: 6 hours, timer: 0 });
+		windows[1] = BidWindowParams({ windowType: BidWindowType.TIMED, duration: 2 hours, timer: 2 minutes });
+		windows[2] = BidWindowParams({ windowType: BidWindowType.INFINITE, duration: 0, timer: 1 minutes });
+
+		params = AuctionParams({
+			isPrivate: false,
+			lotValue: 6000e18,
 			emissionBP: 10000,
 			tokens: tokens,
 			amounts: amounts,
