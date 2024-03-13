@@ -6,10 +6,10 @@ Contracts / tests / deployments
 
 Tests to run (remaining)
 
-[ ] Auctioneer - NFTs
+[x] Auctioneer - NFTs
   [x] NFTs are pulled from wallet into contract
-  [ ] Pays out all nfts
-  [ ] NFTs returned if auction cancelled
+  [x] Pays out all nfts
+  [x] NFTs returned if auction cancelled
 
 [x] Auctioneer - Funds
   [x] Adding funds

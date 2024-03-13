@@ -155,8 +155,6 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	function _createBaseAuctionOnDay(uint256 daysInFuture) internal {
 		uint256 unlockTimestamp = _getDayInFuture2PMTimestamp(daysInFuture);
 
-		console.log("Unlock Timestamp", unlockTimestamp);
-
 		AuctionParams[] memory params = new AuctionParams[](1);
 		// Create single token auction
 		params[0] = _getBaseSingleAuctionParams();

@@ -137,7 +137,7 @@ library AuctionUtils {
 
 		// Transfer lot nfts to treasury
 		for (uint8 i = 0; i < auction.rewards.nfts.length; i++) {
-			IERC721(auction.rewards.nfts[i].nft).transferFrom(msg.sender, to, auction.rewards.nfts[i].id);
+			IERC721(auction.rewards.nfts[i].nft).transferFrom(address(this), to, auction.rewards.nfts[i].id);
 		}
 	}
 

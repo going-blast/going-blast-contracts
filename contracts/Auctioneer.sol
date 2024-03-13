@@ -390,6 +390,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		} else {
 			USD.safeTransferFrom(msg.sender, address(this), (auction.bidData.bidCost * _multibid));
 		}
+
 		emit Bid(_lot, msg.sender, _multibid, auction.bidData.bid, userAlias[msg.sender]);
 	}
 
@@ -397,8 +398,10 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 
 	function claimAuctionLot(uint256 _lot, bool _forceWallet, bool _unwrapETH) public validAuctionLot(_lot) nonReentrant {
 		Auction storage auction = auctions[_lot];
+
 		auction.validateEnded();
-		claimLotWinnings(auction, _forceWallet, _unwrapETH);
+
+		_claimLotWinnings(auction, _forceWallet, _unwrapETH);
 		_finalizeAuction(auction);
 	}
 
@@ -411,7 +414,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		_finalizeAuction(auction);
 	}
 
-	function claimLotWinnings(Auction storage auction, bool _forceWallet, bool _unwrapETH) internal {
+	function _claimLotWinnings(Auction storage auction, bool _forceWallet, bool _unwrapETH) internal {
 		// User is not winner
 		if (msg.sender != auction.bidData.bidUser) revert NotWinner();
 
@@ -500,8 +503,6 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 	// USER
 	///////////////////
 
-	// NAME
-
 	function setAlias(string memory _alias) public {
 		if (bytes(_alias).length < 3 || bytes(_alias).length > 9) revert InvalidAlias();
 		if (aliasUser[_alias] != address(0)) revert AliasTaken();
@@ -517,8 +518,6 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		emit UpdatedAlias(msg.sender, _alias);
 	}
 
-	// GAS SAVINGS
-
 	function addFunds(uint256 _amount) public nonReentrant {
 		if (_amount > USD.balanceOf(msg.sender)) revert BadDeposit();
 
@@ -527,6 +526,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 
 		emit AddedFunds(msg.sender, _amount);
 	}
+
 	function withdrawFunds(uint256 _amount) public nonReentrant {
 		if (_amount > userFunds[msg.sender]) revert BadWithdrawal();
 
@@ -547,21 +547,26 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		userBids = auctionUsers[_lot][_user].bids;
 		auctionBids = auctions[_lot].bidData.bids;
 	}
+
 	function getAuction(uint256 _lot) public view validAuctionLot(_lot) returns (Auction memory) {
 		return auctions[_lot];
 	}
+
 	function getAuctionUser(uint256 _lot, address _user) public view validAuctionLot(_lot) returns (AuctionUser memory) {
 		return auctionUsers[_lot][_user];
 	}
+
 	function getAuctionTokenEarned(address _user, uint256 _lot) public view validAuctionLot(_lot) returns (uint256) {
 		// Prevent div by 0
 		if (auctionUsers[_lot][_user].bids == 0 || auctions[_lot].bidData.bids == 0) return 0;
 
 		return (auctionUsers[_lot][_user].bids * auctions[_lot].emissions.biddersEmission) / auctions[_lot].bidData.bids;
 	}
+
 	function getUserClaimableLots(address _user) public view returns (uint256[] memory) {
 		return userClaimableLots[_user].values();
 	}
+
 	function getUserClaimableLotsData(address _user) public view returns (ClaimableLotData[] memory lotDatas) {
 		uint256[] memory lots = userClaimableLots[_user].values();
 		lotDatas = new ClaimableLotData[](lots.length);
