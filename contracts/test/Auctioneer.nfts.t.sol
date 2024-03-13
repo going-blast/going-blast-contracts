@@ -108,13 +108,9 @@ contract AuctioneerNFTsTest is AuctioneerHelper {
 		params[0] = _getBaseSingleAuctionParams();
 
 		// Add NFTs to auction
-		params[0].nfts = new address[](2);
-		params[0].nfts[0] = address(mockNFT1);
-		params[0].nfts[1] = address(mockNFT2);
-
-		params[0].nftIds = new uint256[](2);
-		params[0].nftIds[0] = 3;
-		params[0].nftIds[1] = 1;
+		params[0].nfts = new NftData[](2);
+		params[0].nfts[0] = NftData({ nft: address(mockNFT1), id: 3 });
+		params[0].nfts[1] = NftData({ nft: address(mockNFT2), id: 1 });
 
 		// Create auction
 		auctioneer.createDailyAuctions(params);
@@ -129,10 +125,10 @@ contract AuctioneerNFTsTest is AuctioneerHelper {
 		assertEq(mockNFT2.ownerOf(3), treasury, "Treasury owns NFT2-3");
 		assertEq(mockNFT2.ownerOf(4), treasury, "Treasury owns NFT2-4");
 
-		assertEq(auctioneer.getAuction(0).rewards.nfts[0], address(mockNFT1), "Nft 0 added to auction");
-		assertEq(auctioneer.getAuction(0).rewards.nfts[1], address(mockNFT2), "Nft 1 added to auction");
-		assertEq(auctioneer.getAuction(0).rewards.nftIds[0], 3, "Nft 0 id added to auction");
-		assertEq(auctioneer.getAuction(0).rewards.nftIds[1], 1, "Nft 1 id added to auction");
+		assertEq(auctioneer.getAuction(0).rewards.nfts[0].nft, address(mockNFT1), "Nft 0 added to auction");
+		assertEq(auctioneer.getAuction(0).rewards.nfts[1].nft, address(mockNFT2), "Nft 1 added to auction");
+		assertEq(auctioneer.getAuction(0).rewards.nfts[0].id, 3, "Nft 0 id added to auction");
+		assertEq(auctioneer.getAuction(0).rewards.nfts[1].id, 1, "Nft 1 id added to auction");
 	}
 
 	// TODO: Ensure nfts returned if auction cancelled

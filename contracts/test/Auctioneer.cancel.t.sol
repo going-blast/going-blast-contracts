@@ -116,7 +116,7 @@ contract AuctioneerCancelTest is AuctioneerHelper {
 
 		assertEq(
 			treasury.balance,
-			treasuryETH + params[0].amounts[0],
+			treasuryETH + params[0].tokens[0].amount,
 			"Treasury balance should increase by auction amount"
 		);
 	}

@@ -238,70 +238,6 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		return _userGOBalance(_user) >= privateAuctionRequirement;
 	}
 
-	function _getDistributionAmounts(
-		uint256 _toDistribute
-	) internal view returns (uint256 treasuryDistribution, uint256 farmDistribution) {
-		// Calculate distributions
-		treasuryDistribution = (_toDistribute * treasurySplit) / 10000;
-		farmDistribution = _toDistribute - treasuryDistribution;
-
-		// Add unused farm distribution to treasury (if no farm set, send all funds to treasury)
-		if (farm == address(0)) {
-			treasuryDistribution += farmDistribution;
-			farmDistribution = 0;
-		}
-	}
-
-	function _distributeProfitViaSplit(uint256 _amount) internal {
-		// Calculate distributions
-		(uint256 treasuryDistribution, uint256 farmDistribution) = _getDistributionAmounts(_amount);
-
-		// Distribute
-		if (treasuryDistribution > 0) {
-			USD.safeTransfer(treasury, treasuryDistribution);
-		}
-
-		// If farm not set, farm distribution will be 0
-		if (farmDistribution > 0) {
-			USD.safeTransfer(farm, farmDistribution);
-			IAuctioneerFarm(farm).receiveUSDDistribution();
-		}
-	}
-
-	function _distributeLotRevenue(Auction memory auction) internal {
-		uint256 revenue = auction.bidData.bidCost * auction.bidData.bids;
-		uint256 reimbursement = revenue;
-		uint256 profit = 0;
-
-		// Reduce treasury amount received if revenue outstripped lot value
-		if (revenue > (auction.rewards.estimatedValue * 11000) / 10000) {
-			reimbursement = (auction.rewards.estimatedValue * 11000) / 10000;
-			profit = revenue - reimbursement;
-		}
-
-		USD.safeTransfer(treasury, reimbursement);
-
-		if (profit > 0) {
-			_distributeProfitViaSplit(profit);
-		}
-	}
-
-	function _transferLotToken(address _token, address _to, uint256 _amount, bool _unwrapETH) internal {
-		if (_token == ETH) {
-			if (_unwrapETH) {
-				// If lot token is ETH, it is held in contract as WETH, and needs to be unwrapped before being sent to user
-				IWETH(WETH).withdraw(_amount);
-				(bool sent, ) = _to.call{ value: _amount }("");
-				if (!sent) revert ETHTransferFailed();
-			} else {
-				IERC20(address(WETH)).safeTransfer(_to, _amount);
-			}
-		} else {
-			// Transfer as default ERC20
-			IERC20(_token).safeTransfer(_to, _amount);
-		}
-	}
-
 	///////////////////
 	// CORE
 	///////////////////
@@ -348,70 +284,44 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		auctionsPerDay[day] += 1;
 		dailyCumulativeEmissionBP[day] += _params.emissionBP;
 
-		{
-			// Transfer tokens from treasury
-			for (uint8 i = 0; i < _params.tokens.length; i++) {
-				address token = _params.tokens[i] == ETH ? address(WETH) : _params.tokens[i];
-				IERC20(token).safeTransferFrom(treasury, address(this), _params.amounts[i]);
-			}
-			// Transfer nfts from treasury
-			for (uint8 i = 0; i < _params.nfts.length; i++) {
-				IERC721(_params.nfts[i]).safeTransferFrom(treasury, address(this), _params.nftIds[i]);
-			}
-		}
-
 		Auction storage auction = auctions[lot];
 
-		// Base level data
-		{
-			auction.lot = lot;
-			auction.day = day;
-			auction.name = _params.name;
-			auction.isPrivate = _params.isPrivate;
-			auction.unlockTimestamp = _params.unlockTimestamp;
-			auction.claimed = false;
-			auction.finalized = false;
-		}
+		// Base data
+		auction.lot = lot;
+		auction.day = day;
+		auction.name = _params.name;
+		auction.isPrivate = _params.isPrivate;
+		auction.unlockTimestamp = _params.unlockTimestamp;
+		auction.addBidWindows(_params, onceTwiceBlastBonusTime);
+		auction.claimed = false;
+		auction.finalized = false;
+
+		// Rewards
+		auction.addRewards(_params);
+		auction.transferLotFrom(treasury, ETH, address(WETH));
 
 		// Emissions
-		{
-			uint256 epoch = _getEpochAtTimestamp(_params.unlockTimestamp);
-			uint256 totalEmission = _getEmissionForAuction(_params.unlockTimestamp, _params.emissionBP);
-			// Only emit during first 8 epochs
-			if (epoch < 8 && totalEmission > 0) {
-				// Validated not to underflow in _getEmissionForAuction
-				epochEmissionsRemaining[epoch] -= totalEmission;
-				auction.emissions.bp = _params.emissionBP;
-				auction.emissions.biddersEmission = (totalEmission * 90) / 100;
-				auction.emissions.treasuryEmission = (totalEmission * 10) / 100;
-			}
-		}
-
-		// Bid Windows
-		{
-			auction.addBidWindows(_params, onceTwiceBlastBonusTime);
-
-			auction.rewards.estimatedValue = _params.lotValue;
-
-			auction.rewards.tokens = _params.tokens;
-			auction.rewards.amounts = _params.amounts;
-
-			auction.rewards.nfts = _params.nfts;
-			auction.rewards.nftIds = _params.nftIds;
+		uint256 epoch = _getEpochAtTimestamp(_params.unlockTimestamp);
+		uint256 totalEmission = _getEmissionForAuction(_params.unlockTimestamp, _params.emissionBP);
+		// Only emit during first 8 epochs
+		if (epoch < 8 && totalEmission > 0) {
+			// Validated not to underflow in _getEmissionForAuction
+			epochEmissionsRemaining[epoch] -= totalEmission;
+			auction.emissions.bp = _params.emissionBP;
+			auction.emissions.biddersEmission = (totalEmission * 90) / 100;
+			auction.emissions.treasuryEmission = (totalEmission * 10) / 100;
 		}
 
 		// Initial bidding data
-		{
-			auction.bidData.sum = 0;
-			auction.bidData.bids = 0;
-			auction.bidData.bid = startingBid;
-			auction.bidData.bidTimestamp = _params.unlockTimestamp;
-			auction.bidData.bidUser = msg.sender;
-			auction.bidData.nextBidBy = auction.getNextBidBy();
+		auction.bidData.sum = 0;
+		auction.bidData.bids = 0;
+		auction.bidData.bid = startingBid;
+		auction.bidData.bidTimestamp = _params.unlockTimestamp;
+		auction.bidData.bidUser = msg.sender;
+		auction.bidData.nextBidBy = auction.getNextBidBy();
 
-			// Frozen bidCost to prevent a change from messing up revenue calculations
-			auction.bidData.bidCost = bidCost;
-		}
+		// Frozen bidCost to prevent a change from messing up revenue calculations
+		auction.bidData.bidCost = bidCost;
 
 		lotCount++;
 		emit AuctionCreated(lot);
@@ -429,7 +339,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		// Can only cancel the auction if it doesn't have any bids yet
 		if (auction.bidData.bids > 0) revert NotCancellable();
 
-		auction.transferLot(treasury, _unwrapETH, ETH, address(WETH));
+		auction.transferLotTo(treasury, _unwrapETH, ETH, address(WETH));
 
 		// Return emissions to epoch of auction
 		uint256 epoch = _getEpochAtTimestamp(auction.unlockTimestamp);
@@ -507,7 +417,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		if (auction.claimed) revert AuctionLotAlreadyClaimed();
 
 		// Transfer lot to last bidder (this comes first so it shows up first in explorer)
-		auction.transferLot(auction.bidData.bidUser, _unwrapETH, ETH, address(WETH));
+		auction.transferLotTo(auction.bidData.bidUser, _unwrapETH, ETH, address(WETH));
 
 		// Pay for lot
 		if (!_forceWallet && userFunds[msg.sender] >= auction.bidData.bid) {
@@ -523,11 +433,11 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		}
 
 		// Distribute payment
-		_distributeProfitViaSplit(auction.bidData.bid);
+		auction.distributeLotProfit(USD, auction.bidData.bid, treasury, farm, treasurySplit);
 
 		// Mark Claimed
 		auction.claimed = true;
-		emit AuctionLotClaimed(auction.lot, msg.sender, auction.rewards.tokens, auction.rewards.amounts);
+		emit AuctionLotClaimed(auction.lot, msg.sender, auction.rewards.tokens, auction.rewards.nfts);
 	}
 
 	function _finalizeAuction(Auction storage auction) internal {
@@ -535,7 +445,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		if (auction.finalized) return;
 
 		// Refund lot to treasury
-		_distributeLotRevenue(auction);
+		auction.distributeLotRevenue(USD, treasury, farm, treasurySplit);
 
 		// Send emissions to treasury
 		if (auction.emissions.treasuryEmission > 0) {

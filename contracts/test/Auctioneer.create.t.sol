@@ -164,27 +164,12 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		AuctionParams[] memory params = new AuctionParams[](1);
 		params[0] = _getBaseSingleAuctionParams();
 
-		address[] memory tokens = new address[](5);
+		TokenData[] memory tokens = new TokenData[](5);
 		tokens[0] = params[0].tokens[0];
 		tokens[1] = params[0].tokens[0];
 		tokens[2] = params[0].tokens[0];
 		tokens[3] = params[0].tokens[0];
 		tokens[4] = params[0].tokens[0];
-
-		params[0].tokens = tokens;
-
-		auctioneer.createDailyAuctions(params);
-	}
-
-	function test_createDailyAuctions_validateTokens_RevertWhen_TokensAndAmountsLengthMismatch() public {
-		vm.expectRevert(LengthMismatch.selector);
-
-		AuctionParams[] memory params = new AuctionParams[](1);
-		params[0] = _getBaseSingleAuctionParams();
-
-		address[] memory tokens = new address[](2);
-		tokens[0] = params[0].tokens[0];
-		tokens[1] = params[0].tokens[0];
 
 		params[0].tokens = tokens;
 
@@ -197,10 +182,8 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		AuctionParams[] memory params = new AuctionParams[](1);
 		params[0] = _getBaseSingleAuctionParams();
 
-		address[] memory tokens = new address[](0);
-		uint256[] memory amounts = new uint256[](0);
+		TokenData[] memory tokens = new TokenData[](0);
 		params[0].tokens = tokens;
-		params[0].amounts = amounts;
 
 		auctioneer.createDailyAuctions(params);
 	}
@@ -380,10 +363,15 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 			"Bidders emission is 90%, treasury 10%"
 		);
 		assertEq(auction.rewards.estimatedValue, params[0].lotValue, "Lot value matches");
-		assertEq(auction.rewards.tokens, params[0].tokens, "Tokens match");
-		assertEq(auction.rewards.amounts, params[0].amounts, "Amounts match");
-		assertEq(auction.rewards.nfts, params[0].nfts, "Nfts Match");
-		assertEq(auction.rewards.nftIds, params[0].nftIds, "Nft Ids Match");
+		// Check tokens match
+		for (uint256 i = 0; i < params[0].tokens.length; i++) {
+			assertEq(auction.rewards.tokens[i].token, params[0].tokens[i].token, "Tokens match");
+			assertEq(auction.rewards.tokens[i].amount, params[0].tokens[i].amount, "Amounts match");
+		}
+		for (uint256 i = 0; i < params[0].nfts.length; i++) {
+			assertEq(auction.rewards.nfts[i].nft, params[0].nfts[i].nft, "Nfts Match");
+			assertEq(auction.rewards.nfts[i].id, params[0].nfts[i].id, "Nft Ids Match");
+		}
 		assertEq(auction.unlockTimestamp, params[0].unlockTimestamp, "Unlock timestamp set correctly");
 		assertEq(auction.bidData.bids, 0, "Bids should be 0");
 		assertEq(auction.bidData.sum, 0, "Sum should be 0");

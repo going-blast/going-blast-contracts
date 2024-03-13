@@ -5,6 +5,7 @@ import "./IAuctioneer.sol";
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IWETH } from "./WETH9.sol";
+import { IAuctioneerFarm } from "./IAuctioneerFarm.sol";
 
 library AuctionUtils {
 	using SafeERC20 for IERC20;
@@ -98,39 +99,113 @@ library AuctionUtils {
 		}
 	}
 
-	// Rewards
-	function _transferLotToken(
-		address _token,
-		address _to,
-		uint256 _amount,
-		bool _unwrapETH,
-		address ETH,
-		address WETH
-	) internal {
-		if (_token == ETH) {
-			if (_unwrapETH) {
-				// If lot token is ETH, it is held in contract as WETH, and needs to be unwrapped before being sent to user
-				IWETH(WETH).withdraw(_amount);
-				(bool sent, ) = _to.call{ value: _amount }("");
-				if (!sent) revert ETHTransferFailed();
-			} else {
-				IERC20(address(WETH)).safeTransfer(_to, _amount);
-			}
-		} else {
-			// Transfer as default ERC20
-			IERC20(_token).safeTransfer(_to, _amount);
+	// LOT
+
+	function addRewards(Auction storage auction, AuctionParams memory params) internal {
+		auction.rewards.estimatedValue = params.lotValue;
+
+		for (uint8 i = 0; i < params.tokens.length; i++) {
+			auction.rewards.tokens.push(params.tokens[i]);
+		}
+
+		for (uint8 i = 0; i < params.nfts.length; i++) {
+			auction.rewards.nfts.push(params.nfts[i]);
 		}
 	}
 
-	function transferLot(Auction storage auction, address to, bool _unwrapETH, address ETH, address WETH) internal {
+	function _transferLotTokenTo(TokenData memory token, address to, bool unwrapETH, address ETH, address WETH) internal {
+		if (token.token == ETH) {
+			if (unwrapETH) {
+				// If lot token is ETH, it is held in contract as WETH, and needs to be unwrapped before being sent to user
+				IWETH(WETH).withdraw(token.amount);
+				(bool sent, ) = to.call{ value: token.amount }("");
+				if (!sent) revert ETHTransferFailed();
+			} else {
+				IERC20(address(WETH)).safeTransfer(to, token.amount);
+			}
+		} else {
+			// Transfer as default ERC20
+			IERC20(token.token).safeTransfer(to, token.amount);
+		}
+	}
+
+	function transferLotTo(Auction storage auction, address to, bool unwrapETH, address ETH, address WETH) internal {
 		// Return lot to treasury
 		for (uint8 i = 0; i < auction.rewards.tokens.length; i++) {
-			_transferLotToken(auction.rewards.tokens[i], to, auction.rewards.amounts[i], _unwrapETH, ETH, WETH);
+			_transferLotTokenTo(auction.rewards.tokens[i], to, unwrapETH, ETH, WETH);
 		}
 
 		// Transfer lot nfts to treasury
 		for (uint8 i = 0; i < auction.rewards.nfts.length; i++) {
-			IERC721(auction.rewards.nfts[i]).transferFrom(msg.sender, to, auction.rewards.nftIds[i]);
+			IERC721(auction.rewards.nfts[i].nft).transferFrom(msg.sender, to, auction.rewards.nfts[i].id);
+		}
+	}
+
+	function transferLotFrom(Auction storage auction, address from, address ETH, address WETH) internal {
+		// Transfer tokens from
+		for (uint8 i = 0; i < auction.rewards.tokens.length; i++) {
+			address token = auction.rewards.tokens[i].token == ETH ? WETH : auction.rewards.tokens[i].token;
+			IERC20(token).safeTransferFrom(from, address(this), auction.rewards.tokens[i].amount);
+		}
+		// Transfer nfts from
+		for (uint8 i = 0; i < auction.rewards.nfts.length; i++) {
+			IERC721(auction.rewards.nfts[i].nft).safeTransferFrom(from, address(this), auction.rewards.nfts[i].id);
+		}
+	}
+
+	// REVENUE
+
+	function distributeLotProfit(
+		Auction storage auction,
+		IERC20 USD,
+		uint256 amount,
+		address treasury,
+		address farm,
+		uint256 treasurySplit
+	) internal returns (uint256 farmDistribution) {
+		// Calculate distributions
+		uint256 treasuryDistribution = (amount * treasurySplit) / 10000;
+		farmDistribution = amount - treasuryDistribution;
+
+		// Add unused farm distribution to treasury (if no farm set, send all funds to treasury)
+		if (farm == address(0)) {
+			treasuryDistribution += farmDistribution;
+			farmDistribution = 0;
+		}
+
+		// Distribute
+		if (treasuryDistribution > 0) {
+			USD.safeTransfer(treasury, treasuryDistribution);
+		}
+
+		// If farm not set, farm distribution will be 0
+		if (farmDistribution > 0) {
+			USD.safeTransfer(farm, farmDistribution);
+			IAuctioneerFarm(farm).receiveUSDDistribution();
+		}
+	}
+
+	function distributeLotRevenue(
+		Auction storage auction,
+		IERC20 USD,
+		address treasury,
+		address farm,
+		uint256 treasurySplit
+	) internal {
+		uint256 revenue = auction.bidData.bidCost * auction.bidData.bids;
+		uint256 reimbursement = revenue;
+		uint256 profit = 0;
+
+		// Reduce treasury amount received if revenue outstripped lot value
+		if (revenue > (auction.rewards.estimatedValue * 11000) / 10000) {
+			reimbursement = (auction.rewards.estimatedValue * 11000) / 10000;
+			profit = revenue - reimbursement;
+		}
+
+		USD.safeTransfer(treasury, reimbursement);
+
+		if (profit > 0) {
+			distributeLotProfit(auction, USD, profit, treasury, farm, treasurySplit);
 		}
 	}
 }
@@ -142,13 +217,11 @@ library AuctionParamsUtils {
 
 	function validateTokens(AuctionParams memory _params) internal pure {
 		if (_params.tokens.length > 4) revert TooManyTokens();
-		if (_params.tokens.length != _params.amounts.length) revert LengthMismatch();
 		if (_params.tokens.length == 0) revert NoTokens();
 	}
 
 	function validateNFTs(AuctionParams memory _params) internal pure {
 		if (_params.nfts.length > 4) revert TooManyTokens();
-		if (_params.nfts.length != _params.nftIds.length) revert LengthMismatch();
 	}
 
 	// YES I KNOW that this is inefficient, this is an owner facing function.

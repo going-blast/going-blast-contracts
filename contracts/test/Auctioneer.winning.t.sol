@@ -96,7 +96,7 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 		vm.warp(auctioneer.getAuction(0).bidData.nextBidBy + 1);
 
 		vm.expectEmit(true, true, true, true);
-		emit AuctionLotClaimed(0, user1, auctioneer.getAuction(0).rewards.tokens, auctioneer.getAuction(0).rewards.amounts);
+		emit AuctionLotClaimed(0, user1, auctioneer.getAuction(0).rewards.tokens, auctioneer.getAuction(0).rewards.nfts);
 
 		vm.prank(user1);
 		auctioneer.claimAuctionLot(0, true, true);
@@ -282,9 +282,9 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 
 		// User received lot
 		Auction memory auction = auctioneer.getAuction(1);
-		assertEq(user1.balance - userETHInit, auction.rewards.amounts[0], "User received ETH from lot");
-		assertEq(XXToken.balanceOf(user1) - userXXInit, auction.rewards.amounts[1], "User received XX from lot");
-		assertEq(YYToken.balanceOf(user1) - userYYInit, auction.rewards.amounts[2], "User received YY from lot");
+		assertEq(user1.balance - userETHInit, auction.rewards.tokens[0].amount, "User received ETH from lot");
+		assertEq(XXToken.balanceOf(user1) - userXXInit, auction.rewards.tokens[1].amount, "User received XX from lot");
+		assertEq(YYToken.balanceOf(user1) - userYYInit, auction.rewards.tokens[2].amount, "User received YY from lot");
 	}
 
 	function test_winning_userCanChooseLotAsEth() public {
@@ -302,7 +302,11 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 		auctioneer.claimAuctionLot(0, true, true);
 
 		// ETH test
-		assertEq(user1.balance - userETHInit, auctioneer.getAuction(0).rewards.amounts[0], "User received ETH from lot");
+		assertEq(
+			user1.balance - userETHInit,
+			auctioneer.getAuction(0).rewards.tokens[0].amount,
+			"User received ETH from lot"
+		);
 	}
 	function test_winning_userCanChooseLotAsWeth() public {
 		vm.warp(auctioneer.getAuction(0).unlockTimestamp);
@@ -321,7 +325,7 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 		// ETH test
 		assertEq(
 			WETH.balanceOf(user1) - userWETHInit,
-			auctioneer.getAuction(0).rewards.amounts[0],
+			auctioneer.getAuction(0).rewards.tokens[0].amount,
 			"User received WETH from lot"
 		);
 	}

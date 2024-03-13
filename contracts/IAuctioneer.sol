@@ -15,14 +15,22 @@ struct BidWindowParams {
 	uint256 timer;
 }
 
+struct TokenData {
+	address token;
+	uint256 amount;
+}
+
+struct NftData {
+	address nft;
+	uint256 id;
+}
+
 struct AuctionParams {
 	bool isPrivate;
 	uint256 emissionBP; // Emission of this auction of the day's emission (usually 100%)
-	address[] tokens;
-	uint256[] amounts;
-	address[] nfts;
-	uint256[] nftIds;
 	string name;
+	TokenData[] tokens;
+	NftData[] nfts;
 	BidWindowParams[] windows;
 	uint256 unlockTimestamp;
 	uint256 lotValue;
@@ -39,10 +47,8 @@ struct BidWindow {
 
 struct AuctionLot {
 	uint256 estimatedValue; // Estimated value of the lot (1 ETH = 4000 USD)
-	address[] tokens;
-	uint256[] amounts;
-	address[] nfts;
-	uint256[] nftIds;
+	TokenData[] tokens;
+	NftData[] nfts;
 }
 struct AuctionEmissions {
 	uint256 bp; // Scaler of emissions this auction, needed to reduce bp if auction cancelled
@@ -109,7 +115,6 @@ error InvalidBidWindowTimer();
 error LastWindowNotInfinite();
 error MultipleInfiniteWindows();
 error TooManyTokens();
-error LengthMismatch();
 error BiddingClosed();
 error AuctionStillRunning();
 error NoTokens();
@@ -137,7 +142,7 @@ interface AuctioneerEvents {
 	event AuctionCreated(uint256 indexed _lot);
 	event Bid(uint256 indexed _lot, address indexed _user, uint256 _multibid, uint256 _bid, string _alias);
 	event AuctionFinalized(uint256 indexed _lot);
-	event AuctionLotClaimed(uint256 indexed _lot, address indexed _user, address[] _tokens, uint256[] _amounts);
+	event AuctionLotClaimed(uint256 indexed _lot, address indexed _user, TokenData[] _tokens, NftData[] _nfts);
 	event UserClaimedLotEmissions(uint256 _lot, address indexed _user, uint256 _userEmissions, uint256 _burnEmissions);
 	event AuctionCancelled(uint256 indexed _lot, address indexed _owner);
 	event UpdatedTreasury(address indexed _treasury);

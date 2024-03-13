@@ -61,11 +61,8 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	}
 
 	function _getBaseSingleAuctionParams() public view returns (AuctionParams memory params) {
-		address[] memory tokens = new address[](1);
-		tokens[0] = ETH_ADDR;
-
-		uint256[] memory amounts = new uint256[](1);
-		amounts[0] = 1e18;
+		TokenData[] memory tokens = new TokenData[](1);
+		tokens[0] = TokenData({ token: ETH_ADDR, amount: 1e18 });
 
 		BidWindowParams[] memory windows = new BidWindowParams[](3);
 		windows[0] = BidWindowParams({ windowType: BidWindowType.OPEN, duration: 6 hours, timer: 0 });
@@ -77,25 +74,18 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 			lotValue: 4000e18,
 			emissionBP: 10000,
 			tokens: tokens,
-			amounts: amounts,
-			nfts: new address[](0),
-			nftIds: new uint256[](0),
-			name: "First Auction",
+			nfts: new NftData[](0),
+			name: "Single Token Auction",
 			windows: windows,
 			unlockTimestamp: _getNextDay2PMTimestamp()
 		});
 	}
 
 	function _getMultiTokenSingleAuctionParams() public view returns (AuctionParams memory params) {
-		address[] memory tokens = new address[](3);
-		tokens[0] = ETH_ADDR;
-		tokens[1] = address(XXToken);
-		tokens[2] = address(YYToken);
-
-		uint256[] memory amounts = new uint256[](3);
-		amounts[0] = 1e18;
-		amounts[1] = 100e18;
-		amounts[2] = 50e18;
+		TokenData[] memory tokens = new TokenData[](3);
+		tokens[0] = TokenData({ token: ETH_ADDR, amount: 1e18 });
+		tokens[1] = TokenData({ token: address(XXToken), amount: 100e18 });
+		tokens[2] = TokenData({ token: address(YYToken), amount: 50e18 });
 
 		BidWindowParams[] memory windows = new BidWindowParams[](3);
 		windows[0] = BidWindowParams({ windowType: BidWindowType.OPEN, duration: 6 hours, timer: 0 });
@@ -107,10 +97,8 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 			lotValue: 6000e18,
 			emissionBP: 10000,
 			tokens: tokens,
-			amounts: amounts,
-			nfts: new address[](0),
-			nftIds: new uint256[](0),
-			name: "First Auction",
+			nfts: new NftData[](0),
+			name: "Multi Token Auction",
 			windows: windows,
 			unlockTimestamp: _getNextDay2PMTimestamp()
 		});
