@@ -12,7 +12,7 @@ import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { BasicERC20 } from "../BasicERC20.sol";
 import { WETH9 } from "../WETH9.sol";
 
-contract AuctioneerCreateTest is AuctioneerHelper, Test, AuctioneerEvents {
+contract AuctioneerCreateTest is AuctioneerHelper {
 	using SafeERC20 for IERC20;
 
 	function setUp() public override {
@@ -379,6 +379,7 @@ contract AuctioneerCreateTest is AuctioneerHelper, Test, AuctioneerEvents {
 			10,
 			"Bidders emission is 90%, treasury 10%"
 		);
+		assertEq(auction.rewards.estimatedValue, params[0].lotValue, "Lot value matches");
 		assertEq(auction.rewards.tokens, params[0].tokens, "Tokens match");
 		assertEq(auction.rewards.amounts, params[0].amounts, "Amounts match");
 		assertEq(auction.rewards.nfts, params[0].nfts, "Nfts Match");

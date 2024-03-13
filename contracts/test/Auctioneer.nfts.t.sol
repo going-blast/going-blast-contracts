@@ -13,7 +13,7 @@ import { BasicERC20 } from "../BasicERC20.sol";
 import { WETH9 } from "../WETH9.sol";
 import { AuctionUtils } from "../AuctionUtils.sol";
 
-contract AuctioneerNFTsTest is AuctioneerHelper, Test, AuctioneerEvents {
+contract AuctioneerNFTsTest is AuctioneerHelper {
 	using SafeERC20 for IERC20;
 	using AuctionUtils for Auction;
 

@@ -2,8 +2,13 @@
 pragma solidity >=0.8.4;
 
 import "./IAuctioneer.sol";
+import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IWETH } from "./WETH9.sol";
 
 library AuctionUtils {
+	using SafeERC20 for IERC20;
+
 	function min(uint256 a, uint256 b) internal pure returns (uint256) {
 		return a < b ? a : b;
 	}
@@ -90,6 +95,42 @@ library AuctionUtils {
 				})
 			);
 			openTimestamp += _params.windows[i].duration;
+		}
+	}
+
+	// Rewards
+	function _transferLotToken(
+		address _token,
+		address _to,
+		uint256 _amount,
+		bool _unwrapETH,
+		address ETH,
+		address WETH
+	) internal {
+		if (_token == ETH) {
+			if (_unwrapETH) {
+				// If lot token is ETH, it is held in contract as WETH, and needs to be unwrapped before being sent to user
+				IWETH(WETH).withdraw(_amount);
+				(bool sent, ) = _to.call{ value: _amount }("");
+				if (!sent) revert ETHTransferFailed();
+			} else {
+				IERC20(address(WETH)).safeTransfer(_to, _amount);
+			}
+		} else {
+			// Transfer as default ERC20
+			IERC20(_token).safeTransfer(_to, _amount);
+		}
+	}
+
+	function transferLot(Auction storage auction, address to, bool _unwrapETH, address ETH, address WETH) internal {
+		// Return lot to treasury
+		for (uint8 i = 0; i < auction.rewards.tokens.length; i++) {
+			_transferLotToken(auction.rewards.tokens[i], to, auction.rewards.amounts[i], _unwrapETH, ETH, WETH);
+		}
+
+		// Transfer lot nfts to treasury
+		for (uint8 i = 0; i < auction.rewards.nfts.length; i++) {
+			IERC721(auction.rewards.nfts[i]).transferFrom(msg.sender, to, auction.rewards.nftIds[i]);
 		}
 	}
 }

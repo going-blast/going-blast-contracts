@@ -12,7 +12,7 @@ import { BasicERC20 } from "../BasicERC20.sol";
 import { WETH9 } from "../WETH9.sol";
 import { AuctionUtils } from "../AuctionUtils.sol";
 
-contract AuctioneerWindowsTest is AuctioneerHelper, Test, AuctioneerEvents {
+contract AuctioneerWindowsTest is AuctioneerHelper {
 	using SafeERC20 for IERC20;
 	using AuctionUtils for Auction;
 
@@ -63,38 +63,6 @@ contract AuctioneerWindowsTest is AuctioneerHelper, Test, AuctioneerEvents {
 		AuctionParams[] memory params = new AuctionParams[](1);
 		params[0] = _getBaseSingleAuctionParams();
 		auctioneer.createDailyAuctions(params);
-	}
-
-	/*
-
-  [x] Auction does not end during open window
-  [x] Ends during timed window if timer expires
-  [x] Timed windows can end
-  [x] Infinite windows cannot end
-  [x] Transition from open window -> open window -> timed window -> timed window -> infinite window (covers all possibilities)
-
-	*/
-
-	function _bidShouldRevert(address user) public {
-		vm.expectRevert(BiddingClosed.selector);
-		_bid(user);
-	}
-	function _bidShouldEmit(address user) public {
-		uint256 expectedBid = auctioneer.getAuction(0).bidData.bid + auctioneer.bidIncrement();
-		vm.expectEmit(true, true, true, true);
-		emit Bid(0, user, 1, expectedBid, "");
-		_bid(user);
-	}
-	function _bid(address user) public {
-		vm.prank(user);
-		auctioneer.bid(0, 1, true);
-	}
-	function _bidUntil(address user, uint256 timer, uint256 until) public {
-		while (true) {
-			if (block.timestamp > until) return;
-			vm.warp(block.timestamp + timer);
-			_bid(user);
-		}
 	}
 
 	function test_windows_nextBidBy_PreUnlock() public {

@@ -11,7 +11,7 @@ import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { BasicERC20 } from "../BasicERC20.sol";
 import { WETH9 } from "../WETH9.sol";
 
-contract AuctioneerFundsTest is AuctioneerHelper, Test, AuctioneerEvents {
+contract AuctioneerFundsTest is AuctioneerHelper {
 	using SafeERC20 for IERC20;
 
 	function setUp() public override {

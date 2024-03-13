@@ -10,7 +10,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { BasicERC20 } from "../BasicERC20.sol";
 import { IWETH, WETH9 } from "../WETH9.sol";
 
-contract AuctioneerAdminTest is AuctioneerHelper, Test, AuctioneerEvents {
+contract AuctioneerAdminTest is AuctioneerHelper {
 	function setUp() public override {
 		super.setUp();
 	}

@@ -12,7 +12,7 @@ import { BasicERC20 } from "../BasicERC20.sol";
 import { WETH9 } from "../WETH9.sol";
 import { AuctionUtils } from "../AuctionUtils.sol";
 
-contract AuctioneerWinningTest is AuctioneerHelper, Test, AuctioneerEvents {
+contract AuctioneerWinningTest is AuctioneerHelper {
 	using SafeERC20 for IERC20;
 	using AuctionUtils for Auction;
 
@@ -74,45 +74,6 @@ contract AuctioneerWinningTest is AuctioneerHelper, Test, AuctioneerEvents {
 
 		// Create single token + nfts auction
 		auctioneer.createDailyAuctions(params);
-	}
-
-	/*
-
-  [ ] Pays out all tokens
-  [ ] Pays out all nfts
-  [ ] Requires user to pay USD
-  [ ] Payment can come from funds
-
-	*/
-
-	function _bidShouldRevert(address user) public {
-		vm.expectRevert(BiddingClosed.selector);
-		_bid(user);
-	}
-	function _bidShouldEmit(address user) public {
-		uint256 expectedBid = auctioneer.getAuction(0).bidData.bid + auctioneer.bidIncrement();
-		vm.expectEmit(true, true, true, true);
-		emit Bid(0, user, 1, expectedBid, "");
-		_bid(user);
-	}
-	function _bid(address user) public {
-		vm.prank(user);
-		auctioneer.bid(0, 1, true);
-	}
-	function _bidOnLot(address user, uint256 lot) public {
-		vm.prank(user);
-		auctioneer.bid(lot, 1, true);
-	}
-	function _multibid(address user, uint256 bidCount) public {
-		vm.prank(user);
-		auctioneer.bid(0, bidCount, true);
-	}
-	function _bidUntil(address user, uint256 timer, uint256 until) public {
-		while (true) {
-			if (block.timestamp > until) return;
-			vm.warp(block.timestamp + timer);
-			_bid(user);
-		}
 	}
 
 	function test_winning_claimAuctionLot_RevertWhen_AuctionStillRunning() public {
@@ -253,7 +214,7 @@ contract AuctioneerWinningTest is AuctioneerHelper, Test, AuctioneerEvents {
 		assertEq(user1FundsFinal, 0, "Users funds should be depleted");
 	}
 
-	function test_winning_lotPriceIsDistributedCorrectly_RevenueLessThanLotValue() public {
+	function test_winning_lotPriceIsDistributedCorrectly() public {
 		// Set farm
 		auctioneer.setFarm(address(farm));
 
@@ -266,12 +227,10 @@ contract AuctioneerWinningTest is AuctioneerHelper, Test, AuctioneerEvents {
 		// Claimable after next bid by
 		vm.warp(auctioneer.getAuction(0).bidData.nextBidBy + 1);
 
+		// Finalize to distribute bidding revenue
+		auctioneer.finalizeAuction(0);
+
 		uint256 lotPrice = auctioneer.getAuction(0).bidData.bid;
-
-		// Deposit into funds
-		vm.prank(user1);
-		auctioneer.addFunds(lotPrice / 2);
-
 		uint256 treasuryUSDInit = USD.balanceOf(treasury);
 		uint256 farmUSDInit = USD.balanceOf(address(farm));
 		uint256 treasurySplit = auctioneer.treasurySplit();
@@ -283,6 +242,8 @@ contract AuctioneerWinningTest is AuctioneerHelper, Test, AuctioneerEvents {
 		uint256 treasuryUSDFinal = USD.balanceOf(treasury);
 		uint256 farmUSDFinal = USD.balanceOf(address(farm));
 
+		assertEq(treasuryUSDFinal - treasuryUSDInit, (lotPrice * treasurySplit) / 10000, "Treasury should receive share");
+		assertEq(farmUSDFinal - farmUSDInit, (lotPrice * (10000 - treasurySplit)) / 10000, "Farm should receive share");
 		assertEq(
 			((treasuryUSDFinal - treasuryUSDInit) * 10000) / treasurySplit,
 			((farmUSDFinal - farmUSDInit) * 10000) / (10000 - treasurySplit),

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 pragma experimental ABIEncoderV2;
 
+import "forge-std/Test.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -40,6 +41,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 	mapping(address => EnumerableSet.UintSet) internal userClaimableLots;
 	uint256 public startTimestamp;
 	uint256 public epochDuration = 90 days;
+	uint256 public emissionTaxDuration = 30 days;
 	mapping(address => string) public userAlias;
 	mapping(string => address) public aliasUser;
 
@@ -142,6 +144,12 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		emit UpdatedEarlyHarvestTax(_earlyHarvestTax);
 	}
 
+	function updateEmissionTaxDuration(uint256 _emissionTaxDuration) public onlyOwner {
+		if (_emissionTaxDuration > 60 days) revert Invalid();
+		emissionTaxDuration = _emissionTaxDuration;
+		emit UpdatedEmissionTaxDuration(_emissionTaxDuration);
+	}
+
 	///////////////////
 	// INITIALIZATION
 	///////////////////
@@ -183,51 +191,40 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		epoch = (timestamp - startTimestamp) / epochDuration;
 	}
 
-	function _getEpochDataAtTimestamp(
-		uint256 timestamp
-	)
-		internal
-		view
-		returns (
-			uint256 epoch,
-			uint256 start,
-			uint256 end,
-			uint256 daysRemaining,
-			uint256 emissionsRemaining,
-			uint256 dailyEmission
-		)
-	{
-		epoch = _getEpochAtTimestamp(timestamp);
+	function _getEpochDataAtTimestamp(uint256 timestamp) internal view returns (EpochData memory epochData) {
+		epochData.epoch = _getEpochAtTimestamp(timestamp);
 
-		start = epoch * epochDuration;
-		end = (epoch + 1) * epochDuration;
+		epochData.start = epochData.epoch * epochDuration;
+		epochData.end = (epochData.epoch + 1) * epochDuration;
 
-		if (timestamp > end) {
-			daysRemaining = 0;
+		if (timestamp > epochData.end) {
+			epochData.daysRemaining = 0;
 		} else {
-			daysRemaining = ((end - timestamp) / 1 days) + 1;
+			epochData.daysRemaining = ((epochData.end - timestamp) / 1 days) + 1;
 		}
 
 		// Emissions only exist for first 8 epochs, prevent array out of bounds
-		emissionsRemaining = epoch >= 8 ? 0 : epochEmissionsRemaining[epoch];
+		epochData.emissionsRemaining = epochData.epoch >= 8 ? 0 : epochEmissionsRemaining[epochData.epoch];
 
-		dailyEmission = (emissionsRemaining == 0 || daysRemaining == 0) ? 0 : emissionsRemaining / daysRemaining;
+		epochData.dailyEmission = (epochData.emissionsRemaining == 0 || epochData.daysRemaining == 0)
+			? 0
+			: epochData.emissionsRemaining / epochData.daysRemaining;
 	}
 
 	function _getEmissionForAuction(uint256 _unlockTimestamp, uint256 _bp) internal view returns (uint256) {
-		(, , , , uint256 emissionsRemaining, uint256 dailyEmission) = _getEpochDataAtTimestamp(_unlockTimestamp);
-		if (dailyEmission == 0) return 0;
+		EpochData memory epochData = _getEpochDataAtTimestamp(_unlockTimestamp);
+		if (epochData.dailyEmission == 0) return 0;
 
 		// Modulate with auction _bp (percent of daily emission)
-		dailyEmission = (dailyEmission * _bp) / 10000;
+		epochData.dailyEmission = (epochData.dailyEmission * _bp) / 10000;
 
 		// Check to prevent stealing emissions from next epoch
 		//  (would only happen if it's the last day of the epoch and _bp > 10000)
-		if (dailyEmission > emissionsRemaining) {
-			return emissionsRemaining;
+		if (epochData.dailyEmission > epochData.emissionsRemaining) {
+			return epochData.emissionsRemaining;
 		}
 
-		return dailyEmission;
+		return epochData.dailyEmission;
 	}
 
 	function _userGOBalance(address _user) internal view returns (uint256 bal) {
@@ -289,9 +286,9 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		}
 	}
 
-	function _transferLotToken(address _token, address _to, uint256 _amount, bool _shouldUnwrap) internal {
+	function _transferLotToken(address _token, address _to, uint256 _amount, bool _unwrapETH) internal {
 		if (_token == ETH) {
-			if (_shouldUnwrap) {
+			if (_unwrapETH) {
 				// If lot token is ETH, it is held in contract as WETH, and needs to be unwrapped before being sent to user
 				IWETH(WETH).withdraw(_amount);
 				(bool sent, ) = _to.call{ value: _amount }("");
@@ -326,28 +323,31 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		_params.validateBidWindows();
 	}
 
-	function _validateAuctionDay(AuctionParams memory _params, uint256 _paramIndex) internal {
+	function _validateAuctionDay(AuctionParams memory _params, uint256 _paramIndex) internal view {
 		uint256 day = _getDayOfTimestamp(_params.unlockTimestamp);
 
 		// Check that no more than 4 auctions take place per day
 		if ((auctionsPerDay[day] + 1) > 4) revert TooManyAuctionsPerDay(_paramIndex);
-		auctionsPerDay[day] += 1;
 
-		// Check that days emission doesn't exceed allowable bonus (20000)
+		// Check that days emission doesn't exceed allowable bonus (30000)
 		// Most days, the emission will be 10000
 		// An emission BP over 10000 means it is using emissions scheduled for other days
 		// Auction emissions for the remainder of the epoch will be reduced
 		// This will never overflow the emissions though, because the emission amount is calculated from remaining emissions
 		if ((dailyCumulativeEmissionBP[day] + _params.emissionBP) > 30000)
 			revert InvalidDailyEmissionBP(dailyCumulativeEmissionBP[day], _params.emissionBP, _paramIndex);
-		dailyCumulativeEmissionBP[day] += _params.emissionBP;
 	}
 
 	function _createSingleAuction(AuctionParams memory _params, uint256 _paramIndex) internal {
 		_validateAuctionParams(_params);
 		_validateAuctionDay(_params, _paramIndex);
 
+		// Update daily attributes
 		uint256 lot = lotCount;
+		uint256 day = _getDayOfTimestamp(_params.unlockTimestamp);
+		auctionsPerDay[day] += 1;
+		dailyCumulativeEmissionBP[day] += _params.emissionBP;
+
 		{
 			// Transfer tokens from treasury
 			for (uint8 i = 0; i < _params.tokens.length; i++) {
@@ -359,14 +359,18 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 				IERC721(_params.nfts[i]).safeTransferFrom(treasury, address(this), _params.nftIds[i]);
 			}
 		}
+
 		Auction storage auction = auctions[lot];
 
+		// Base level data
 		{
 			auction.lot = lot;
-			auction.day = _getDayOfTimestamp(_params.unlockTimestamp);
+			auction.day = day;
 			auction.name = _params.name;
 			auction.isPrivate = _params.isPrivate;
 			auction.unlockTimestamp = _params.unlockTimestamp;
+			auction.claimed = false;
+			auction.finalized = false;
 		}
 
 		// Emissions
@@ -377,12 +381,17 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 			if (epoch < 8 && totalEmission > 0) {
 				// Validated not to underflow in _getEmissionForAuction
 				epochEmissionsRemaining[epoch] -= totalEmission;
+				auction.emissions.bp = _params.emissionBP;
 				auction.emissions.biddersEmission = (totalEmission * 90) / 100;
 				auction.emissions.treasuryEmission = (totalEmission * 10) / 100;
 			}
 		}
+
+		// Bid Windows
 		{
 			auction.addBidWindows(_params, onceTwiceBlastBonusTime);
+
+			auction.rewards.estimatedValue = _params.lotValue;
 
 			auction.rewards.tokens = _params.tokens;
 			auction.rewards.amounts = _params.amounts;
@@ -404,26 +413,24 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 			auction.bidData.bidCost = bidCost;
 		}
 
-		{
-			auction.claimed = false;
-			auction.finalized = false;
-		}
 		lotCount++;
 		emit AuctionCreated(lot);
 	}
 
 	// CANCEL
 
-	function cancelAuction(uint256 _lot, bool _shouldUnwrap) public validAuctionLot(_lot) nonReentrant onlyOwner {
+	function cancelAuction(uint256 _lot, bool _unwrapETH) public validAuctionLot(_lot) nonReentrant onlyOwner {
 		Auction storage auction = auctions[_lot];
+		uint256 day = _getDayOfTimestamp(auction.unlockTimestamp);
+
 		// Cannot cancel already cancelled auction
 		if (auction.finalized) revert NotCancellable();
+
 		// Can only cancel the auction if it doesn't have any bids yet
 		if (auction.bidData.bids > 0) revert NotCancellable();
-		// Return lot to treasury
-		for (uint8 i = 0; i < auction.rewards.tokens.length; i++) {
-			_transferLotToken(auction.rewards.tokens[i], treasury, auction.rewards.amounts[i], _shouldUnwrap);
-		}
+
+		auction.transferLot(treasury, _unwrapETH, ETH, address(WETH));
+
 		// Return emissions to epoch of auction
 		uint256 epoch = _getEpochAtTimestamp(auction.unlockTimestamp);
 		// Prevent array out of bounds
@@ -432,7 +439,14 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 			auction.emissions.biddersEmission = 0;
 			auction.emissions.treasuryEmission = 0;
 		}
-		auction.finalize();
+
+		auctionsPerDay[day] -= 1;
+		dailyCumulativeEmissionBP[day] -= auction.emissions.bp;
+		auction.emissions.bp = 0;
+
+		// Finalize to prevent bidding and claiming
+		auction.claimed = true;
+		auction.finalized = true;
 		emit AuctionCancelled(_lot, msg.sender);
 	}
 
@@ -469,15 +483,11 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 
 	// CLAIM
 
-	function claimAuctionLot(
-		uint256 _lot,
-		bool _forceWallet,
-		bool _shouldUnwrap
-	) public validAuctionLot(_lot) nonReentrant {
+	function claimAuctionLot(uint256 _lot, bool _forceWallet, bool _unwrapETH) public validAuctionLot(_lot) nonReentrant {
 		Auction storage auction = auctions[_lot];
 		auction.validateEnded();
-		claimLotWinnings(auction, _forceWallet, _shouldUnwrap);
-		finalizeAuction(auction);
+		claimLotWinnings(auction, _forceWallet, _unwrapETH);
+		_finalizeAuction(auction);
 	}
 
 	// Allows the auction to be finalized without waiting for winner to claim their lot
@@ -486,25 +496,18 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 
 		auction.validateEnded();
 
-		finalizeAuction(auction);
+		_finalizeAuction(auction);
 	}
 
-	function claimLotWinnings(Auction storage auction, bool _forceWallet, bool _shouldUnwrap) internal {
+	function claimLotWinnings(Auction storage auction, bool _forceWallet, bool _unwrapETH) internal {
 		// User is not winner
 		if (msg.sender != auction.bidData.bidUser) revert NotWinner();
 
 		// Winner has already paid for and claimed the lot
 		if (auction.claimed) revert AuctionLotAlreadyClaimed();
 
-		// Transfer lot to last bidder (this comes first so it shows up first in etherscan)
-		for (uint8 i = 0; i < auction.rewards.tokens.length; i++) {
-			_transferLotToken(auction.rewards.tokens[i], auction.bidData.bidUser, auction.rewards.amounts[i], _shouldUnwrap);
-		}
-
-		// Transfer lot nfts to last bidder
-		for (uint8 i = 0; i < auction.rewards.nfts.length; i++) {
-			IERC721(auction.rewards.nfts[i]).transferFrom(address(this), msg.sender, auction.rewards.nftIds[i]);
-		}
+		// Transfer lot to last bidder (this comes first so it shows up first in explorer)
+		auction.transferLot(auction.bidData.bidUser, _unwrapETH, ETH, address(WETH));
 
 		// Pay for lot
 		if (!_forceWallet && userFunds[msg.sender] >= auction.bidData.bid) {
@@ -527,7 +530,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		emit AuctionLotClaimed(auction.lot, msg.sender, auction.rewards.tokens, auction.rewards.amounts);
 	}
 
-	function finalizeAuction(Auction storage auction) internal {
+	function _finalizeAuction(Auction storage auction) internal {
 		// Exit if already finalized
 		if (auction.finalized) return;
 
@@ -553,15 +556,24 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 	function _claimAuctionEmissions(uint256 _lot) public validAuctionLot(_lot) {
 		Auction storage auction = auctions[_lot];
 		AuctionUser storage user = auctionUsers[auction.lot][msg.sender];
+
+		auction.validateEnded();
+
 		// Exit if user already claimed emissions from auction
 		if (user.claimed) return;
+
 		// Exit early if nothing to claim
 		if (user.bids == 0) return;
-		// Calculate and distribute emissions
+
+		// If emissions should be taxed
+		bool incursTax = block.timestamp < (auction.day * 1 days) + emissionTaxDuration;
+
+		// Calculate emission amounts
 		uint256 emissions = (auction.emissions.biddersEmission * user.bids) / auction.bidData.bids;
-		bool incursTax = _getCurrentDay() <= auction.day + 30;
 		uint256 userEmissions = (emissions * (incursTax ? (10000 - earlyHarvestTax) : 10000)) / 10000;
 		uint256 burnEmissions = emissions - userEmissions;
+
+		// Transfer emissions
 		GO.safeTransfer(msg.sender, userEmissions);
 		if (burnEmissions > 0) {
 			GO.safeTransfer(burnAddress, (emissions * earlyHarvestTax) / 10000);
@@ -638,30 +650,24 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 	function getUserClaimableLots(address _user) public view returns (uint256[] memory) {
 		return userClaimableLots[_user].values();
 	}
-	function getUserClaimableLotsData(
-		address _user
-	) public view returns (uint256[] memory lots, uint256[] memory amounts, uint256[] memory matureDays) {
-		lots = userClaimableLots[_user].values();
+	function getUserClaimableLotsData(address _user) public view returns (ClaimableLotData[] memory lotDatas) {
+		uint256[] memory lots = userClaimableLots[_user].values();
+		lotDatas = new ClaimableLotData[](lots.length);
+
+		// Iterate through lots, add data
 		for (uint256 i = 0; i < lots.length; i++) {
-			matureDays[i] = auctions[lots[i]].day;
-			amounts[i] =
+			lotDatas[i].lot = lots[i];
+			lotDatas[i].emissions =
 				(auctions[lots[i]].emissions.biddersEmission * auctionUsers[lots[i]][_user].bids) /
 				auctions[lots[i]].bidData.bids;
+			lotDatas[i].day = auctions[lots[i]].day;
+
+			uint256 maturesAtTimestamp = (lotDatas[i].day * 1 days) + emissionTaxDuration;
+			lotDatas[i].timeUntilMature = block.timestamp >= maturesAtTimestamp ? 0 : maturesAtTimestamp - block.timestamp;
 		}
 	}
 
-	function getCurrentEpochData()
-		public
-		view
-		returns (
-			uint256 epoch,
-			uint256 start,
-			uint256 end,
-			uint256 daysRemaining,
-			uint256 emissionsRemaining,
-			uint256 dailyEmission
-		)
-	{
+	function getCurrentEpochData() public view returns (EpochData memory epochData) {
 		return _getEpochDataAtTimestamp(block.timestamp);
 	}
 }

@@ -11,7 +11,7 @@ import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { BasicERC20 } from "../BasicERC20.sol";
 import { WETH9 } from "../WETH9.sol";
 
-contract AuctioneerCancelTest is AuctioneerHelper, Test, AuctioneerEvents {
+contract AuctioneerCancelTest is AuctioneerHelper {
 	using SafeERC20 for IERC20;
 
 	function setUp() public override {
@@ -157,6 +157,49 @@ contract AuctioneerCancelTest is AuctioneerHelper, Test, AuctioneerEvents {
 			10,
 			"Emissions should be the same before and after creating and cancelling auction"
 		);
+	}
+
+	function test_cancelAuction_Should_RemoveFromAuctionsPerDay() public {
+		AuctionParams[] memory params = new AuctionParams[](1);
+		params[0] = _getBaseSingleAuctionParams();
+
+		uint256 day = params[0].unlockTimestamp / 1 days;
+		uint256 auctionsOnDayInit = auctioneer.auctionsPerDay(day);
+		assertEq(auctionsOnDayInit, 0, "Should start with 0 auctions");
+
+		auctioneer.createDailyAuctions(params);
+
+		Auction memory auction = auctioneer.getAuction(0);
+
+		uint256 auctionsOnDayMid = auctioneer.auctionsPerDay(day);
+		assertEq(auctionsOnDayMid, 1, "Should add 1 auction to day");
+
+		auctioneer.cancelAuction(0, true);
+
+		uint256 auctionsOnDayFinal = auctioneer.auctionsPerDay(day);
+		assertEq(auctionsOnDayFinal, 0, "Should reduce back to 0 after cancel");
+	}
+
+	function test_cancelAuction_Should_RemoveBPFromDay() public {
+		AuctionParams[] memory params = new AuctionParams[](1);
+		params[0] = _getBaseSingleAuctionParams();
+		params[0].emissionBP = 15000;
+
+		uint256 day = params[0].unlockTimestamp / 1 days;
+		uint256 bpOnDayInit = auctioneer.dailyCumulativeEmissionBP(day);
+		assertEq(bpOnDayInit, 0, "Should start with 0 bp");
+
+		auctioneer.createDailyAuctions(params);
+
+		Auction memory auction = auctioneer.getAuction(0);
+
+		uint256 bpOnDayMid = auctioneer.dailyCumulativeEmissionBP(day);
+		assertEq(bpOnDayMid, 15000, "Should add 15000 bp to day");
+
+		auctioneer.cancelAuction(0, true);
+
+		uint256 bpOnDayFinal = auctioneer.dailyCumulativeEmissionBP(day);
+		assertEq(bpOnDayFinal, 0, "Should reduce bp back to 0 after cancel");
 	}
 
 	function test_cancelAuction_RevertWhen_BiddingOnCancelledAuction() public {

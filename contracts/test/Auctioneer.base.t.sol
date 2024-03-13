@@ -10,11 +10,12 @@ import { BasicERC20 } from "../BasicERC20.sol";
 import { IWETH, WETH9 } from "../WETH9.sol";
 import { AuctioneerHarness } from "./AuctioneerHarness.sol";
 
-abstract contract AuctioneerHelper {
+abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	// DATA
 
 	address public deployer = 0xb4c79daB8f259C7Aee6E5b2Aa729821864227e84;
 	address public sender = 0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496;
+	address public dead = 0x000000000000000000000000000000000000dEaD;
 
 	address public presale = address(30);
 
@@ -53,7 +54,10 @@ abstract contract AuctioneerHelper {
 	// UTILS
 
 	function _getNextDay2PMTimestamp() public view returns (uint256) {
-		return ((block.timestamp / 1 days) + 1) * block.timestamp + 14 hours;
+		return (block.timestamp / 1 days) * 1 days + 14 hours;
+	}
+	function _getDayInFuture2PMTimestamp(uint256 daysInFuture) public view returns (uint256) {
+		return ((block.timestamp / 1 days) + daysInFuture) * 1 days + 14 hours;
 	}
 
 	function _getBaseSingleAuctionParams() public view returns (AuctionParams memory params) {
@@ -112,9 +116,59 @@ abstract contract AuctioneerHelper {
 		});
 	}
 
+	function _createBaseAuctionOnDay(uint256 daysInFuture) internal {
+		uint256 unlockTimestamp = _getDayInFuture2PMTimestamp(daysInFuture);
+
+		console.log("Unlock Timestamp", unlockTimestamp);
+
+		AuctionParams[] memory params = new AuctionParams[](1);
+		// Create single token auction
+		params[0] = _getBaseSingleAuctionParams();
+		params[0].unlockTimestamp = unlockTimestamp;
+
+		// Create single token + nfts auction
+		auctioneer.createDailyAuctions(params);
+	}
+
 	// EVENTS
 
 	error OwnableUnauthorizedAccount(address account);
 	error ERC20InsufficientAllowance(address spender, uint256 allowance, uint256 needed);
 	error ERC20InsufficientBalance(address sender, uint256 balance, uint256 needed);
+
+	// BIDS
+
+	function _bidShouldRevert(address user) public {
+		vm.expectRevert(BiddingClosed.selector);
+		_bid(user);
+	}
+	function _bidShouldEmit(address user) public {
+		uint256 expectedBid = auctioneer.getAuction(0).bidData.bid + auctioneer.bidIncrement();
+		vm.expectEmit(true, true, true, true);
+		emit Bid(0, user, 1, expectedBid, "");
+		_bid(user);
+	}
+	function _bid(address user) public {
+		vm.prank(user);
+		auctioneer.bid(0, 1, true);
+	}
+	function _bidOnLot(address user, uint256 lot) public {
+		vm.prank(user);
+		auctioneer.bid(lot, 1, true);
+	}
+	function _multibid(address user, uint256 bidCount) public {
+		vm.prank(user);
+		auctioneer.bid(0, bidCount, true);
+	}
+	function _multibidLot(address user, uint256 bidCount, uint256 lot) public {
+		vm.prank(user);
+		auctioneer.bid(lot, bidCount, true);
+	}
+	function _bidUntil(address user, uint256 timer, uint256 until) public {
+		while (true) {
+			if (block.timestamp > until) return;
+			vm.warp(block.timestamp + timer);
+			_bid(user);
+		}
+	}
 }

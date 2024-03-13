@@ -45,6 +45,7 @@ struct AuctionLot {
 	uint256[] nftIds;
 }
 struct AuctionEmissions {
+	uint256 bp; // Scaler of emissions this auction, needed to reduce bp if auction cancelled
 	uint256 biddersEmission; // token to be distributed through auction to bidders
 	uint256 treasuryEmission; // token to be distributed to treasury at end of auction (10% of total emission)
 }
@@ -75,6 +76,22 @@ struct Auction {
 struct AuctionUser {
 	uint256 bids;
 	bool claimed;
+}
+
+// Returns
+struct EpochData {
+	uint256 epoch;
+	uint256 start;
+	uint256 end;
+	uint256 daysRemaining;
+	uint256 emissionsRemaining;
+	uint256 dailyEmission;
+}
+struct ClaimableLotData {
+	uint256 lot;
+	uint256 emissions;
+	uint256 day;
+	uint256 timeUntilMature;
 }
 
 error GONotYetReceived();
@@ -116,6 +133,7 @@ interface AuctioneerEvents {
 	event UpdatedStartingBid(uint256 _startingBid);
 	event UpdatedBidCost(uint256 _bidCost);
 	event UpdatedEarlyHarvestTax(uint256 _earlyHarvestTax);
+	event UpdatedEmissionTaxDuration(uint256 _emissionTax);
 	event AuctionCreated(uint256 indexed _lot);
 	event Bid(uint256 indexed _lot, address indexed _user, uint256 _multibid, uint256 _bid, string _alias);
 	event AuctionFinalized(uint256 indexed _lot);
