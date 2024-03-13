@@ -256,6 +256,8 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 	function _validateAuctionParams(AuctionParams memory _params) internal view {
 		_params.validateUnlock();
 		_params.validateTokens();
+		_params.validateNFTs();
+		_params.validateAnyReward();
 		_params.validateBidWindows();
 	}
 

@@ -156,7 +156,7 @@ library AuctionUtils {
 	// REVENUE
 
 	function distributeLotProfit(
-		Auction storage auction,
+		Auction storage,
 		IERC20 USD,
 		uint256 amount,
 		address treasury,
@@ -217,11 +217,14 @@ library AuctionParamsUtils {
 
 	function validateTokens(AuctionParams memory _params) internal pure {
 		if (_params.tokens.length > 4) revert TooManyTokens();
-		if (_params.tokens.length == 0) revert NoTokens();
 	}
 
 	function validateNFTs(AuctionParams memory _params) internal pure {
-		if (_params.nfts.length > 4) revert TooManyTokens();
+		if (_params.nfts.length > 4) revert TooManyNFTs();
+	}
+
+	function validateAnyReward(AuctionParams memory _params) internal pure {
+		if (_params.nfts.length == 0 && _params.tokens.length == 0) revert NoRewards();
 	}
 
 	// YES I KNOW that this is inefficient, this is an owner facing function.

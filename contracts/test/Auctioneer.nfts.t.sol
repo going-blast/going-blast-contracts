@@ -8,7 +8,6 @@ import { GOToken } from "../GOToken.sol";
 import { AuctioneerHelper } from "./Auctioneer.base.t.sol";
 import { AuctioneerFarm } from "../AuctioneerFarm.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { BasicERC721 } from "../BasicERC721.sol";
 import { BasicERC20 } from "../BasicERC20.sol";
 import { WETH9 } from "../WETH9.sol";
 import { AuctionUtils } from "../AuctionUtils.sol";
@@ -62,55 +61,9 @@ contract AuctioneerNFTsTest is AuctioneerHelper {
 	}
 
 	function test_createSingleAuction_WithNFTs() public {
-		// Mint 2 nfts
-		BasicERC721 mockNFT1 = new BasicERC721(
-			"MOCK_NFT_1",
-			"MOCK_NFT_1",
-			"https://tokenBaseURI",
-			"https://contractURI",
-			sender
-		);
-		mockNFT1.safeMint(treasury);
-		vm.prank(treasury);
-		mockNFT1.approve(address(auctioneer), 1);
-		mockNFT1.safeMint(treasury);
-		vm.prank(treasury);
-		mockNFT1.approve(address(auctioneer), 2);
-		mockNFT1.safeMint(treasury);
-		vm.prank(treasury);
-		mockNFT1.approve(address(auctioneer), 3);
-		mockNFT1.safeMint(treasury);
-		vm.prank(treasury);
-		mockNFT1.approve(address(auctioneer), 4);
-
-		BasicERC721 mockNFT2 = new BasicERC721(
-			"MOCK_NFT_2",
-			"MOCK_NFT_2",
-			"https://tokenBaseURI",
-			"https://contractURI",
-			sender
-		);
-		mockNFT2.safeMint(treasury);
-		vm.prank(treasury);
-		mockNFT2.approve(address(auctioneer), 1);
-		mockNFT2.safeMint(treasury);
-		vm.prank(treasury);
-		mockNFT2.approve(address(auctioneer), 2);
-		mockNFT2.safeMint(treasury);
-		vm.prank(treasury);
-		mockNFT2.approve(address(auctioneer), 3);
-		mockNFT2.safeMint(treasury);
-		vm.prank(treasury);
-		mockNFT2.approve(address(auctioneer), 4);
-
 		// Create auction params
 		AuctionParams[] memory params = new AuctionParams[](1);
-		params[0] = _getBaseSingleAuctionParams();
-
-		// Add NFTs to auction
-		params[0].nfts = new NftData[](2);
-		params[0].nfts[0] = NftData({ nft: address(mockNFT1), id: 3 });
-		params[0].nfts[1] = NftData({ nft: address(mockNFT2), id: 1 });
+		params[0] = _getNftAuctionParams();
 
 		// Create auction
 		auctioneer.createDailyAuctions(params);
@@ -131,7 +84,27 @@ contract AuctioneerNFTsTest is AuctioneerHelper {
 		assertEq(auctioneer.getAuction(0).rewards.nfts[1].id, 1, "Nft 1 id added to auction");
 	}
 
-	// TODO: Ensure nfts returned if auction cancelled
-	// TODO: validate that nfts and nftIds have same length
-	// TODO: validate that user receives NFTs when claiming lot
+	function test_nfts_RevertWhen_TooManyNFTs() public {
+		// Create auction params
+		AuctionParams[] memory params = new AuctionParams[](1);
+		params[0] = _getNftAuctionParams();
+
+		// Add NFTs to auction
+		params[0].nfts = new NftData[](5);
+		params[0].nfts[0] = NftData({ nft: address(mockNFT1), id: 1 });
+		params[0].nfts[1] = NftData({ nft: address(mockNFT2), id: 1 });
+		params[0].nfts[2] = NftData({ nft: address(mockNFT1), id: 2 });
+		params[0].nfts[3] = NftData({ nft: address(mockNFT2), id: 2 });
+		params[0].nfts[4] = NftData({ nft: address(mockNFT1), id: 3 });
+
+		// Expect Revert
+		vm.expectRevert(TooManyNFTs.selector);
+
+		// Create auction
+		auctioneer.createDailyAuctions(params);
+	}
+
+	function test_nfts_ReturnedToTreasuryOnCancel() public {}
+
+	function test_nfts_SentToWinningUserOnClaimLot() public {}
 }

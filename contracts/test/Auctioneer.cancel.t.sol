@@ -169,8 +169,6 @@ contract AuctioneerCancelTest is AuctioneerHelper {
 
 		auctioneer.createDailyAuctions(params);
 
-		Auction memory auction = auctioneer.getAuction(0);
-
 		uint256 auctionsOnDayMid = auctioneer.auctionsPerDay(day);
 		assertEq(auctionsOnDayMid, 1, "Should add 1 auction to day");
 
@@ -190,8 +188,6 @@ contract AuctioneerCancelTest is AuctioneerHelper {
 		assertEq(bpOnDayInit, 0, "Should start with 0 bp");
 
 		auctioneer.createDailyAuctions(params);
-
-		Auction memory auction = auctioneer.getAuction(0);
 
 		uint256 bpOnDayMid = auctioneer.dailyCumulativeEmissionBP(day);
 		assertEq(bpOnDayMid, 15000, "Should add 15000 bp to day");

@@ -176,8 +176,8 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		auctioneer.createDailyAuctions(params);
 	}
 
-	function test_createDailyAuctions_validateTokens_RevertWhen_NoTokens() public {
-		vm.expectRevert(NoTokens.selector);
+	function test_createDailyAuctions_validateTokens_RevertWhen_NoRewards() public {
+		vm.expectRevert(NoRewards.selector);
 
 		AuctionParams[] memory params = new AuctionParams[](1);
 		params[0] = _getBaseSingleAuctionParams();

@@ -7,6 +7,7 @@ import { GOToken } from "../GOToken.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { AuctioneerFarm } from "../AuctioneerFarm.sol";
 import { BasicERC20 } from "../BasicERC20.sol";
+import { BasicERC721 } from "../BasicERC721.sol";
 import { IWETH, WETH9 } from "../WETH9.sol";
 import { AuctioneerHarness } from "./AuctioneerHarness.sol";
 
@@ -36,6 +37,8 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	address public ETH_ADDR = address(0);
 	BasicERC20 public XXToken;
 	BasicERC20 public YYToken;
+	BasicERC721 public mockNFT1;
+	BasicERC721 public mockNFT2;
 	IERC20 public GO;
 
 	// SETUP
@@ -49,6 +52,42 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 
 		auctioneer = new AuctioneerHarness(USD, GO, WETH, 1e18, 1e16, 1e18, 20e18);
 		farm = new AuctioneerFarm();
+
+		// Create NFTs
+		mockNFT1 = new BasicERC721("MOCK_NFT_1", "MOCK_NFT_1", "https://tokenBaseURI", "https://contractURI", sender);
+		mockNFT2 = new BasicERC721("MOCK_NFT_2", "MOCK_NFT_2", "https://tokenBaseURI", "https://contractURI", sender);
+
+		// Mint nft1
+		mockNFT1.safeMint(treasury);
+		mockNFT1.safeMint(treasury);
+		mockNFT1.safeMint(treasury);
+		mockNFT1.safeMint(treasury);
+
+		// Mint nft2
+		mockNFT2.safeMint(treasury);
+		mockNFT2.safeMint(treasury);
+		mockNFT2.safeMint(treasury);
+		mockNFT2.safeMint(treasury);
+
+		// Approve nft1
+		vm.prank(treasury);
+		mockNFT1.approve(address(auctioneer), 1);
+		vm.prank(treasury);
+		mockNFT1.approve(address(auctioneer), 2);
+		vm.prank(treasury);
+		mockNFT1.approve(address(auctioneer), 3);
+		vm.prank(treasury);
+		mockNFT1.approve(address(auctioneer), 4);
+
+		// Approve nft2
+		vm.prank(treasury);
+		mockNFT2.approve(address(auctioneer), 1);
+		vm.prank(treasury);
+		mockNFT2.approve(address(auctioneer), 2);
+		vm.prank(treasury);
+		mockNFT2.approve(address(auctioneer), 3);
+		vm.prank(treasury);
+		mockNFT2.approve(address(auctioneer), 4);
 	}
 
 	// UTILS
@@ -79,6 +118,15 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 			windows: windows,
 			unlockTimestamp: _getNextDay2PMTimestamp()
 		});
+	}
+
+	function _getNftAuctionParams() public view returns (AuctionParams memory params) {
+		params = _getBaseSingleAuctionParams();
+
+		// Add NFTs to auction
+		params.nfts = new NftData[](2);
+		params.nfts[0] = NftData({ nft: address(mockNFT1), id: 3 });
+		params.nfts[1] = NftData({ nft: address(mockNFT2), id: 1 });
 	}
 
 	function _getMultiTokenSingleAuctionParams() public view returns (AuctionParams memory params) {

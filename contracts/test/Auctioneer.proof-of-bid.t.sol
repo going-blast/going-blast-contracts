@@ -522,8 +522,6 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 
 		_bid(user1);
 
-		uint256 auctionDay = auctioneer.getAuction(0).day;
-
 		vm.warp(block.timestamp + 1 days);
 
 		ClaimableLotData[] memory lotDatas = auctioneer.getUserClaimableLotsData(user1);
@@ -547,9 +545,6 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 		vm.warp(auctioneer.getAuction(0).unlockTimestamp);
 
 		_bid(user1);
-
-		uint256 auctionDay = auctioneer.getAuction(0).day;
-		console.log("Auction day", auctionDay);
 
 		ClaimableLotData[] memory lotDatas = auctioneer.getUserClaimableLotsData(user1);
 		assertGt(lotDatas[0].timeUntilMature, 0, "Emissions immature, incurs tax");
@@ -578,8 +573,6 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 		vm.warp(auctioneer.getAuction(0).unlockTimestamp);
 
 		_bid(user1);
-
-		uint256 auctionDay = auctioneer.getAuction(0).day;
 
 		ClaimableLotData[] memory lotDatas = auctioneer.getUserClaimableLotsData(user1);
 		assertGt(lotDatas[0].timeUntilMature, 0, "Emissions immature, incurs tax");
