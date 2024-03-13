@@ -12,5 +12,8 @@
 		"hardhat/=node_modules/hardhat/"
 	],
 	"solidity.formatter": "prettier",
-	"solidity.defaultCompiler": "localFile"
+	"solidity.packageDefaultDependenciesContractsDirectory": "contracts",
+	"slither.solcPath": "",
+	"slither.hiddenDetectors": [],
+	"solidity-va.hover": true
 }

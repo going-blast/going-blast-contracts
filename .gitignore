@@ -16,6 +16,10 @@ deployments/*
 
 # IDE
 .idea
+.vscode
+cache_forge
+.yarn
+
 
 # Foundry
 out/
