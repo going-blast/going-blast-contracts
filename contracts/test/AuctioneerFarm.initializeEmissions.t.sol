@@ -113,4 +113,6 @@ contract AuctioneerFarmInitializeEmissionsTest is AuctioneerHelper, AuctioneerFa
 		assertEq(goStakingData.boost, 10000, "GO staking at 10000 bp boost");
 		assertEq(goStakingData.total, 0, "GO Nothing staked yet");
 	}
+
+	function test_emissions_PendingGOIncreasesProportionally() public {}
 }

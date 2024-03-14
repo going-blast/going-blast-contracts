@@ -34,6 +34,7 @@ Tests to run (remaining)
 [x] Auctioneer - Finalizing auction
   [x] Claiming treasury emissions
   [x] Revenue / profit payouts
+  [ ] USD sent to farm, increases farm usdRewardPerShare
 
 [x] Auctioneer - User GO emissions (proof of bid)
   [x] 50% tax on immediate harvest
@@ -44,21 +45,43 @@ Tests to run (remaining)
 
 
 
-[ ] AuctioneerFarm - GO Emissions
-  [ ] Calculated correctly initially
-  [ ] Ends when contract runs out of funds
-  [ ] Can be harvested
+[x] AuctioneerFarm - GO Emissions
+  [x] Calculated correctly initially
+  [x] Ends when contract runs out of funds
+  [x] Can be harvested
 
-[ ] AuctioneerFarm - USD Revenue
-  [ ] Users earn correct USD
-  [ ] USD can be harvested
+[x] AuctioneerFarm - USD Revenue
+  [x] Receive from auctioneer
+  [ ] Handle Receive before any staked
+  [x] Users earn correct USD
+  [x] USD can be harvested
 
-[ ] AuctioneerFarm - User actions
-  [ ] Farm deposit / deposit all
-  [ ] Farm withdraw / withdraw all
-  [ ] Farm deposit lp / deposit all lp
-  [ ] Farm withdraw lp / withdraw all lp
-  [ ] Setting lp token
+[ ] AuctioneerFarm - LP
+  [ ] base
+    [ ] equalizedUserStaked correct
+    [ ] equalizedTotalStaked correct
+  [ ] addLp
+    [ ] should not change users pending
+    [ ] added lp depositable
+    [ ] equalized staked amounts correct
+  [ ] removeLp
+    [ ] should not change users pending
+    [ ] removed lp withdrawable
+    [ ] equalized staked amounts correct
+  [ ] updateLpBoost
+    [ ] should not change users pending
+    [ ] equalized staked amounts correct
+
+
+[x] AuctioneerFarm - User actions
+  [x] Farm deposit
+  [x] Farm withdraw
+  [x] Farm harvest
+    [x] Updates users debts
+    [x] Emits events
+    [x] Not transfer if pending is 0
+    [x] Harvested matches pending
+    [x] goPerShare brought current
 
 
 

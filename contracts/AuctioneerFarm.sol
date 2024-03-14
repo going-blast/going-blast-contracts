@@ -13,12 +13,11 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 	using SafeERC20 for IERC20;
 	using EnumerableSet for EnumerableSet.AddressSet;
 
-	IERC20 public USD;
 	bool public initializedEmissions = false;
-
 	uint256 public REWARD_PRECISION = 1e18;
 
 	// USD rewards from auctions
+	IERC20 public USD;
 	uint256 public markedUSDBal;
 	uint256 public usdRewardPerShare;
 
@@ -142,8 +141,8 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 	// CORE
 
 	function deposit(address _token, uint256 _amount) public nonReentrant {
-		if (_amount > IERC20(_token).balanceOf(msg.sender)) revert BadDeposit();
 		if (!stakingTokens.contains(_token)) revert NotStakeable();
+		if (_amount > IERC20(_token).balanceOf(msg.sender)) revert BadDeposit();
 
 		_harvest(msg.sender);
 
@@ -160,8 +159,8 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 	}
 
 	function withdraw(address _token, uint256 _amount) public nonReentrant {
-		if (_amount > stakingTokenData[_token].userStaked[msg.sender]) revert BadWithdrawal();
 		if (!stakingTokens.contains(_token)) revert NotStakeable();
+		if (_amount > stakingTokenData[_token].userStaked[msg.sender]) revert BadWithdrawal();
 
 		_harvest(msg.sender);
 
