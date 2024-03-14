@@ -27,7 +27,8 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 		GO.safeTransfer(presale, (GO.totalSupply() * 2000) / 10000);
 		GO.safeTransfer(treasury, (GO.totalSupply() * 1000) / 10000);
 		GO.safeTransfer(liquidity, (GO.totalSupply() * 500) / 10000);
-		GO.safeTransfer(address(farm), (GO.totalSupply() * 500) / 10000);
+		uint256 farmGO = (GO.totalSupply() * 500) / 10000;
+		GO.safeTransfer(address(farm), farmGO);
 
 		// Initialize after receiving GO token
 		auctioneer.initialize(_getNextDay2PMTimestamp());
@@ -74,6 +75,9 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 
 		// Create single token + nfts auction
 		auctioneer.createDailyAuctions(params);
+
+		// Initialize farm emissions
+		farm.initializeEmissions(farmGO, 180 days);
 	}
 
 	function test_winning_claimAuctionLot_RevertWhen_AuctionStillRunning() public {
@@ -214,7 +218,7 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 		assertEq(user1FundsFinal, 0, "Users funds should be depleted");
 	}
 
-	function test_winning_lotPriceIsDistributedCorrectly() public {
+	function test_winning_lotPriceIsDistributedCorrectly_Farm0StakedFallbackToTreasury() public {
 		// Set farm
 		auctioneer.setFarm(address(farm));
 
@@ -233,7 +237,6 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 		uint256 lotPrice = auctioneer.getAuction(0).bidData.bid;
 		uint256 treasuryUSDInit = USD.balanceOf(treasury);
 		uint256 farmUSDInit = USD.balanceOf(address(farm));
-		uint256 treasurySplit = auctioneer.treasurySplit();
 
 		// Claim
 		vm.prank(user1);
@@ -242,13 +245,71 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 		uint256 treasuryUSDFinal = USD.balanceOf(treasury);
 		uint256 farmUSDFinal = USD.balanceOf(address(farm));
 
-		assertEq(treasuryUSDFinal - treasuryUSDInit, (lotPrice * treasurySplit) / 10000, "Treasury should receive share");
-		assertEq(farmUSDFinal - farmUSDInit, (lotPrice * (10000 - treasurySplit)) / 10000, "Farm should receive share");
+		assertEq(
+			treasuryUSDFinal - treasuryUSDInit,
+			lotPrice,
+			"Treasury should receive own share + farm share (farm 0 staked fallback)"
+		);
+		assertEq(farmUSDFinal - farmUSDInit, 0, "Farm should receive 0 (farm 0 staked fallback)");
+	}
+
+	function _farmDeposit() public {
+		vm.prank(presale);
+		GO.transfer(user1, 10e18);
+		vm.prank(user1);
+		GO.approve(address(farm), 10e18);
+		vm.prank(user1);
+		farm.deposit(address(GO), 10e18);
+	}
+
+	function test_winning_lotPriceIsDistributedCorrectly_WithoutFallback() public {
+		// Set farm
+		auctioneer.setFarm(address(farm));
+
+		// Deposit some non zero value into farm to prevent distribution fallback
+		_farmDeposit();
+
+		vm.warp(auctioneer.getAuction(0).unlockTimestamp);
+		_multibid(user2, 58);
+		_multibid(user3, 152);
+		_multibid(user4, 96);
+		_multibid(user1, 110);
+
+		// Claimable after next bid by
+		vm.warp(auctioneer.getAuction(0).bidData.nextBidBy + 1);
+
+		// Finalize to distribute bidding revenue
+		auctioneer.finalizeAuction(0);
+
+		uint256 lotPrice = auctioneer.getAuction(0).bidData.bid;
+		uint256 treasuryUSDInit = USD.balanceOf(treasury);
+		uint256 farmUSDInit = USD.balanceOf(address(farm));
+		uint256 treasurySplit = auctioneer.treasurySplit();
+		uint256 treasuryCut = (lotPrice * treasurySplit) / 10000;
+		uint256 farmCut = (lotPrice * (10000 - treasurySplit)) / 10000;
+
+		uint256 usdRewardPerShareInit = farm.usdRewardPerShare();
+		assertEq(usdRewardPerShareInit, 0, "USD rew per share should start at 0");
+
+		// Claim
+		vm.prank(user1);
+		auctioneer.claimAuctionLot(0, false, true);
+
+		uint256 treasuryUSDFinal = USD.balanceOf(treasury);
+		uint256 farmUSDFinal = USD.balanceOf(address(farm));
+
+		assertEq(treasuryUSDFinal - treasuryUSDInit, treasuryCut, "Treasury should receive share");
+		assertEq(farmUSDFinal - farmUSDInit, farmCut, "Farm should receive share");
 		assertEq(
 			((treasuryUSDFinal - treasuryUSDInit) * 10000) / treasurySplit,
 			((farmUSDFinal - farmUSDInit) * 10000) / (10000 - treasurySplit),
 			"Farm and treasury receive correct split"
 		);
+
+		// Farm usdRewardPerShare should increase
+		uint256 expectedRewPerShare = (farmCut * farm.REWARD_PRECISION()) / farm.getEqualizedTotalStaked();
+		uint256 usdRewardPerShareFinal = farm.usdRewardPerShare();
+		assertEq(expectedRewPerShare, usdRewardPerShareFinal, "USD reward per share of farm should increase");
 	}
 
 	function test_winning_auctionIsMarkedAsClaimed() public {

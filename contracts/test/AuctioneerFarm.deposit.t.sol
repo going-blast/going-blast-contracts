@@ -94,6 +94,13 @@ contract AuctioneerFarmDepositTest is AuctioneerHelper, AuctioneerFarmEvents {
 		auctioneer.createDailyAuctions(params);
 	}
 
+	function _injectFarmUSD(uint256 amount) public {
+		vm.startPrank(user1);
+		USD.approve(address(farm), amount);
+		farm.receiveUSDDistribution(amount);
+		vm.stopPrank();
+	}
+
 	function test_deposit_RevertWhen_BadDeposit() public {
 		vm.expectRevert(IAuctioneerFarm.BadDeposit.selector);
 		vm.prank(user1);
@@ -145,10 +152,8 @@ contract AuctioneerFarmDepositTest is AuctioneerHelper, AuctioneerFarmEvents {
 		vm.prank(user2);
 		farm.deposit(address(GO), 10e18);
 
-		// Add USD (its from user1 but thats irrelevant)
-		vm.prank(user1);
-		IERC20(USD).safeTransfer(address(farm), 100e18);
-		farm.receiveUSDDistribution();
+		// Add USD
+		_injectFarmUSD(100e18);
 
 		vm.warp(block.timestamp + 1 days);
 
@@ -188,10 +193,8 @@ contract AuctioneerFarmDepositTest is AuctioneerHelper, AuctioneerFarmEvents {
 		vm.prank(user2);
 		farm.deposit(address(GO), 10e18);
 
-		// Add USD (its from user1 but thats irrelevant)
-		vm.prank(user1);
-		IERC20(USD).safeTransfer(address(farm), 100e18);
-		farm.receiveUSDDistribution();
+		// Add USD
+		_injectFarmUSD(100e18);
 
 		vm.warp(block.timestamp + 1 days);
 
@@ -202,10 +205,7 @@ contract AuctioneerFarmDepositTest is AuctioneerHelper, AuctioneerFarmEvents {
 		uint256 userDebtUSD = farm.userDebtUSD(user1);
 
 		// Add new batch of usd
-		// Add USD (its from user1 but thats irrelevant)
-		vm.prank(user1);
-		IERC20(USD).safeTransfer(address(farm), 75e18);
-		farm.receiveUSDDistribution();
+		_injectFarmUSD(75e18);
 
 		// Warp to emit GO
 		vm.warp(block.timestamp + 1.5 days);
@@ -230,10 +230,8 @@ contract AuctioneerFarmDepositTest is AuctioneerHelper, AuctioneerFarmEvents {
 		vm.prank(user2);
 		farm.deposit(address(GO), 10e18);
 
-		// Add USD (its from user1 but thats irrelevant)
-		vm.prank(user1);
-		IERC20(USD).safeTransfer(address(farm), 100e18);
-		farm.receiveUSDDistribution();
+		// Add USD
+		_injectFarmUSD(100e18);
 
 		vm.warp(block.timestamp + 1 days);
 
@@ -244,10 +242,7 @@ contract AuctioneerFarmDepositTest is AuctioneerHelper, AuctioneerFarmEvents {
 		uint256 userDebtUSD = farm.userDebtUSD(user1);
 
 		// Add new batch of usd
-		// Add USD (its from user1 but thats irrelevant)
-		vm.prank(user1);
-		IERC20(USD).safeTransfer(address(farm), 75e18);
-		farm.receiveUSDDistribution();
+		_injectFarmUSD(75e18);
 
 		// Warp to emit GO
 		vm.warp(block.timestamp + 1.5 days);

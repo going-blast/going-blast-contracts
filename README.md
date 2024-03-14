@@ -34,7 +34,7 @@ Tests to run (remaining)
 [x] Auctioneer - Finalizing auction
   [x] Claiming treasury emissions
   [x] Revenue / profit payouts
-  [ ] USD sent to farm, increases farm usdRewardPerShare
+  [x] USD sent to farm, increases farm usdRewardPerShare
 
 [x] Auctioneer - User GO emissions (proof of bid)
   [x] 50% tax on immediate harvest
@@ -52,7 +52,7 @@ Tests to run (remaining)
 
 [x] AuctioneerFarm - USD Revenue
   [x] Receive from auctioneer
-  [ ] Handle Receive before any staked
+  [x] If 0 staked, return false, fallback to send to treasury
   [x] Users earn correct USD
   [x] USD can be harvested
 
@@ -92,8 +92,8 @@ Tests to run (remaining)
 
 
 
-[ ] Auctioneer - Private Lots
-  [ ] Calculates GO correctly: (GO + GO staked) * 1 + (LP + LP staked) * 2
-  [ ] Private lot bidding unlocking on enough GO owned
+[x] Auctioneer / Farm interaction
+  [x] Private lot bidding unlocking on enough GO owned
+  [x] Lot profit sent to farm increases usdRewardPerShare
 
 ```

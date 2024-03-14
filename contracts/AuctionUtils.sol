@@ -173,15 +173,20 @@ library AuctionUtils {
 			farmDistribution = 0;
 		}
 
+		// If farm not set, farm distribution will be 0
+		// If farm has 0 staked, fallback to treasury
+		if (farmDistribution > 0) {
+			USD.approve(farm, farmDistribution);
+			bool received = IAuctioneerFarm(farm).receiveUSDDistribution(farmDistribution);
+			if (!received) {
+				treasuryDistribution += farmDistribution;
+				USD.approve(farm, 0);
+			}
+		}
+
 		// Distribute
 		if (treasuryDistribution > 0) {
 			USD.safeTransfer(treasury, treasuryDistribution);
-		}
-
-		// If farm not set, farm distribution will be 0
-		if (farmDistribution > 0) {
-			USD.safeTransfer(farm, farmDistribution);
-			IAuctioneerFarm(farm).receiveUSDDistribution();
 		}
 	}
 

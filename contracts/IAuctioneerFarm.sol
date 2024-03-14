@@ -42,6 +42,6 @@ interface IAuctioneerFarm {
 	error AlreadyAdded();
 	error AlreadyInitializedEmissions();
 
-	function receiveUSDDistribution() external;
+	function receiveUSDDistribution(uint256 _amount) external returns (bool);
 	function getEqualizedUserStaked(address _user) external view returns (uint256);
 }

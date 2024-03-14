@@ -90,9 +90,10 @@ contract AuctioneerFarmEmissionsTest is AuctioneerHelper, AuctioneerFarmEvents {
 		farm.withdraw(token, amount);
 	}
 	function _injectFarmUSD(uint256 amount) public {
-		vm.prank(user1);
-		IERC20(USD).safeTransfer(address(farm), amount);
-		farm.receiveUSDDistribution();
+		vm.startPrank(user1);
+		USD.approve(address(farm), amount);
+		farm.receiveUSDDistribution(amount);
+		vm.stopPrank();
 	}
 
 	uint256 user1Deposited = 5e18;

@@ -232,7 +232,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		}
 	}
 
-	function _getUserPrivateAuctionPermitted(address _user) internal view returns (bool) {
+	function _getUserPrivateAuctionsPermitted(address _user) internal view returns (bool) {
 		return _userGOBalance(_user) >= privateAuctionRequirement;
 	}
 
@@ -368,7 +368,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		auction.validateBiddingOpen();
 
 		// VALIDATE: User can participate in auction
-		if (auction.isPrivate && !_getUserPrivateAuctionPermitted(msg.sender)) revert PrivateAuction();
+		if (auction.isPrivate && !_getUserPrivateAuctionsPermitted(msg.sender)) revert PrivateAuction();
 
 		// Update auction with new bid
 		auction.bidData.bid += bidIncrement * _multibid;
@@ -548,6 +548,10 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 
 	function getAuction(uint256 _lot) public view validAuctionLot(_lot) returns (Auction memory) {
 		return auctions[_lot];
+	}
+
+	function getUserPrivateAuctionsPermitted(address _user) public view returns (bool) {
+		return _getUserPrivateAuctionsPermitted(_user);
 	}
 
 	function getAuctionUser(uint256 _lot, address _user) public view validAuctionLot(_lot) returns (AuctionUser memory) {

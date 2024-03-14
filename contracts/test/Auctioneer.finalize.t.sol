@@ -27,7 +27,8 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 		GO.safeTransfer(presale, (GO.totalSupply() * 2000) / 10000);
 		GO.safeTransfer(treasury, (GO.totalSupply() * 1000) / 10000);
 		GO.safeTransfer(liquidity, (GO.totalSupply() * 500) / 10000);
-		GO.safeTransfer(address(farm), (GO.totalSupply() * 500) / 10000);
+		uint256 farmGO = (GO.totalSupply() * 500) / 10000;
+		GO.safeTransfer(address(farm), farmGO);
 
 		// Initialize after receiving GO token
 		auctioneer.initialize(_getNextDay2PMTimestamp());
@@ -74,6 +75,9 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 
 		// Create single token + nfts auction
 		auctioneer.createDailyAuctions(params);
+
+		// Initialize farm emissions
+		farm.initializeEmissions(farmGO, 180 days);
 	}
 
 	function test_winning_finalizeAuction_RevertWhen_AuctionStillRunning() public {
@@ -248,9 +252,21 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 		assertEq(farmUSDFinal, farmUSDInit, "Farm should receive nothing");
 	}
 
+	function _farmDeposit() public {
+		vm.prank(presale);
+		GO.transfer(user1, 10e18);
+		vm.prank(user1);
+		GO.approve(address(farm), 10e18);
+		vm.prank(user1);
+		farm.deposit(address(GO), 10e18);
+	}
+
 	function test_finalizeAuction_Should_DistributeLotRevenue_RevenueGreaterThanLotValue() public {
 		// Set farm
 		auctioneer.setFarm(address(farm));
+
+		// Deposit some non zero value into farm to prevent distribution fallback
+		_farmDeposit();
 
 		vm.warp(auctioneer.getAuction(0).unlockTimestamp);
 		_multibid(user2, 1580);

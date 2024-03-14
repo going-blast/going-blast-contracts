@@ -101,9 +101,10 @@ contract AuctioneerFarmHarvestTest is AuctioneerHelper, AuctioneerFarmEvents {
 	// [x] goPerShare brought current
 
 	function _injectFarmUSD(uint256 amount) public {
-		vm.prank(user1);
-		IERC20(USD).safeTransfer(address(farm), amount);
-		farm.receiveUSDDistribution();
+		vm.startPrank(user1);
+		USD.approve(address(farm), amount);
+		farm.receiveUSDDistribution(amount);
+		vm.stopPrank();
 	}
 
 	function test_harvest_ExpectEmit_Harvested() public {
@@ -209,10 +210,7 @@ contract AuctioneerFarmHarvestTest is AuctioneerHelper, AuctioneerFarmEvents {
 		vm.prank(user1);
 		farm.deposit(address(GO), 10e18);
 
-		// Add USD (its from user1 but thats irrelevant)
-		vm.prank(user1);
-		IERC20(USD).safeTransfer(address(farm), 100e18);
-		farm.receiveUSDDistribution();
+		_injectFarmUSD(100e18);
 
 		vm.warp(block.timestamp + 1 days);
 

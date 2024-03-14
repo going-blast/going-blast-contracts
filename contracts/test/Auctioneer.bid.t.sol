@@ -25,7 +25,8 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		GO.safeTransfer(presale, (GO.totalSupply() * 2000) / 10000);
 		GO.safeTransfer(treasury, (GO.totalSupply() * 1000) / 10000);
 		GO.safeTransfer(liquidity, (GO.totalSupply() * 500) / 10000);
-		GO.safeTransfer(address(farm), (GO.totalSupply() * 500) / 10000);
+		uint256 farmGO = (GO.totalSupply() * 500) / 10000;
+		GO.safeTransfer(address(farm), farmGO);
 
 		// Initialize after receiving GO token
 		auctioneer.initialize(_getNextDay2PMTimestamp());
@@ -65,6 +66,10 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		// For GAS test deposit funds into contract
 		vm.prank(user2);
 		auctioneer.addFunds(10e18);
+
+		// Initialize farm emissions
+		auctioneer.setFarm(address(farm));
+		farm.initializeEmissions(farmGO, 180 days);
 	}
 
 	function test_bid_RevertWhen_InvalidAuctionLot() public {
@@ -204,6 +209,94 @@ contract AuctioneerBidTest is AuctioneerHelper {
 
 		assertEq(USD.balanceOf(user1), userUSDInit - expectedCost, "Expected to pay cost * multibid");
 	}
+
+	// PRIVATE AUCTION
+
+	function _giveGO(address user, uint256 amount) public {
+		vm.prank(presale);
+		GO.transfer(user, amount);
+	}
+	function _farmDeposit(address user, uint256 amount) public {
+		_giveGO(user, amount);
+		vm.prank(user);
+		GO.approve(address(farm), amount);
+		vm.prank(user);
+		farm.deposit(address(GO), amount);
+	}
+
+	function test_bid_PrivateAuctionRequirement() public {
+		// Create private auction
+		AuctionParams[] memory params = new AuctionParams[](1);
+		params[0] = _getBaseSingleAuctionParams();
+		params[0].unlockTimestamp = _getDayInFuture2PMTimestamp(2);
+		params[0].isPrivate = true;
+		auctioneer.createDailyAuctions(params);
+
+		// Warp to private auction unlock
+		vm.warp(params[0].unlockTimestamp + 1 hours);
+
+		// USER 1
+
+		// user 1 50 GO staked
+		_farmDeposit(user1, 50e18);
+		uint256 user1Staked = farm.getEqualizedUserStaked(user1);
+		assertGt(user1Staked, auctioneer.privateAuctionRequirement(), "User 1 satisfies private auction req");
+		assertEq(auctioneer.getUserPrivateAuctionsPermitted(user1), true, "User 1 permitted");
+
+		// user 1 can bid
+		uint256 expectedBid = auctioneer.startingBid() + auctioneer.bidIncrement();
+		vm.expectEmit(true, true, true, true);
+		emit Bid(1, user1, 1, expectedBid, "");
+
+		vm.prank(user1);
+		auctioneer.bid(1, 1, false);
+
+		// USER 2
+
+		// user 2 10 GO staked
+		_farmDeposit(user2, 10e18);
+		uint256 user2Staked = farm.getEqualizedUserStaked(user2);
+		assertLt(user2Staked, auctioneer.privateAuctionRequirement(), "User 2 does not satisfy private auction req");
+		assertEq(auctioneer.getUserPrivateAuctionsPermitted(user2), false, "User 2 not permitted");
+
+		// user 2 bid revert
+		vm.expectRevert(PrivateAuction.selector);
+
+		vm.prank(user2);
+		auctioneer.bid(1, 1, false);
+
+		// USER 3
+
+		// user 3 50 GO held in wallet
+		_giveGO(user3, 50e18);
+		uint256 user3Held = GO.balanceOf(user3);
+		assertGt(user3Held, auctioneer.privateAuctionRequirement(), "User 3 satisfies private auction req");
+		assertEq(auctioneer.getUserPrivateAuctionsPermitted(user3), true, "User 3 permitted");
+
+		// user 3 can bid
+		expectedBid = auctioneer.getAuction(1).bidData.bid + auctioneer.bidIncrement();
+		vm.expectEmit(true, true, true, true);
+		emit Bid(1, user3, 1, expectedBid, "");
+
+		vm.prank(user3);
+		auctioneer.bid(1, 1, false);
+
+		// USER 4
+
+		// user 4 10 GO held
+		_giveGO(user4, 10e18);
+		uint256 user4Held = GO.balanceOf(user4);
+		assertLt(user4Held, auctioneer.privateAuctionRequirement(), "User 4 does not satisfy private auction req");
+		assertEq(auctioneer.getUserPrivateAuctionsPermitted(user4), false, "User 4 not permitted");
+
+		// user 2 bid revert
+		vm.expectRevert(PrivateAuction.selector);
+
+		vm.prank(user4);
+		auctioneer.bid(1, 1, false);
+	}
+
+	// GAS
 
 	function test_bid_GAS_WALLET() public {
 		vm.warp(_getNextDay2PMTimestamp() + 1 hours);

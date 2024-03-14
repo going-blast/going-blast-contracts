@@ -19,6 +19,7 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 	// USD rewards from auctions
 	IERC20 public USD;
 	uint256 public markedUSDBal;
+	uint256 public unmarkedUSDBal;
 	uint256 public usdRewardPerShare;
 
 	// GO rewards from staking
@@ -107,18 +108,16 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 
 	// AUCTION INTERACTIONS
 
-	function receiveUSDDistribution() external override {
-		// Nothing yet staked, leave the USD in here, it'll get scooped up in the next distribution
+	function receiveUSDDistribution(uint256 _amount) external override returns (bool) {
+		// Nothing yet staked, reject the receive
 		uint256 totalStaked = _getEqualizedTotalStaked();
-		if (totalStaked == 0) return;
+		if (totalStaked == 0) return false;
 
-		uint256 currentUSDBal = USD.balanceOf(address(this));
-		uint256 increase = currentUSDBal - markedUSDBal;
+		USD.safeTransferFrom(msg.sender, address(this), _amount);
+		usdRewardPerShare += (_amount * REWARD_PRECISION) / totalStaked;
 
-		usdRewardPerShare += (increase * REWARD_PRECISION) / totalStaked;
-		markedUSDBal = currentUSDBal;
-
-		emit ReceivedUSDDistribution(increase);
+		emit ReceivedUSDDistribution(_amount);
+		return true;
 	}
 
 	function getEqualizedUserStaked(address _user) external view override returns (uint256) {
