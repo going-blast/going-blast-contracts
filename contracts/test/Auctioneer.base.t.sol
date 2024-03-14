@@ -6,6 +6,7 @@ import { Auctioneer } from "../Auctioneer.sol";
 import "../IAuctioneer.sol";
 import { GOToken } from "../GOToken.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { AuctioneerFarm } from "../AuctioneerFarm.sol";
 import { BasicERC20 } from "../BasicERC20.sol";
 import { BasicERC721 } from "../BasicERC721.sol";
@@ -41,6 +42,7 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	BasicERC721 public mockNFT1;
 	BasicERC721 public mockNFT2;
 	IERC20 public GO;
+	BasicERC20 public GO_LP;
 
 	// SETUP
 
@@ -48,11 +50,12 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		USD = new BasicERC20("USD", "USD");
 		WETH = IWETH(address(new WETH9()));
 		GO = new GOToken(deployer);
+		GO_LP = new BasicERC20("UniswapV2Pair", "GO_LP");
 		XXToken = new BasicERC20("XX", "XX");
 		YYToken = new BasicERC20("YY", "YY");
 
 		auctioneer = new AuctioneerHarness(USD, GO, WETH, 1e18, 1e16, 1e18, 20e18);
-		farm = new AuctioneerFarm();
+		farm = new AuctioneerFarm(USD, GO);
 
 		// Create NFTs
 		mockNFT1 = new BasicERC721("MOCK_NFT_1", "MOCK_NFT_1", "https://tokenBaseURI", "https://contractURI", sender);
@@ -69,6 +72,12 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		mockNFT2.safeMint(treasury);
 		mockNFT2.safeMint(treasury);
 		mockNFT2.safeMint(treasury);
+
+		// Mint GO_LP
+		GO_LP.mint(user1, 20e18);
+		GO_LP.mint(user2, 20e18);
+		GO_LP.mint(user3, 20e18);
+		GO_LP.mint(user4, 20e18);
 
 		// Approve nft1
 		vm.prank(treasury);
@@ -170,6 +179,13 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	error OwnableUnauthorizedAccount(address account);
 	error ERC20InsufficientAllowance(address spender, uint256 allowance, uint256 needed);
 	error ERC20InsufficientBalance(address sender, uint256 balance, uint256 needed);
+
+	event Transfer(address indexed from, address indexed to, uint256 value);
+
+	function _expectTokenTransfer(IERC20 token, address from, address to, uint256 value) public {
+		vm.expectEmit(true, true, false, true, address(token));
+		emit Transfer(from, to, value);
+	}
 
 	// BIDS
 

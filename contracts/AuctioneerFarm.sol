@@ -2,31 +2,19 @@
 pragma solidity ^0.8.20;
 pragma experimental ABIEncoderV2;
 
+import "forge-std/Test.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-
 import "./IAuctioneerFarm.sol";
 
-struct UserDebts {
-	uint256 debtGO;
-	uint256 debtUSD;
-}
-
-struct StakingTokenData {
-	IERC20 token;
-	uint256 boost;
-	uint256 total;
-	mapping(address => uint256) userStaked;
-}
-
-contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm {
+contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, AuctioneerFarmEvents {
 	using SafeERC20 for IERC20;
 	using EnumerableSet for EnumerableSet.AddressSet;
 
 	IERC20 public USD;
-	bool public initialized = false;
+	bool public initializedEmissions = false;
 
 	uint256 public REWARD_PRECISION = 1e18;
 
@@ -47,28 +35,15 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm {
 	mapping(address => uint256) public userDebtGO;
 	mapping(address => uint256) public userDebtUSD;
 
-	error DepositStillLocked();
-	error BadWithdrawal();
-	error BadDeposit();
-	error NotStakeable();
-	error OutsideRange();
-	error NotEnoughGo();
-	error AlreadySet();
-	error AlreadyAdded();
-	error AlreadyInitialized();
+	constructor(IERC20 _usd, IERC20 _go) Ownable(msg.sender) {
+		USD = _usd;
+		GO = _go;
+	}
 
-	event Initialized();
-	event InitializedGOEmission(uint256 _goPerSecond);
-	event AddedStakingToken(address indexed _token, uint256 _boost);
-	event UpdatedLpBoost(address indexed _token, uint256 _boost);
-	event ReceivedUSDDistribution(uint256 _amount);
+	function initializeEmissions(uint256 _emissionAmount, uint256 _emissionDuration) public onlyOwner {
+		if (initializedEmissions) revert AlreadyInitializedEmissions();
+		initializedEmissions = true;
 
-	event Deposit(address indexed _user, address indexed _token, uint256 _amount);
-	event Withdraw(address indexed _user, address indexed _token, uint256 _amount);
-	event Harvested(address indexed _user, uint256 _usdHarvested, uint256 _goHarvested);
-
-	constructor(address _go, uint256 _emissionAmount, uint256 _emissionDuration) Ownable(msg.sender) {
-		GO = IERC20(_go);
 		if (GO.balanceOf(address(this)) < _emissionAmount) revert NotEnoughGo();
 
 		// Go Emissions
@@ -78,7 +53,7 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm {
 		emit InitializedGOEmission(goPerSecond);
 
 		// Go Staking
-		_add(IERC20(_go), 10000);
+		_add(GO, 10000);
 	}
 
 	// ADMIN
@@ -112,27 +87,29 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm {
 
 	// UTILS
 
-	function _getTotalStaked() internal view returns (uint256 staked) {
+	function _getEqualizedTotalStaked() internal view returns (uint256 staked) {
 		staked = 0;
 		for (uint256 i = 0; i < stakingTokens.values().length; i++) {
 			staked += stakingTokenData[stakingTokens.at(i)].total * stakingTokenData[stakingTokens.at(i)].boost;
 		}
+		staked /= 10000;
 	}
 
-	function _getUserStaked(address _user) internal view returns (uint256 userStaked) {
+	function _getEqualizedUserStaked(address _user) internal view returns (uint256 userStaked) {
 		userStaked = 0;
 		for (uint256 i = 0; i < stakingTokens.values().length; i++) {
 			userStaked +=
 				stakingTokenData[stakingTokens.at(i)].userStaked[_user] *
 				stakingTokenData[stakingTokens.at(i)].boost;
 		}
+		userStaked /= 10000;
 	}
 
 	// AUCTION INTERACTIONS
 
 	function receiveUSDDistribution() external override {
 		// Nothing yet staked, leave the USD in here, it'll get scooped up in the next distribution
-		uint256 totalStaked = _getTotalStaked();
+		uint256 totalStaked = _getEqualizedTotalStaked();
 		if (totalStaked == 0) return;
 
 		uint256 currentUSDBal = USD.balanceOf(address(this));
@@ -144,8 +121,22 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm {
 		emit ReceivedUSDDistribution(increase);
 	}
 
-	function getUserStakedGOBalance(address _user) external view override returns (uint256) {
-		return _getUserStaked(_user);
+	function getEqualizedUserStaked(address _user) external view override returns (uint256) {
+		return _getEqualizedUserStaked(_user);
+	}
+	function getEqualizedTotalStaked() public view returns (uint256) {
+		return _getEqualizedTotalStaked();
+	}
+	function getStakingTokens() public view returns (address[] memory tokens) {
+		tokens = stakingTokens.values();
+	}
+	function getStakingTokenData(address _token) public view returns (StakingTokenOnlyData memory data) {
+		data.token = stakingTokenData[_token].token;
+		data.boost = stakingTokenData[_token].boost;
+		data.total = stakingTokenData[_token].total;
+	}
+	function getStakingTokenUserStaked(address _token, address _user) public view returns (uint256 userStaked) {
+		userStaked = stakingTokenData[_token].userStaked[_user];
 	}
 
 	// CORE
@@ -188,14 +179,14 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm {
 	// HARVEST
 
 	function _updateUserDebts(address _user) internal {
-		uint256 userStaked = _getUserStaked(_user);
+		uint256 userStaked = _getEqualizedUserStaked(_user);
 
-		userDebtGO[_user] = (userStaked * goRewardPerShare) / REWARD_PRECISION;
-		userDebtUSD[_user] = (userStaked * usdRewardPerShare) / REWARD_PRECISION;
+		userDebtGO[_user] = userStaked * goRewardPerShare;
+		userDebtUSD[_user] = userStaked * usdRewardPerShare;
 	}
 
 	function _getPendingUSD(address _user) internal view returns (uint256) {
-		return ((_getUserStaked(_user) * usdRewardPerShare) / REWARD_PRECISION) - userDebtGO[_user];
+		return ((_getEqualizedUserStaked(_user) * usdRewardPerShare) - userDebtUSD[_user]) / REWARD_PRECISION;
 	}
 
 	function min(uint256 a, uint256 b) internal pure returns (uint256) {
@@ -206,7 +197,7 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm {
 		if (block.timestamp <= goLastRewardTimestamp) return goRewardPerShare;
 		if (goLastRewardTimestamp >= goEmissionFinalTimestamp) return goRewardPerShare;
 
-		uint256 totalStaked = _getTotalStaked();
+		uint256 totalStaked = _getEqualizedTotalStaked();
 		if (totalStaked == 0) return goRewardPerShare;
 
 		// Take into account last emission block when calculating multiplier
@@ -215,19 +206,23 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm {
 		return goRewardPerShare + (emission * REWARD_PRECISION) / totalStaked;
 	}
 
+	function getUpdatedGoRewardPerShare() public view returns (uint256) {
+		return _getUpdatedGoRewardPerShare();
+	}
+
 	function _updateGoRewardPerShare() internal {
 		goRewardPerShare = _getUpdatedGoRewardPerShare();
 		goLastRewardTimestamp = block.timestamp;
 	}
 
 	function _getPendingGO(address _user) internal view returns (uint256) {
-		return ((_getUserStaked(_user) * _getUpdatedGoRewardPerShare()) / REWARD_PRECISION) - userDebtGO[_user];
+		return ((_getEqualizedUserStaked(_user) * _getUpdatedGoRewardPerShare()) - userDebtGO[_user]) / REWARD_PRECISION;
 	}
 
 	function _harvest(address _user) internal {
 		// USD
 		uint256 pendingUSD = _getPendingUSD(_user);
-		USD.safeTransfer(msg.sender, pendingUSD);
+		if (pendingUSD > 0) USD.safeTransfer(msg.sender, pendingUSD);
 		markedUSDBal = USD.balanceOf(address(this));
 
 		// Update Go Reward Per Share
@@ -235,7 +230,7 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm {
 
 		// GO
 		uint256 pendingGO = _getPendingGO(_user);
-		GO.safeTransfer(msg.sender, pendingGO);
+		if (pendingGO > 0) GO.safeTransfer(msg.sender, pendingGO);
 
 		emit Harvested(msg.sender, pendingUSD, pendingGO);
 	}

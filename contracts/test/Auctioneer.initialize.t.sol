@@ -18,7 +18,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 	function setUp() public override {
 		super.setUp();
 
-		farm = new AuctioneerFarm();
+		farm = new AuctioneerFarm(USD, GO);
 		auctioneer.setTreasury(treasury);
 
 		// Distribute GO

@@ -1,19 +1,10 @@
 {
-	"cSpell.words": ["Finalizable", "mixedcase", "multibid", "solhint", "USDB"],
+	"cSpell.words": ["concat", "Finalizable", "mixedcase", "multibid", "solhint", "USDB"],
 	"editor.defaultFormatter": "esbenp.prettier-vscode",
 	"editor.formatOnSave": true,
-	"solidity.remappings": [
-		"@ensdomains/=node_modules/@ensdomains/",
-		"@openzeppelin/=node_modules/@openzeppelin/",
-		"ds-test/=lib/forge-std/lib/ds-test/src/",
-		"eth-gas-reporter/=node_modules/eth-gas-reporter/",
-		"forge-std/=lib/forge-std/src/",
-		"hardhat-deploy/=node_modules/hardhat-deploy/",
-		"hardhat/=node_modules/hardhat/"
-	],
 	"solidity.formatter": "prettier",
 	"solidity.packageDefaultDependenciesContractsDirectory": "contracts",
-	"slither.solcPath": "",
-	"slither.hiddenDetectors": [],
+	"solidity.packageDefaultDependenciesDirectory": ["node_modules", "lib"],
+	"solidity.compileUsingRemoteVersion": "v0.8.20",
 	"solidity-va.hover": true
 }

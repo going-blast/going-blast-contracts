@@ -228,7 +228,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 	function _userGOBalance(address _user) internal view returns (uint256 bal) {
 		bal = GO.balanceOf(_user);
 		if (farm != address(0)) {
-			bal += IAuctioneerFarm(farm).getUserStakedGOBalance(_user);
+			bal += IAuctioneerFarm(farm).getEqualizedUserStaked(_user);
 		}
 	}
 

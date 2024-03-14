@@ -1083,8 +1083,8 @@ DA:105,0
 DA:105,0
 DA:107,0
 DA:107,0
-FN:110,AuctioneerFarm.getUserStakedGOBalance
-FNDA:0,AuctioneerFarm.getUserStakedGOBalance
+FN:110,AuctioneerFarm.getEqualizedUserStaked
+FNDA:0,AuctioneerFarm.getEqualizedUserStaked
 DA:111,0
 DA:111,0
 DA:111,0
