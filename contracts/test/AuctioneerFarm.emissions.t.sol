@@ -45,61 +45,32 @@ contract AuctioneerFarmEmissionsTest is AuctioneerHelper, AuctioneerFarmEvents {
 		vm.prank(treasury);
 		IERC20(address(WETH)).approve(address(auctioneer), type(uint256).max);
 
-		// Give usd to users
-		USD.mint(user1, 1000e18);
-		USD.mint(user2, 1000e18);
-		USD.mint(user3, 1000e18);
-		USD.mint(user4, 1000e18);
+		for (uint8 i = 0; i < 4; i++) {
+			address user = i == 0
+				? user1
+				: i == 1
+					? user2
+					: i == 2
+						? user3
+						: user4;
 
-		// Users approve auctioneer
-		vm.prank(user1);
-		USD.approve(address(auctioneer), 1000e18);
-		vm.prank(user2);
-		USD.approve(address(auctioneer), 1000e18);
-		vm.prank(user3);
-		USD.approve(address(auctioneer), 1000e18);
-		vm.prank(user4);
-		USD.approve(address(auctioneer), 1000e18);
+			// Give tokens
+			vm.prank(presale);
+			GO.transfer(user, 50e18);
+			USD.mint(user, 1000e18);
+			GO_LP.mint(user, 50e18);
+			XXToken.mint(user, 50e18);
+			YYToken.mint(user, 50e18);
 
-		// Give GO to users to deposit / make LP
-		vm.startPrank(presale);
-		GO.transfer(user1, 50e18);
-		GO.transfer(user2, 50e18);
-		GO.transfer(user3, 50e18);
-		GO.transfer(user4, 50e18);
-		vm.stopPrank();
-
-		// Give usd to users
-		USD.mint(user1, 1000e18);
-		USD.mint(user2, 1000e18);
-		USD.mint(user3, 1000e18);
-		USD.mint(user4, 1000e18);
-
-		// Users approve auctioneer and farm
-
-		vm.startPrank(user1);
-		USD.approve(address(auctioneer), 1000e18);
-		GO.approve(address(farm), 1000e18);
-		GO_LP.approve(address(farm), 1000e18);
-		vm.stopPrank();
-
-		vm.startPrank(user2);
-		USD.approve(address(auctioneer), 1000e18);
-		GO.approve(address(farm), 1000e18);
-		GO_LP.approve(address(farm), 1000e18);
-		vm.stopPrank();
-
-		vm.startPrank(user3);
-		USD.approve(address(auctioneer), 1000e18);
-		GO.approve(address(farm), 1000e18);
-		GO_LP.approve(address(farm), 1000e18);
-		vm.stopPrank();
-
-		vm.startPrank(user4);
-		USD.approve(address(auctioneer), 1000e18);
-		GO.approve(address(farm), 1000e18);
-		GO_LP.approve(address(farm), 1000e18);
-		vm.stopPrank();
+			// Approve
+			vm.startPrank(user);
+			USD.approve(address(auctioneer), 1000e18);
+			GO.approve(address(farm), 1000e18);
+			GO_LP.approve(address(farm), 1000e18);
+			XXToken.approve(address(farm), 1000e18);
+			YYToken.approve(address(farm), 1000e18);
+			vm.stopPrank();
+		}
 
 		// Create auction
 		AuctionParams[] memory params = new AuctionParams[](1);

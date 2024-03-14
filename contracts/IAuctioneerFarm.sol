@@ -10,7 +10,7 @@ struct UserDebts {
 }
 
 struct StakingTokenOnlyData {
-	IERC20 token;
+	address token;
 	uint256 boost;
 	uint256 total;
 }
@@ -35,7 +35,7 @@ interface AuctioneerFarmEvents {
 interface IAuctioneerFarm {
 	error BadWithdrawal();
 	error BadDeposit();
-	error NotStakeable();
+	error NotStakingToken();
 	error OutsideRange();
 	error NotEnoughGo();
 	error AlreadySet();

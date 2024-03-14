@@ -56,21 +56,28 @@ Tests to run (remaining)
   [x] Users earn correct USD
   [x] USD can be harvested
 
-[ ] AuctioneerFarm - LP
-  [ ] base
-    [ ] equalizedUserStaked correct
-    [ ] equalizedTotalStaked correct
-  [ ] addLp
-    [ ] should not change users pending
-    [ ] added lp depositable
-    [ ] equalized staked amounts correct
-  [ ] removeLp
-    [ ] should not change users pending
-    [ ] removed lp withdrawable
-    [ ] equalized staked amounts correct
-  [ ] updateLpBoost
-    [ ] should not change users pending
-    [ ] equalized staked amounts correct
+
+[x] AuctioneerFarm - LP
+	[x] admin
+    [x] onlyOwner addLp/removeLp/updateLpBoost
+    [x] validBoostRange addLp/updateLpBoost
+    [x] emits events addLp/removeLp/updateLpBoost
+	  [x] updates state addLp/removeLp/updateLpBoost
+	[x] base
+	  [x] equalizedUserStaked correct
+	  [x] equalizedTotalStaked correct
+	[x] addLp
+	  [x] should not change users pending
+	  [x] added lp depositable
+	  [x] equalized staked amounts correct
+	[x] removeLp
+	  [x] should not change users pending
+	  [x] removed lp withdrawable
+	  [x] equalized staked amounts correct
+	[x] updateLpBoost
+	  [x] should not change users pending
+	  [x] equalized staked amounts correct
+
 
 
 [x] AuctioneerFarm - User actions

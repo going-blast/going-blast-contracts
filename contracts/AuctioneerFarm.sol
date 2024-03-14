@@ -78,6 +78,7 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 	}
 
 	function updateLpBoost(address _lp, uint256 _boost) public onlyOwner {
+		if (!stakingTokens.contains(_lp)) revert NotStakingToken();
 		if (_boost < 10000 || _boost > 30000) revert OutsideRange();
 		_updateGoRewardPerShare();
 		stakingTokenData[_lp].boost = _boost;
@@ -130,7 +131,7 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 		tokens = stakingTokens.values();
 	}
 	function getStakingTokenData(address _token) public view returns (StakingTokenOnlyData memory data) {
-		data.token = stakingTokenData[_token].token;
+		data.token = address(stakingTokenData[_token].token);
 		data.boost = stakingTokenData[_token].boost;
 		data.total = stakingTokenData[_token].total;
 	}
@@ -141,7 +142,7 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 	// CORE
 
 	function deposit(address _token, uint256 _amount) public nonReentrant {
-		if (!stakingTokens.contains(_token)) revert NotStakeable();
+		if (!stakingTokens.contains(_token)) revert NotStakingToken();
 		if (_amount > IERC20(_token).balanceOf(msg.sender)) revert BadDeposit();
 
 		_harvest(msg.sender);
@@ -159,7 +160,6 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 	}
 
 	function withdraw(address _token, uint256 _amount) public nonReentrant {
-		if (!stakingTokens.contains(_token)) revert NotStakeable();
 		if (_amount > stakingTokenData[_token].userStaked[msg.sender]) revert BadWithdrawal();
 
 		_harvest(msg.sender);

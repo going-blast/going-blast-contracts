@@ -100,15 +100,6 @@ contract AuctioneerFarmWithdrawTest is AuctioneerHelper, AuctioneerFarmEvents {
 		farm.withdraw(address(GO), 100e18);
 	}
 
-	function test_withdraw_RevertWhen_NotStakeable() public {
-		XXToken.mint(user1, 50e18);
-
-		vm.expectRevert(IAuctioneerFarm.NotStakeable.selector);
-
-		vm.prank(user1);
-		farm.withdraw(address(XXToken), 20e18);
-	}
-
 	function test_withdraw_ExpectEmit_Withdraw() public {
 		vm.prank(user1);
 		farm.deposit(address(GO), 5e18);

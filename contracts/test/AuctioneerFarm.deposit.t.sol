@@ -112,10 +112,10 @@ contract AuctioneerFarmDepositTest is AuctioneerHelper, AuctioneerFarmEvents {
 		farm.deposit(address(GO), 20e18);
 	}
 
-	function test_deposit_RevertWhen_NotStakeable() public {
+	function test_deposit_RevertWhen_NotStakingToken() public {
 		XXToken.mint(user1, 50e18);
 
-		vm.expectRevert(IAuctioneerFarm.NotStakeable.selector);
+		vm.expectRevert(IAuctioneerFarm.NotStakingToken.selector);
 
 		vm.prank(user1);
 		farm.deposit(address(XXToken), 20e18);
