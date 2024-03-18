@@ -156,7 +156,7 @@ contract AuctioneerNFTsTest is AuctioneerHelper {
 
 		// Claim auction
 		vm.prank(user1);
-		auctioneer.claimAuctionLot(0, true, false);
+		auctioneer.claimAuctionLot(0, ClaimLotOptions({ paymentType: LotPaymentType.WALLET, unwrapETH: false }));
 
 		assertEq(mockNFT1.ownerOf(1), treasury, "Treasury owns NFT1-1");
 		assertEq(mockNFT1.ownerOf(2), treasury, "Treasury owns NFT1-2");

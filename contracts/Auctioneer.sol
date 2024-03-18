@@ -61,12 +61,16 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 	uint256 public emissionPerShare = 255e18;
 	uint256[8] public epochEmissionsRemaining = [0, 0, 0, 0, 0, 0, 0, 0];
 
+	// FREE BIDS
+	IERC20 public BID;
+
 	// GAS SAVINGS
 	mapping(address => uint256) public userFunds;
 
 	constructor(
 		IERC20 _usd,
 		IERC20 _go,
+		IERC20 _bid,
 		IWETH _weth,
 		uint256 _bidCost,
 		uint256 _bidIncrement,
@@ -75,6 +79,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 	) Ownable(msg.sender) {
 		USD = _usd;
 		GO = _go;
+		BID = _bid;
 		WETH = _weth;
 		bidCost = _bidCost;
 		bidIncrement = _bidIncrement;
@@ -362,44 +367,54 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 
 	// BID
 
-	function bid(uint256 _lot, uint256 _multibid, bool _forceWallet) public validAuctionLot(_lot) nonReentrant {
-		if (_multibid == 0) revert MustBidAtLeastOnce();
+	function bid(uint256 _lot, BidOptions memory _options) public validAuctionLot(_lot) nonReentrant {
 		Auction storage auction = auctions[_lot];
 		auction.validateBiddingOpen();
+
+		// Always bid at least once
+		if (_options.multibid == 0) _options.multibid = 1;
 
 		// VALIDATE: User can participate in auction
 		if (auction.isPrivate && !_getUserPrivateAuctionsPermitted(msg.sender)) revert PrivateAuction();
 
 		// Update auction with new bid
-		auction.bidData.bid += bidIncrement * _multibid;
+		auction.bidData.bid += bidIncrement * _options.multibid;
 		auction.bidData.bidUser = msg.sender;
 		auction.bidData.bidTimestamp = block.timestamp;
-		auction.bidData.sum += auction.bidData.bidCost * _multibid;
-		auction.bidData.bids += _multibid;
+		if (_options.paymentType != BidPaymentType.BID_TOKEN) {
+			auction.bidData.sum += auction.bidData.bidCost * _options.multibid;
+		}
+		auction.bidData.bids += _options.multibid;
 		auction.bidData.nextBidBy = auction.getNextBidBy();
 
 		// Give user bid point
-		auctionUsers[_lot][msg.sender].bids += _multibid;
+		auctionUsers[_lot][msg.sender].bids += _options.multibid;
 
 		// A single bid guarantees emissions, add the lot to a list of the users lots that have claimable emissions
 		userClaimableLots[msg.sender].add(_lot);
-		if (!_forceWallet && userFunds[msg.sender] > (auction.bidData.bidCost * _multibid)) {
-			userFunds[msg.sender] -= (auction.bidData.bidCost * _multibid);
-		} else {
-			USD.safeTransferFrom(msg.sender, address(this), (auction.bidData.bidCost * _multibid));
+
+		if (_options.paymentType == BidPaymentType.WALLET) {
+			USD.safeTransferFrom(msg.sender, address(this), (auction.bidData.bidCost * _options.multibid));
+		}
+		if (_options.paymentType == BidPaymentType.FUNDS) {
+			if (userFunds[msg.sender] < auction.bidData.bidCost * _options.multibid) revert InsufficientFunds();
+			userFunds[msg.sender] -= (auction.bidData.bidCost * _options.multibid);
+		}
+		if (_options.paymentType == BidPaymentType.BID_TOKEN) {
+			BID.safeTransferFrom(msg.sender, burnAddress, _options.multibid * 1e18);
 		}
 
-		emit Bid(_lot, msg.sender, _multibid, auction.bidData.bid, userAlias[msg.sender]);
+		emit Bid(_lot, msg.sender, auction.bidData.bid, userAlias[msg.sender], _options);
 	}
 
 	// CLAIM
 
-	function claimAuctionLot(uint256 _lot, bool _forceWallet, bool _unwrapETH) public validAuctionLot(_lot) nonReentrant {
+	function claimAuctionLot(uint256 _lot, ClaimLotOptions memory _options) public validAuctionLot(_lot) nonReentrant {
 		Auction storage auction = auctions[_lot];
 
 		auction.validateEnded();
 
-		_claimLotWinnings(auction, _forceWallet, _unwrapETH);
+		_claimLotWinnings(auction, _options);
 		_finalizeAuction(auction);
 	}
 
@@ -412,7 +427,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		_finalizeAuction(auction);
 	}
 
-	function _claimLotWinnings(Auction storage auction, bool _forceWallet, bool _unwrapETH) internal {
+	function _claimLotWinnings(Auction storage auction, ClaimLotOptions memory _options) internal {
 		// User is not winner
 		if (msg.sender != auction.bidData.bidUser) revert NotWinner();
 
@@ -420,18 +435,14 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		if (auction.claimed) revert AuctionLotAlreadyClaimed();
 
 		// Transfer lot to last bidder (this comes first so it shows up first in explorer)
-		auction.transferLotTo(auction.bidData.bidUser, _unwrapETH, ETH, address(WETH));
+		auction.transferLotTo(auction.bidData.bidUser, _options.unwrapETH, ETH, address(WETH));
 
 		// Pay for lot
-		if (!_forceWallet && userFunds[msg.sender] >= auction.bidData.bid) {
-			// Pay for lot from pre-deposited balance
+		if (_options.paymentType == LotPaymentType.FUNDS) {
+			if (userFunds[msg.sender] < auction.bidData.bid) revert InsufficientFunds();
 			userFunds[msg.sender] -= auction.bidData.bid;
-		} else if (!_forceWallet && userFunds[msg.sender] > 0) {
-			// Pay for lot from mixed
-			USD.safeTransferFrom(msg.sender, address(this), auction.bidData.bid - userFunds[msg.sender]);
-			userFunds[msg.sender] = 0;
-		} else {
-			// Pay for lot entirely from wallet
+		}
+		if (_options.paymentType == LotPaymentType.WALLET) {
 			USD.safeTransferFrom(msg.sender, address(this), auction.bidData.bid);
 		}
 

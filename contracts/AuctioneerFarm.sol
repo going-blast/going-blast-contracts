@@ -9,51 +9,106 @@ import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "./IAuctioneerFarm.sol";
 
+library TokenEmissionUtils {
+	function min(uint256 a, uint256 b) internal pure returns (uint256) {
+		return a <= b ? a : b;
+	}
+	function getEmissionsCurrent(TokenEmission storage tokenEmission, uint256 totalStaked) internal {
+		if (block.timestamp <= tokenEmission.lastRewardTimestamp) return tokenEmission.rewPerShare;
+		if (tokenEmission.lastRewardTimestamp >= tokenEmission.emissionFinalTimestamp) return tokenEmission.rewPerShare;
+
+		if (totalStaked == 0) return tokenEmission.rewPerShare;
+
+		// Take into account last emission block when calculating multiplier
+		uint256 multiplier = min(block.timestamp, tokenEmission.emissionFinalTimestamp) - tokenEmission.lastRewardTimestamp;
+		uint256 emission = bidPerSecond * multiplier;
+		return tokenEmission.rewPerShare + ((emission * 1e18) / totalStaked);
+	}
+
+	function bringEmissionsCurrent(TokenEmission storage tokenEmission, uint256 totalStaked) internal {
+		tokenEmission.rewPerShare = getEmissionsCurrent(tokenEmission, totalStaked);
+		tokenEmission.lastRewardTimestamp = block.timestamp;
+	}
+
+	function setEmissions(TokenEmission storage tokenEmission, uint256 amount, uint256 duration) internal {
+		tokenEmission.lastRewardTimestamp = block.timestamp;
+		tokenEmission.emissionFinalTimestamp = block.timestamp + duration;
+		tokenEmission.rewPerSecond = amount / duration;
+
+		if (tokenEmission.token.balanceOf(address(this)) < amount) revert NotEnoughEmissionToken();
+	}
+
+	function getUserPending(
+		TokenEmission storage tokenEmission,
+		uint256 totalStaked,
+		uint256 userStaked,
+		uint256 userDebt
+	) internal view returns (uint256) {
+		return ((userStaked * getEmissionsCurrent(tokenEmission, totalStaked)) - userDebt) / REWARD_PRECISION;
+	}
+}
+
 contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, AuctioneerFarmEvents {
 	using SafeERC20 for IERC20;
 	using EnumerableSet for EnumerableSet.AddressSet;
+	using TokenEmissionUtils for TokenEmission;
 
 	bool public initializedEmissions = false;
-	uint256 public REWARD_PRECISION = 1e18;
+	uint256 public constant REWARD_PRECISION = 1e18;
 
 	// USD rewards from auctions
 	IERC20 public USD;
-	uint256 public markedUSDBal;
-	uint256 public unmarkedUSDBal;
 	uint256 public usdRewardPerShare;
 
-	// GO rewards from staking
+	// Emissions
 	IERC20 public GO;
-	uint256 public goPerSecond = 0;
-	uint256 public goRewardPerShare;
-	uint256 public goLastRewardTimestamp;
-	uint256 public goEmissionFinalTimestamp;
+	TokenEmission public GOEmissions;
+	IERC20 public BID;
+	TokenEmission public BIDEmissions;
 
 	// Staking
 	EnumerableSet.AddressSet internal stakingTokens;
 	mapping(address => StakingTokenData) public stakingTokenData;
 	mapping(address => uint256) public userDebtGO;
+	mapping(address => uint256) public userDebtBID;
 	mapping(address => uint256) public userDebtUSD;
 
-	constructor(IERC20 _usd, IERC20 _go) Ownable(msg.sender) {
+	constructor(IERC20 _usd, IERC20 _go, IERC20 _bid) Ownable(msg.sender) {
 		USD = _usd;
 		GO = _go;
+		GOEmissions = TokenEmission({
+			token: GO,
+			rewPerSecond: 0,
+			rewPerShare: 0,
+			lastRewardTimestamp: 0,
+			emissionFinalTimestamp: 0
+		});
+		BID = _bid;
+		BIDEmissions = TokenEmission({
+			token: BID,
+			rewPerSecond: 0,
+			rewPerShare: 0,
+			lastRewardTimestamp: 0,
+			emissionFinalTimestamp: 0
+		});
 	}
 
+	// GO emissions are a one time thing, can't be updated
 	function initializeEmissions(uint256 _emissionAmount, uint256 _emissionDuration) public onlyOwner {
 		if (initializedEmissions) revert AlreadyInitializedEmissions();
 		initializedEmissions = true;
 
-		if (GO.balanceOf(address(this)) < _emissionAmount) revert NotEnoughGo();
-
-		// Go Emissions
-		goLastRewardTimestamp = block.timestamp;
-		goEmissionFinalTimestamp = block.timestamp + _emissionDuration;
-		goPerSecond = _emissionAmount / _emissionDuration;
-		emit InitializedGOEmission(goPerSecond);
+		GOEmissions.setEmissions(_emissionAmount, _emissionDuration);
+		emit InitializedGOEmission(GOEmissions.rewPerSecond, _emissionDuration);
 
 		// Go Staking
 		_add(GO, 10000);
+	}
+
+	function setBIDEmissions(uint256 _emissionAmount, uint256 _emissionDuration) public onlyOwner {
+		GOEmissions.bringEmissionsCurrent(_getEqualizedTotalStaked());
+		GOEmissions.setEmissions(_emissionAmount, _emissionDuration);
+		emit UpdatedBIDEmission(BIDEmissions.rewPerSecond, _emissionDuration);
 	}
 
 	// ADMIN
@@ -178,59 +233,32 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 
 	function _updateUserDebts(address _user) internal {
 		uint256 userStaked = _getEqualizedUserStaked(_user);
-
-		userDebtGO[_user] = userStaked * goRewardPerShare;
 		userDebtUSD[_user] = userStaked * usdRewardPerShare;
+		userDebtGO[_user] = userStaked * GOEmissions.rewPerShare;
+		userDebtBID[_user] = userStaked * BIDEmissions.rewPerShare;
 	}
 
-	function _getPendingUSD(address _user) internal view returns (uint256) {
-		return ((_getEqualizedUserStaked(_user) * usdRewardPerShare) - userDebtUSD[_user]) / REWARD_PRECISION;
-	}
-
-	function min(uint256 a, uint256 b) internal pure returns (uint256) {
-		return a <= b ? a : b;
-	}
-
-	function _getUpdatedGoRewardPerShare() internal view returns (uint256 updatedGoRewardPerShare) {
-		if (block.timestamp <= goLastRewardTimestamp) return goRewardPerShare;
-		if (goLastRewardTimestamp >= goEmissionFinalTimestamp) return goRewardPerShare;
-
+	function _pending(address _user) internal view returns (PendingAmounts memory pending) {
+		uint256 userStaked = _getEqualizedUserStaked(_user);
 		uint256 totalStaked = _getEqualizedTotalStaked();
-		if (totalStaked == 0) return goRewardPerShare;
 
-		// Take into account last emission block when calculating multiplier
-		uint256 multiplier = min(block.timestamp, goEmissionFinalTimestamp) - goLastRewardTimestamp;
-		uint256 emission = goPerSecond * multiplier;
-		return goRewardPerShare + (emission * REWARD_PRECISION) / totalStaked;
-	}
-
-	function getUpdatedGoRewardPerShare() public view returns (uint256) {
-		return _getUpdatedGoRewardPerShare();
-	}
-
-	function _updateGoRewardPerShare() internal {
-		goRewardPerShare = _getUpdatedGoRewardPerShare();
-		goLastRewardTimestamp = block.timestamp;
-	}
-
-	function _getPendingGO(address _user) internal view returns (uint256) {
-		return ((_getEqualizedUserStaked(_user) * _getUpdatedGoRewardPerShare()) - userDebtGO[_user]) / REWARD_PRECISION;
+		pending.usd = ((_getEqualizedUserStaked(_user) * usdRewardPerShare) - userDebtUSD[_user]) / REWARD_PRECISION;
+		pending.go = GOEmissions.getUserPending(totalStaked, userStaked, userDebtGO[_user]);
+		pending.bid = BIDEmissions.getUserPending(totalStaked, userStaked, userDebtBID[_user]);
 	}
 
 	function _harvest(address _user) internal {
-		// USD
-		uint256 pendingUSD = _getPendingUSD(_user);
-		if (pendingUSD > 0) USD.safeTransfer(msg.sender, pendingUSD);
-		markedUSDBal = USD.balanceOf(address(this));
+		// Update Rewards Per Share
+		GOEmissions.bringEmissionsCurrent(totalStaked);
+		BIDEmissions.bringEmissionsCurrent(totalStaked);
 
-		// Update Go Reward Per Share
-		_updateGoRewardPerShare();
+		PendingAmounts memory pending = _pending(_user);
 
-		// GO
-		uint256 pendingGO = _getPendingGO(_user);
-		if (pendingGO > 0) GO.safeTransfer(msg.sender, pendingGO);
+		if (pending.usd > 0) USD.safeTransfer(msg.sender, pending.usd);
+		if (pending.go > 0) GO.safeTransfer(msg.sender, pending.go);
+		if (pending.bid > 0) BID.safeTransfer(msg.sender, pending.bid);
 
-		emit Harvested(msg.sender, pendingUSD, pendingGO);
+		emit Harvested(msg.sender, pending);
 	}
 
 	function harvest() public nonReentrant {
@@ -238,8 +266,7 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 		_updateUserDebts(msg.sender);
 	}
 
-	function pending(address _user) public view returns (uint256 pendingUSD, uint256 pendingGO) {
-		pendingUSD = _getPendingUSD(_user);
-		pendingGO = _getPendingGO(_user);
+	function pending(address _user) public view returns (PendingAmounts memory pending) {
+		return _pending(_user);
 	}
 }

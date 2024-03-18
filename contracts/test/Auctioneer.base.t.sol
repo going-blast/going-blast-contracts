@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 import { Auctioneer } from "../Auctioneer.sol";
 import "../IAuctioneer.sol";
 import { GOToken } from "../GOToken.sol";
+import { BIDToken } from "../BIDToken.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { AuctioneerFarm } from "../AuctioneerFarm.sol";
@@ -43,6 +44,7 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	BasicERC721 public mockNFT2;
 	IERC20 public GO;
 	BasicERC20 public GO_LP;
+	IERC20 public BID;
 
 	// SETUP
 
@@ -51,10 +53,11 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		WETH = IWETH(address(new WETH9()));
 		GO = new GOToken(deployer);
 		GO_LP = new BasicERC20("UniswapV2Pair", "GO_LP");
+		BID = new BIDToken(deployer);
 		XXToken = new BasicERC20("XX", "XX");
 		YYToken = new BasicERC20("YY", "YY");
 
-		auctioneer = new AuctioneerHarness(USD, GO, WETH, 1e18, 1e16, 1e18, 20e18);
+		auctioneer = new AuctioneerHarness(USD, GO, BID, WETH, 1e18, 1e16, 1e18, 20e18);
 		farm = new AuctioneerFarm(USD, GO);
 
 		// Create NFTs
@@ -196,24 +199,29 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	function _bidShouldEmit(address user) public {
 		uint256 expectedBid = auctioneer.getAuction(0).bidData.bid + auctioneer.bidIncrement();
 		vm.expectEmit(true, true, true, true);
-		emit Bid(0, user, 1, expectedBid, "");
+		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "" });
+		emit Bid(0, user, expectedBid, "", options);
 		_bid(user);
 	}
 	function _bid(address user) public {
 		vm.prank(user);
-		auctioneer.bid(0, 1, true);
+		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "" });
+		auctioneer.bid(0, options);
 	}
 	function _bidOnLot(address user, uint256 lot) public {
 		vm.prank(user);
-		auctioneer.bid(lot, 1, true);
+		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "" });
+		auctioneer.bid(lot, options);
 	}
 	function _multibid(address user, uint256 bidCount) public {
 		vm.prank(user);
-		auctioneer.bid(0, bidCount, true);
+		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: bidCount, message: "" });
+		auctioneer.bid(0, options);
 	}
 	function _multibidLot(address user, uint256 bidCount, uint256 lot) public {
 		vm.prank(user);
-		auctioneer.bid(lot, bidCount, true);
+		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: bidCount, message: "" });
+		auctioneer.bid(lot, options);
 	}
 	function _bidUntil(address user, uint256 timer, uint256 until) public {
 		while (true) {

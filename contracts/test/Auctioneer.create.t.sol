@@ -56,7 +56,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 
 	function test_createDailyAuctions_RevertWhen_NotInitialized() public {
 		// SETUP
-		auctioneer = new AuctioneerHarness(USD, GO, WETH, 1e18, 1e16, 1e18, 20e18);
+		auctioneer = new AuctioneerHarness(USD, GO, BID, WETH, 1e18, 1e16, 1e18, 20e18);
 
 		// EXECUTE
 		vm.expectRevert(NotInitialized.selector);
@@ -69,7 +69,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 
 	function test_createDailyAuctions_RevertWhen_TreasuryNotSet() public {
 		// SETUP
-		auctioneer = new AuctioneerHarness(USD, GO, WETH, 1e18, 1e16, 1e18, 20e18);
+		auctioneer = new AuctioneerHarness(USD, GO, BID, WETH, 1e18, 1e16, 1e18, 20e18);
 
 		vm.prank(presale);
 		GO.safeTransfer(address(auctioneer), 1e18);

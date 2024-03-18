@@ -85,8 +85,7 @@ contract AuctioneerCancelTest is AuctioneerHelper {
 
 		// User bids
 		vm.warp(params[0].unlockTimestamp);
-		vm.prank(user1);
-		auctioneer.bid(0, 1, false);
+		_bid(user1);
 
 		// Revert on cancel
 		vm.expectRevert(NotCancellable.selector);
@@ -207,8 +206,7 @@ contract AuctioneerCancelTest is AuctioneerHelper {
 
 		// User bids and should revert
 		vm.expectRevert(BiddingClosed.selector);
-		vm.prank(user1);
-		auctioneer.bid(0, 1, false);
+		_bid(user1);
 	}
 
 	function test_cancelAuction_RevertWhen_AlreadyCancelledNotCancellable() public {

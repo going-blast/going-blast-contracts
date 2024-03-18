@@ -43,7 +43,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 	// INITIALIZE
 
 	function test_initialize_RevertWhen_GONotYetReceived() public {
-		auctioneer = new AuctioneerHarness(USD, GO, WETH, 1e18, 1e16, 1e18, 20e18);
+		auctioneer = new AuctioneerHarness(USD, GO, BID, WETH, 1e18, 1e16, 1e18, 20e18);
 
 		vm.expectRevert(GONotYetReceived.selector);
 

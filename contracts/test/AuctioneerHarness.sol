@@ -13,12 +13,13 @@ contract AuctioneerHarness is Auctioneer {
 	constructor(
 		IERC20 _usd,
 		IERC20 _go,
+		IERC20 _bid,
 		IWETH _weth,
 		uint256 _bidCost,
 		uint256 _bidIncrement,
 		uint256 _startingBid,
 		uint256 _privateRequirement
-	) Auctioneer(_usd, _go, _weth, _bidCost, _bidIncrement, _startingBid, _privateRequirement) {}
+	) Auctioneer(_usd, _go, _bid, _weth, _bidCost, _bidIncrement, _startingBid, _privateRequirement) {}
 
 	// AuctionUtils
 	function exposed_auction_activeWindow(uint256 _lot) public view validAuctionLot(_lot) returns (uint256) {

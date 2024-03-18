@@ -104,7 +104,7 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 
 		vm.expectRevert(AuctionStillRunning.selector);
 		vm.prank(user1);
-		auctioneer.claimAuctionLot(0, true, true);
+		auctioneer.claimAuctionLot(0, ClaimLotOptions({ paymentType: LotPaymentType.WALLET, unwrapETH: true }));
 
 		// Claimable after next bid by
 		vm.warp(auctioneer.getAuction(0).bidData.nextBidBy + 1);
@@ -136,7 +136,7 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 
 		vm.expectRevert(AuctionStillRunning.selector);
 		vm.prank(user1);
-		auctioneer.claimAuctionLot(0, true, true);
+		auctioneer.claimAuctionLot(0, ClaimLotOptions({ paymentType: LotPaymentType.WALLET, unwrapETH: true }));
 
 		// Claimable after next bid by
 		vm.warp(auctioneer.getAuction(0).bidData.nextBidBy + 1);
@@ -145,7 +145,7 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 		emit AuctionFinalized(0);
 
 		vm.prank(user1);
-		auctioneer.claimAuctionLot(0, true, true);
+		auctioneer.claimAuctionLot(0, ClaimLotOptions({ paymentType: LotPaymentType.WALLET, unwrapETH: true }));
 	}
 
 	function testFail_finalize_claimAuctionLot_alreadyFinalized_NotExpectEmit_AuctionFinalized() public {
@@ -157,7 +157,7 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 
 		vm.expectRevert(AuctionStillRunning.selector);
 		vm.prank(user1);
-		auctioneer.claimAuctionLot(0, true, true);
+		auctioneer.claimAuctionLot(0, ClaimLotOptions({ paymentType: LotPaymentType.WALLET, unwrapETH: true }));
 
 		// Claimable after next bid by
 		vm.warp(auctioneer.getAuction(0).bidData.nextBidBy + 1);
@@ -175,7 +175,7 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 
 		// Should revert
 		vm.prank(user1);
-		auctioneer.claimAuctionLot(0, true, true);
+		auctioneer.claimAuctionLot(0, ClaimLotOptions({ paymentType: LotPaymentType.WALLET, unwrapETH: true }));
 	}
 
 	function test_finalizeAuction_TransferEmissionsToTreasury() public {

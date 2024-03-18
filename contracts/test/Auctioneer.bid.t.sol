@@ -74,20 +74,14 @@ contract AuctioneerBidTest is AuctioneerHelper {
 
 	function test_bid_RevertWhen_InvalidAuctionLot() public {
 		vm.expectRevert(InvalidAuctionLot.selector);
-		auctioneer.bid(1, 1, true);
+		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "" });
+		auctioneer.bid(1, options);
 	}
 
 	function test_bid_RevertWhen_AuctionNotYetOpen() public {
 		vm.expectRevert(BiddingClosed.selector);
-		auctioneer.bid(0, 1, true);
-	}
-
-	function test_bid_RevertWhen_MultibidIs0() public {
-		vm.expectRevert(MustBidAtLeastOnce.selector);
-
-		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
-		vm.prank(user1);
-		auctioneer.bid(0, 0, true);
+		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "" });
+		auctioneer.bid(0, options);
 	}
 
 	function test_bid_RevertWhen_InsufficientBalance() public {
@@ -101,7 +95,8 @@ contract AuctioneerBidTest is AuctioneerHelper {
 
 		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
 		vm.prank(user1);
-		auctioneer.bid(0, 1, true);
+		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "" });
+		auctioneer.bid(0, options);
 	}
 
 	function test_bid_RevertWhen_InsufficientAllowance() public {
@@ -114,7 +109,8 @@ contract AuctioneerBidTest is AuctioneerHelper {
 
 		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
 		vm.prank(user1);
-		auctioneer.bid(0, 1, true);
+		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "" });
+		auctioneer.bid(0, options);
 	}
 
 	function test_bid_ExpectEmit_Bid() public {
@@ -126,11 +122,12 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		auctioneer.setAlias("XXXX");
 
 		vm.expectEmit(true, true, true, true);
-		emit Bid(0, user1, 1, expectedBid, "XXXX");
+		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "Hello World" });
+		emit Bid(0, user1, expectedBid, "XXXX", options);
 
 		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
 		vm.prank(user1);
-		auctioneer.bid(0, 1, true);
+		auctioneer.bid(0, options);
 	}
 
 	function test_bid_Should_UpdateAuctionCorrectly() public {
@@ -138,7 +135,8 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		Auction memory auctionInit = auctioneer.getAuction(0);
 
 		vm.prank(user1);
-		auctioneer.bid(0, 1, true);
+		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "Hello World" });
+		auctioneer.bid(0, options);
 
 		uint256 bidCost = auctioneer.bidCost();
 		uint256 bidIncrement = auctioneer.bidIncrement();
@@ -163,7 +161,8 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		uint256 auctioneerUsdBalInit = USD.balanceOf(address(auctioneer));
 
 		vm.prank(user1);
-		auctioneer.bid(0, 1, true);
+		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "Hello World" });
+		auctioneer.bid(0, options);
 
 		assertEq(USD.balanceOf(user1), user1UsdBalInit - bidCost, "Should remove funds from users wallet");
 		assertEq(USD.balanceOf(address(auctioneer)), auctioneerUsdBalInit + bidCost, "Should add funds to auctioneer");
@@ -182,7 +181,8 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		uint256 user1Funds = auctioneer.userFunds(user1);
 
 		vm.prank(user1);
-		auctioneer.bid(0, 1, false);
+		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.FUNDS, multibid: 1, message: "Hello World" });
+		auctioneer.bid(0, options);
 
 		assertEq(USD.balanceOf(user1), user1UsdBalInit, "Should not remove funds from users wallet");
 		assertEq(auctioneer.userFunds(user1), user1Funds - bidCost, "Should remove funds from users balance");
@@ -201,11 +201,16 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		uint256 userUSDInit = USD.balanceOf(user1);
 
 		vm.expectEmit(true, true, true, true);
-		emit Bid(0, user1, multibid, expectedBid, "");
+		BidOptions memory options = BidOptions({
+			paymentType: BidPaymentType.WALLET,
+			multibid: multibid,
+			message: "Hello World"
+		});
+		emit Bid(0, user1, expectedBid, "", options);
 
 		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
 		vm.prank(user1);
-		auctioneer.bid(0, multibid, true);
+		auctioneer.bid(0, options);
 
 		assertEq(USD.balanceOf(user1), userUSDInit - expectedCost, "Expected to pay cost * multibid");
 	}
@@ -246,10 +251,11 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		// user 1 can bid
 		uint256 expectedBid = auctioneer.startingBid() + auctioneer.bidIncrement();
 		vm.expectEmit(true, true, true, true);
-		emit Bid(1, user1, 1, expectedBid, "");
+		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "" });
+		emit Bid(1, user1, expectedBid, "", options);
 
 		vm.prank(user1);
-		auctioneer.bid(1, 1, false);
+		auctioneer.bid(1, options);
 
 		// USER 2
 
@@ -263,7 +269,8 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		vm.expectRevert(PrivateAuction.selector);
 
 		vm.prank(user2);
-		auctioneer.bid(1, 1, false);
+		options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "" });
+		auctioneer.bid(1, options);
 
 		// USER 3
 
@@ -276,10 +283,11 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		// user 3 can bid
 		expectedBid = auctioneer.getAuction(1).bidData.bid + auctioneer.bidIncrement();
 		vm.expectEmit(true, true, true, true);
-		emit Bid(1, user3, 1, expectedBid, "");
+		options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "" });
+		emit Bid(1, user3, expectedBid, "", options);
 
 		vm.prank(user3);
-		auctioneer.bid(1, 1, false);
+		auctioneer.bid(1, options);
 
 		// USER 4
 
@@ -293,21 +301,31 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		vm.expectRevert(PrivateAuction.selector);
 
 		vm.prank(user4);
-		auctioneer.bid(1, 1, false);
+		auctioneer.bid(1, options);
 	}
+
+	// BID TOKENS
+
+	// [ ] bid tokens can be used to bid
+	//	[ ] taken from wallet
+	//	[ ] Marked in the emitted event
+	//	[ ] Does not pull usd from funds / wallet
+	//	[ ] Does not increase sum
 
 	// GAS
 
 	function test_bid_GAS_WALLET() public {
 		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
 		vm.prank(user1);
-		auctioneer.bid(0, 1, true);
+		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "" });
+		auctioneer.bid(0, options);
 	}
 
 	// User 2 has deposited funds into contract
-	function test_bid_GAS_BALANCE() public {
+	function test_bid_GAS_FUNDS() public {
 		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
 		vm.prank(user2);
-		auctioneer.bid(0, 1, false);
+		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.FUNDS, multibid: 1, message: "" });
+		auctioneer.bid(0, options);
 	}
 }

@@ -6,8 +6,27 @@ enum BidWindowType {
 	TIMED,
 	INFINITE
 }
+enum BidPaymentType {
+	WALLET,
+	FUNDS,
+	BID_TOKEN
+}
+enum LotPaymentType {
+	WALLET,
+	FUNDS
+}
 
 // Params
+
+struct BidOptions {
+	BidPaymentType paymentType;
+	uint256 multibid;
+	string message;
+}
+struct ClaimLotOptions {
+	LotPaymentType paymentType;
+	bool unwrapETH;
+}
 
 struct BidWindowParams {
 	BidWindowType windowType;
@@ -127,6 +146,7 @@ error PrivateAuction();
 error UnlockAlreadyPassed();
 error BadDeposit();
 error BadWithdrawal();
+error InsufficientFunds();
 error InvalidAlias();
 error AliasTaken();
 error ETHTransferFailed();
@@ -141,7 +161,7 @@ interface AuctioneerEvents {
 	event UpdatedEarlyHarvestTax(uint256 _earlyHarvestTax);
 	event UpdatedEmissionTaxDuration(uint256 _emissionTax);
 	event AuctionCreated(uint256 indexed _lot);
-	event Bid(uint256 indexed _lot, address indexed _user, uint256 _multibid, uint256 _bid, string _alias);
+	event Bid(uint256 indexed _lot, address indexed _user, uint256 _bid, string _alias, BidOptions _options);
 	event AuctionFinalized(uint256 indexed _lot);
 	event AuctionLotClaimed(uint256 indexed _lot, address indexed _user, TokenData[] _tokens, NftData[] _nfts);
 	event UserClaimedLotEmissions(uint256 _lot, address indexed _user, uint256 _userEmissions, uint256 _burnEmissions);
