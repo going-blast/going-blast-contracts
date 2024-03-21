@@ -58,9 +58,9 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	function setUp() public virtual {
 		USD = new BasicERC20("USD", "USD");
 		WETH = IWETH(address(new WETH9()));
-		GO = new GOToken(deployer);
+		GO = new GOToken();
 		GO_LP = new BasicERC20("UniswapV2Pair", "GO_LP");
-		VOUCHER = new VOUCHERToken(deployer);
+		VOUCHER = new VOUCHERToken();
 		XXToken = new BasicERC20("XX", "XX");
 		YYToken = new BasicERC20("YY", "YY");
 

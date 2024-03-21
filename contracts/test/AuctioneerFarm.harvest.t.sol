@@ -38,7 +38,6 @@ contract AuctioneerFarmHarvestTest is AuctioneerHelper, AuctioneerFarmEvents {
 		farm.initializeEmissions(farmGO, 180 days);
 
 		// Initialize farm voucher emission
-		vm.prank(deployer);
 		VOUCHER.mint(address(farm), 100e18 * 180 days);
 		farm.setVoucherEmissions(100e18 * 180 days, 180 days);
 

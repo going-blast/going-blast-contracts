@@ -23,8 +23,8 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 	address public treasury;
 	address public farm;
 	uint256 public treasurySplit = 2000;
-	address public burnAddress = 0x000000000000000000000000000000000000dEaD;
 	uint256 public earlyHarvestTax = 5000;
+	address public burnAddress = 0x000000000000000000000000000000000000dEaD;
 
 	// CORE
 
