@@ -230,4 +230,26 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 			_bid(user);
 		}
 	}
+
+	// Farm helpers
+
+	// These defaults all look at the staking token GO
+	function _farm_rewPerShare_state(address _emissionToken) public returns (uint256 state) {
+		(state, ) = farm.getStakingTokenEmissionRewPerShare(address(GO), _emissionToken);
+	}
+	function _farm_rewPerShare_current(address _emissionToken) public returns (uint256 current) {
+		(, current) = farm.getStakingTokenEmissionRewPerShare(address(GO), _emissionToken);
+	}
+	function _farm_userDebt(address _emissionToken, address _user) public returns (uint256 debt) {
+		debt = farm.getStakingTokenEmissionUserDebt(address(GO), _emissionToken, _user);
+	}
+	function _farm_userDebtGO(address _user) public returns (uint256 debt) {
+		debt = _farm_userDebt(address(GO), _user);
+	}
+	function _farm_userDebtUSD(address _user) public returns (uint256 debt) {
+		debt = _farm_userDebt(address(USD), _user);
+	}
+	function _farm_userDebtBID(address _user) public returns (uint256 debt) {
+		debt = _farm_userDebt(address(BID), _user);
+	}
 }

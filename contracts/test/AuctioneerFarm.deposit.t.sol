@@ -158,24 +158,27 @@ contract AuctioneerFarmDepositTest is AuctioneerHelper, AuctioneerFarmEvents {
 		vm.warp(block.timestamp + 1 days);
 
 		// goRewardPerShare
-		(TokenEmission memory goEmission, uint256 updatedGoRewPerShare) = farm.getGOEmissions();
+		TokenEmission memory goEmission = farm.getEmissionData(address(GO));
+		uint256 updatedGoRewPerShare = _farm_rewPerShare_current(address(GO));
 		uint256 expectedGoRewardPerShare = (goEmission.rewPerSecond * 1 days * farm.REWARD_PRECISION()) /
 			farm.getEqualizedTotalStaked();
 		assertEq(updatedGoRewPerShare, expectedGoRewardPerShare, "Go per share updated correctly");
 
 		// usdRewardPerShare
 		uint256 expectedUsdRewardPerShare = (100e18 * farm.REWARD_PRECISION()) / farm.getEqualizedTotalStaked();
-		assertEq(farm.usdRewardPerShare(), expectedUsdRewardPerShare, "Usd Reward per Share matches expected");
+		assertEq(_farm_rewPerShare_state(address(USD)), expectedUsdRewardPerShare, "Usd Reward per Share matches expected");
 
-		assertEq(farm.userDebtGO(user1), 0, "User1 debt GO not yet initialized");
-		assertEq(farm.userDebtUSD(user1), 0, "User1 debt USD not yet initialized");
+		assertEq(_farm_userDebtGO(user1), 0, "User1 debt GO not yet initialized");
+		assertEq(_farm_userDebtUSD(user1), 0, "User1 debt USD not yet initialized");
 
 		vm.prank(user1);
 		farm.deposit(address(GO), 5e18);
 
 		// goRewardPerShare updated
-		(goEmission, updatedGoRewPerShare) = farm.getGOEmissions();
-		assertEq(goEmission.rewPerShare, expectedGoRewardPerShare, "Go Reward Per Share updated as part of harvest");
+		goEmission = farm.getEmissionData(address(GO));
+		uint256 stateGoRewPerShare = _farm_rewPerShare_state(address(GO));
+		updatedGoRewPerShare = _farm_rewPerShare_current(address(GO));
+		assertEq(stateGoRewPerShare, expectedGoRewardPerShare, "Go Reward Per Share updated as part of harvest");
 
 		// User staked
 		uint256 expectedUser1Staked = 5e18;
@@ -183,11 +186,11 @@ contract AuctioneerFarmDepositTest is AuctioneerHelper, AuctioneerFarmEvents {
 
 		// GO debt
 		uint256 expectedUser1DebtGO = expectedUser1Staked * expectedGoRewardPerShare;
-		assertEq(farm.userDebtGO(user1), expectedUser1DebtGO, "User1 debt GO matches expected");
+		assertEq(_farm_userDebtGO(user1), expectedUser1DebtGO, "User1 debt GO matches expected");
 
 		// USD debt
 		uint256 expectedUser1DebtUSD = expectedUser1Staked * expectedUsdRewardPerShare;
-		assertEq(farm.userDebtUSD(user1), expectedUser1DebtUSD, "User1 debt USD  matches expected");
+		assertEq(_farm_userDebtUSD(user1), expectedUser1DebtUSD, "User1 debt USD  matches expected");
 	}
 
 	function test_deposit_Should_HarvestPending() public {
@@ -203,9 +206,9 @@ contract AuctioneerFarmDepositTest is AuctioneerHelper, AuctioneerFarmEvents {
 		vm.prank(user1);
 		farm.deposit(address(GO), 5e18);
 
-		uint256 userDebtGO = farm.userDebtGO(user1);
-		uint256 userDebtBID = farm.userDebtBID(user1);
-		uint256 userDebtUSD = farm.userDebtUSD(user1);
+		uint256 userDebtGO = _farm_userDebtGO(user1);
+		uint256 userDebtBID = _farm_userDebtBID(user1);
+		uint256 userDebtUSD = _farm_userDebtUSD(user1);
 
 		// Add new batch of usd
 		_injectFarmUSD(75e18);
@@ -213,11 +216,9 @@ contract AuctioneerFarmDepositTest is AuctioneerHelper, AuctioneerFarmEvents {
 		// Warp to emit GO
 		vm.warp(block.timestamp + 1.5 days);
 
-		(TokenEmission memory goEmission, uint256 updatedGoRewPerShare) = farm.getGOEmissions();
-		(TokenEmission memory bidEmission, uint256 updatedBidRewPerShare) = farm.getBIDEmissions();
-		uint256 goRewardPerShare = updatedGoRewPerShare;
-		uint256 bidRewardPerShare = updatedBidRewPerShare;
-		uint256 usdRewardPerShare = farm.usdRewardPerShare();
+		uint256 goRewardPerShare = _farm_rewPerShare_current(address(GO));
+		uint256 bidRewardPerShare = _farm_rewPerShare_current(address(BID));
+		uint256 usdRewardPerShare = _farm_rewPerShare_current(address(USD));
 		uint256 userStaked = farm.getEqualizedUserStaked(user1);
 		uint256 expectedGoHarvested = ((goRewardPerShare * userStaked) - userDebtGO) / farm.REWARD_PRECISION();
 		uint256 expectedBidHarvested = ((bidRewardPerShare * userStaked) - userDebtBID) / farm.REWARD_PRECISION();
@@ -248,9 +249,9 @@ contract AuctioneerFarmDepositTest is AuctioneerHelper, AuctioneerFarmEvents {
 		vm.prank(user1);
 		farm.deposit(address(GO), 5e18);
 
-		uint256 userDebtGO = farm.userDebtGO(user1);
-		uint256 userDebtBID = farm.userDebtBID(user1);
-		uint256 userDebtUSD = farm.userDebtUSD(user1);
+		uint256 userDebtGO = _farm_userDebtGO(user1);
+		uint256 userDebtBID = _farm_userDebtBID(user1);
+		uint256 userDebtUSD = _farm_userDebtUSD(user1);
 
 		// Add new batch of usd
 		_injectFarmUSD(75e18);
@@ -258,13 +259,13 @@ contract AuctioneerFarmDepositTest is AuctioneerHelper, AuctioneerFarmEvents {
 		// Warp to emit GO
 		vm.warp(block.timestamp + 1.5 days);
 
-		(TokenEmission memory goEmission, uint256 updatedGoRewPerShare) = farm.getGOEmissions();
-		(TokenEmission memory bidEmission, uint256 updatedBidRewPerShare) = farm.getBIDEmissions();
-		uint256 usdRewardPerShare = farm.usdRewardPerShare();
+		uint256 updatedGoRewPerShare = _farm_rewPerShare_current(address(GO));
+		uint256 updatedBidRewPerShare = _farm_rewPerShare_current(address(BID));
+		uint256 updatedUsdRewPerShare = _farm_rewPerShare_current(address(USD));
 		uint256 userStaked = farm.getEqualizedUserStaked(user1);
 		uint256 expectedGoHarvested = ((updatedGoRewPerShare * userStaked) - userDebtGO) / farm.REWARD_PRECISION();
 		uint256 expectedBidHarvested = ((updatedBidRewPerShare * userStaked) - userDebtBID) / farm.REWARD_PRECISION();
-		uint256 expectedUsdHarvested = ((usdRewardPerShare * userStaked) - userDebtUSD) / farm.REWARD_PRECISION();
+		uint256 expectedUsdHarvested = ((updatedUsdRewPerShare * userStaked) - userDebtUSD) / farm.REWARD_PRECISION();
 
 		_expectTokenTransfer(USD, address(farm), user1, expectedUsdHarvested);
 		_expectTokenTransfer(GO, address(farm), user1, expectedGoHarvested);

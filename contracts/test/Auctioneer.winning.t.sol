@@ -282,7 +282,7 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 		uint256 treasuryCut = (lotPrice * treasurySplit) / 10000;
 		uint256 farmCut = (lotPrice * (10000 - treasurySplit)) / 10000;
 
-		uint256 usdRewardPerShareInit = farm.usdRewardPerShare();
+		(uint256 usdRewardPerShareInit, ) = farm.getStakingTokenEmissionRewPerShare(address(GO), address(USD));
 		assertEq(usdRewardPerShareInit, 0, "USD rew per share should start at 0");
 
 		// Claim
@@ -302,7 +302,7 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 
 		// Farm usdRewardPerShare should increase
 		uint256 expectedRewPerShare = (farmCut * farm.REWARD_PRECISION()) / farm.getEqualizedTotalStaked();
-		uint256 usdRewardPerShareFinal = farm.usdRewardPerShare();
+		(uint256 usdRewardPerShareFinal, ) = farm.getStakingTokenEmissionRewPerShare(address(GO), address(USD));
 		assertEq(expectedRewPerShare, usdRewardPerShareFinal, "USD reward per share of farm should increase");
 	}
 

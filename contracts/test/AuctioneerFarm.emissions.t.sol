@@ -108,8 +108,7 @@ contract AuctioneerFarmEmissionsTest is AuctioneerHelper, AuctioneerFarmEvents {
 		_farmDeposit(user3, address(GO), user3Deposited);
 		_farmDeposit(user4, address(GO), user4Deposited);
 
-		(TokenEmission memory goEmission, ) = farm.getGOEmissions();
-		uint256 goPerSecond = goEmission.rewPerSecond;
+		uint256 goPerSecond = farm.getEmissionData(address(GO)).rewPerSecond;
 
 		uint256 initTimestamp = block.timestamp;
 		vm.warp(1 days);
@@ -160,8 +159,7 @@ contract AuctioneerFarmEmissionsTest is AuctioneerHelper, AuctioneerFarmEvents {
 	function test_emissions_EmissionsCanRunOut() public {
 		_farmDeposit(user1, address(GO), user1Deposited);
 
-		(TokenEmission memory goEmission, ) = farm.getGOEmissions();
-		uint256 goEmissionFinalTimestamp = goEmission.emissionFinalTimestamp;
+		uint256 goEmissionFinalTimestamp = farm.getEmissionData(address(GO)).emissionFinalTimestamp;
 
 		vm.warp(goEmissionFinalTimestamp - 30);
 		vm.prank(user1);
@@ -193,9 +191,9 @@ contract AuctioneerFarmEmissionsTest is AuctioneerHelper, AuctioneerFarmEvents {
 		farm.harvest();
 
 		// getUpdatedGoRewardPerShare doesn't continue to increase
-		(, uint256 updatedGoRewardPerShareInit) = farm.getGOEmissions();
+		uint256 updatedGoRewardPerShareInit = _farm_rewPerShare_current(address(GO));
 		vm.warp(block.timestamp + 1 hours);
-		(, uint256 updatedGoRewardPerShareFinal) = farm.getGOEmissions();
+		uint256 updatedGoRewardPerShareFinal = _farm_rewPerShare_current(address(GO));
 		assertEq(updatedGoRewardPerShareInit, updatedGoRewardPerShareFinal, "Updated go reward per share remains the same");
 
 		// Pending doesn't increase

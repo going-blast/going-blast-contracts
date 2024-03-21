@@ -4,65 +4,57 @@ pragma experimental ABIEncoderV2;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-enum EmissionType {
-	DRIP, // Emission drips over time (GO, BID)
-	CHUNK // Emission is added in chunks (USD)
-}
-
-struct StakingTokenOnlyData {
-	address token;
-	uint256 boost;
-	uint256 total;
-}
-struct StakingTokenData {
-	IERC20 token;
-	uint256 boost;
-	uint256 total;
-	mapping(address => uint256) userStaked;
-	mapping(address => uint256) emissionRewPerShare;
-	mapping(address => mapping(address => uint256)) userEmissionDebt;
-}
 struct PendingAmounts {
-	uint256 usd;
 	uint256 go;
-	uint256 bid;
-}
-struct StakingTokenRewPerShare {
-	address stakingToken;
-	address emissionToken;
-	uint256 rewPerShare;
+	uint256 voucher;
+	uint256 usd;
 }
 
 struct TokenEmission {
-	address token; // Initialization check
-	EmissionType emissionType;
-	uint256 rewPerSecond;
+	IERC20 token;
+	uint256 perSecond;
+	uint256 endTimestamp;
+}
+
+struct UserInfo {
+	uint256 amount;
+	uint256 goDebt;
+	uint256 voucherDebt;
+	uint256 usdDebt;
+}
+
+struct PoolInfo {
+	uint256 pid;
+	IERC20 token;
+	uint256 supply;
+	uint256 allocPoint;
 	uint256 lastRewardTimestamp;
-	uint256 emissionFinalTimestamp;
+	uint256 accGoPerShare;
+	uint256 accVoucherPerShare;
+	uint256 accUsdPerShare;
 }
 
 interface AuctioneerFarmEvents {
-	event InitializedGOEmission(uint256 _goPerSecond, uint256 _duration);
-	event UpdatedBIDEmission(uint256 _bidPerSecond, uint256 _duration);
-	event AddedStakingToken(address indexed _token, uint256 _boost);
-	event UpdatedLpBoost(address indexed _token, uint256 _boost);
-	event ReceivedUSDDistribution(uint256 _amount);
+	event SetEmission(address indexed _token, uint256 _perSecond, uint256 _duration);
+	event AddedPool(uint256 _pid, uint256 _allocPoint, address indexed _token);
+	event UpdatedPool(uint256 _pid, uint256 _allocPoint);
 
-	event Deposit(address indexed _user, address indexed _token, uint256 _amount);
-	event Withdraw(address indexed _user, address indexed _token, uint256 _amount);
-	event Harvested(address indexed _user, PendingAmounts _pending);
+	event ReceivedUsdDistribution(uint256 _amount);
+
+	event Deposit(address indexed _user, uint256 _pid, uint256 _amount, address _to);
+	event Withdraw(address indexed _user, uint256 _pid, uint256 _amount, address _to);
+	event Harvest(address indexed _user, uint256 _pid, PendingAmounts _pending, address _to);
+	event EmergencyWithdraw(address indexed _user, uint256 _pid, uint256 _amount, address _to);
 }
 
 interface IAuctioneerFarm {
 	error BadWithdrawal();
 	error BadDeposit();
-	error NotStakingToken();
-	error OutsideRange();
 	error NotEnoughEmissionToken();
-	error AlreadySet();
 	error AlreadyAdded();
 	error AlreadyInitializedEmissions();
+	error InvalidPid();
 
-	function receiveUSDDistribution(uint256 _amount) external returns (bool);
+	function receiveUsdDistribution(uint256 _amount) external returns (bool);
 	function getEqualizedUserStaked(address _user) external view returns (uint256);
 }

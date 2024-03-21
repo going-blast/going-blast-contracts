@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 pragma experimental ABIEncoderV2;
 
@@ -11,298 +11,250 @@ import "./IAuctioneerFarm.sol";
 
 contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, AuctioneerFarmEvents {
 	using SafeERC20 for IERC20;
-	using EnumerableSet for EnumerableSet.AddressSet;
+
+	PoolInfo[] public poolInfo;
+	mapping(address => bool) public tokensWithPool;
+
+	mapping(uint256 => mapping(address => UserInfo)) public userInfo;
+	uint256 public totalAllocPoint;
+
+	IERC20 public GO;
+	TokenEmission public goEmission;
+	IERC20 public VOUCHER;
+	TokenEmission public voucherEmission;
+	IERC20 public USD;
+	TokenEmission public usdEmission;
 
 	bool public initializedEmissions = false;
 	uint256 public constant REWARD_PRECISION = 1e18;
 
-	IERC20 public USD;
-	IERC20 public GO;
-	IERC20 public BID;
-	mapping(address => TokenEmission) public emissionData;
-
-	// Staking
-	EnumerableSet.AddressSet internal stakingTokens;
-	mapping(address => StakingTokenData) public stakingTokenData;
-	uint256 public totalAlloc;
-	mapping(address => uint256) public userDebtGO;
-	mapping(address => uint256) public userDebtBID;
-	mapping(address => uint256) public userDebtUSD;
-
-	constructor(IERC20 _usd, IERC20 _go, IERC20 _bid) Ownable(msg.sender) {
+	constructor(IERC20 _usd, IERC20 _go, IERC20 _voucher) Ownable(msg.sender) {
 		USD = _usd;
-		emissionData[address(USD)] = TokenEmission({
-			token: address(USD),
-			emissionType: EmissionType.CHUNK,
-			rewPerSecond: 0,
-			lastRewardTimestamp: 0,
-			emissionFinalTimestamp: 0
-		});
 		GO = _go;
-		emissionData[address(GO)] = TokenEmission({
-			token: address(GO),
-			emissionType: EmissionType.DRIP,
-			rewPerSecond: 0,
-			lastRewardTimestamp: 0,
-			emissionFinalTimestamp: 0
-		});
-		BID = _bid;
-		emissionData[address(BID)] = TokenEmission({
-			token: address(BID),
-			emissionType: EmissionType.DRIP,
-			rewPerSecond: 0,
-			lastRewardTimestamp: 0,
-			emissionFinalTimestamp: 0
-		});
+		VOUCHER = _voucher;
 	}
 
-	// GO emissions are a one time thing, can't be updated
-	function initializeEmissions(uint256 _emissionAmount, uint256 _emissionDuration) public onlyOwner {
-		if (initializedEmissions) revert AlreadyInitializedEmissions();
-		initializedEmissions = true;
+	function _setEmission(TokenEmission storage tokenEmission, uint256 _amount, uint256 _duration) internal {
+		tokenEmission.endTimestamp = block.timestamp + _duration;
+		tokenEmission.perSecond = _amount / _duration;
 
-		_setEmissions(emissionData[address(GO)], _emissionAmount, _emissionDuration);
-		emit InitializedGOEmission(emissionData[address(GO)].rewPerSecond, _emissionDuration);
+		if (tokenEmission.token.balanceOf(address(this)) < _amount) revert IAuctioneerFarm.NotEnoughEmissionToken();
 
-		// Go Staking
-		_add(GO, 10000);
+		emit SetEmission(address(tokenEmission.token), tokenEmission.perSecond, _duration);
 	}
 
-	function setBIDEmissions(uint256 _emissionAmount, uint256 _emissionDuration) public onlyOwner {
-		_bringDripEmissionsCurrent(emissionData[address(BID)]);
-		_setEmissions(emissionData[address(BID)], _emissionAmount, _emissionDuration);
-		emit UpdatedBIDEmission(emissionData[address(BID)].rewPerSecond, _emissionDuration);
+	modifier validPid(uint256 pid) {
+		if (pid >= poolInfo.length) revert InvalidPid();
+		_;
 	}
 
 	// ADMIN
 
-	function _add(IERC20 _token, uint256 _boost) internal {
-		bringAllDripEmissionsCurrent();
-		stakingTokens.add(address(_token));
-		stakingTokenData[address(_token)].token = _token;
-		stakingTokenData[address(_token)].boost = _boost;
-		totalAlloc += _boost;
-		emit AddedStakingToken(address(_token), _boost);
+	function initializeEmissions(uint256 _emissionAmount, uint256 _emissionDuration) public onlyOwner {
+		if (initializedEmissions) revert AlreadyInitializedEmissions();
+		initializedEmissions = true;
+
+		massUpdatePools();
+		_setEmission(goEmission, _emissionAmount, _emissionDuration);
 	}
 
-	function addLp(address _lp, uint256 _boost) public onlyOwner {
-		if (stakingTokens.contains(_lp)) revert AlreadyAdded();
-		if (_boost < 10000 || _boost > 30000) revert OutsideRange();
-		_add(IERC20(_lp), _boost);
+	function setVoucherEmissions(uint256 _emissionAmount, uint256 _emissionDuration) public onlyOwner {
+		massUpdatePools();
+		_setEmission(voucherEmission, _emissionAmount, _emissionDuration);
 	}
 
-	function removeLp(address _lp) public onlyOwner {
-		bringAllDripEmissionsCurrent();
-		totalAlloc -= stakingTokenData[_lp].boost;
-		stakingTokenData[_lp].boost = 0;
-		emit UpdatedLpBoost(_lp, 0);
+	function poolLength() public view returns (uint256 pools) {
+		pools = poolInfo.length;
 	}
 
-	function updateLpBoost(address _lp, uint256 _boost) public onlyOwner {
-		if (!stakingTokens.contains(_lp)) revert NotStakingToken();
-		if (_boost < 10000 || _boost > 30000) revert OutsideRange();
-		bringAllDripEmissionsCurrent();
-		totalAlloc = totalAlloc - stakingTokenData[_lp].boost + _boost;
-		stakingTokenData[_lp].boost = _boost;
-		emit UpdatedLpBoost(_lp, _boost);
+	function add(uint256 allocPoint, IERC20 _token) public onlyOwner nonReentrant {
+		if (tokensWithPool[address(_token)] == true) revert AlreadyAdded();
+		tokensWithPool[address(_token)] = true;
+
+		massUpdatePools();
+
+		totalAllocPoint += allocPoint;
+
+		poolInfo.push(
+			PoolInfo({
+				pid: poolInfo.length,
+				token: _token,
+				allocPoint: allocPoint,
+				supply: 0,
+				lastRewardTimestamp: block.timestamp,
+				accGoPerShare: 0,
+				accVoucherPerShare: 0,
+				accUsdPerShare: 0
+			})
+		);
+		emit AddedPool(poolInfo.length - 1, allocPoint, address(_token));
 	}
 
-	// UTILS
+	function set(uint256 pid, uint256 allocPoint) public validPid(pid) onlyOwner nonReentrant {
+		massUpdatePools();
 
-	// Used only externally to test if user permitted to enter private auctions
-	// Rewards are calculated differently
-	function _getEqualizedTotalStaked() internal view returns (uint256 staked) {
-		staked = 0;
-		for (uint256 i = 0; i < stakingTokens.values().length; i++) {
-			staked += stakingTokenData[stakingTokens.at(i)].total * stakingTokenData[stakingTokens.at(i)].boost;
+		totalAllocPoint = totalAllocPoint - poolInfo[pid].allocPoint + allocPoint;
+		poolInfo[pid].allocPoint = allocPoint;
+		emit UpdatedPool(pid, allocPoint);
+	}
+
+	function massUpdatePools() public nonReentrant {
+		uint256 len = poolInfo.length;
+		for (uint256 i = 0; i < len; ++i) {
+			_updateEmissions(poolInfo[i]);
+		}
+	}
+
+	function _updateEmissions(PoolInfo storage pool) internal {
+		if (block.timestamp > pool.lastRewardTimestamp) {
+			// GO
+			if (
+				pool.supply > 0 && //
+				block.timestamp <= goEmission.endTimestamp //
+			) {
+				uint256 secs = block.timestamp - pool.lastRewardTimestamp;
+				uint256 reward = (secs * goEmission.perSecond * pool.allocPoint) / totalAllocPoint;
+				pool.accGoPerShare = pool.accGoPerShare + ((reward * REWARD_PRECISION) / pool.supply);
+			}
+
+			// VOUCHER
+			if (
+				pool.supply > 0 && //
+				block.timestamp <= voucherEmission.endTimestamp //
+			) {
+				uint256 secs = block.timestamp - pool.lastRewardTimestamp;
+				uint256 reward = (secs * voucherEmission.perSecond * pool.allocPoint) / totalAllocPoint;
+				pool.accVoucherPerShare = pool.accVoucherPerShare + ((reward * REWARD_PRECISION) / pool.supply);
+			}
+
+			pool.lastRewardTimestamp = block.timestamp;
+		}
+	}
+
+	// AUCTIONEER
+
+	function receiveUsdDistribution(uint256 _amount) public override nonReentrant returns (bool) {
+		// Nothing yet staked, reject the receive
+		uint256 staked = getEqualizedTotalStaked();
+		if (staked == 0) return false;
+
+		USD.safeTransferFrom(msg.sender, address(this), _amount);
+
+		// Distribute USD between the pools
+		for (uint256 i = 0; i < poolInfo.length; ++i) {
+			poolInfo[i].accUsdPerShare += (_amount * poolInfo[i].allocPoint * REWARD_PRECISION) / totalAllocPoint;
+		}
+
+		emit ReceivedUsdDistribution(_amount);
+		return true;
+	}
+
+	function getEqualizedTotalStaked() public view returns (uint256 staked) {
+		for (uint256 i = 0; i < poolInfo.length; ++i) {
+			staked += poolInfo[i].allocPoint * poolInfo[i].supply;
 		}
 		staked /= 10000;
 	}
 
-	// Used only externally to test if user permitted to enter private auctions
-	// Rewards are calculated differently
-	function _getEqualizedUserStaked(address _user) internal view returns (uint256 userStaked) {
-		userStaked = 0;
-		for (uint256 i = 0; i < stakingTokens.values().length; i++) {
-			userStaked +=
-				stakingTokenData[stakingTokens.at(i)].userStaked[_user] *
-				stakingTokenData[stakingTokens.at(i)].boost;
+	function getEqualizedUserStaked(address _user) public view override returns (uint256 staked) {
+		for (uint256 i = 0; i < poolInfo.length; ++i) {
+			staked += poolInfo[i].allocPoint * userInfo[poolInfo[i].pid][_user].amount;
 		}
-		userStaked /= 10000;
+		staked /= 10000;
 	}
 
-	// AUCTION INTERACTIONS
+	// USER ACTIONS
 
-	function receiveUSDDistribution(uint256 _amount) external override returns (bool) {
-		// Nothing yet staked, reject the receive
-		uint256 totalStaked = _getEqualizedTotalStaked();
-		if (totalStaked == 0) return false;
+	function deposit(uint256 pid, uint256 amount, address to) public validPid(pid) nonReentrant {
+		PoolInfo storage pool = poolInfo[pid];
+		UserInfo storage user = userInfo[pid][to];
 
-		USD.safeTransferFrom(msg.sender, address(this), _amount);
-		_distributeEmissions(address(USD), _amount);
+		if (amount > pool.token.balanceOf(msg.sender)) revert BadDeposit();
 
-		emit ReceivedUSDDistribution(_amount);
-		return true;
+		_updateEmissions(pool);
+		_harvest(pool, user, to);
+
+		user.amount += amount;
+		pool.supply += amount;
+		pool.token.safeTransferFrom(msg.sender, address(this), amount);
+
+		_updateDebts(pool, user);
+
+		emit Deposit(msg.sender, pid, amount, to);
 	}
 
-	function getEqualizedUserStaked(address _user) external view override returns (uint256) {
-		return _getEqualizedUserStaked(_user);
-	}
-	function getEqualizedTotalStaked() public view returns (uint256) {
-		return _getEqualizedTotalStaked();
-	}
-	function getStakingTokens() public view returns (address[] memory tokens) {
-		tokens = stakingTokens.values();
-	}
-	function getStakingTokenData(address _token) public view returns (StakingTokenOnlyData memory data) {
-		data.token = address(stakingTokenData[_token].token);
-		data.boost = stakingTokenData[_token].boost;
-		data.total = stakingTokenData[_token].total;
-	}
-	function getStakingTokenUserStaked(address _token, address _user) public view returns (uint256 userStaked) {
-		userStaked = stakingTokenData[_token].userStaked[_user];
-	}
+	function withdraw(uint256 pid, uint256 amount, address to) public validPid(pid) nonReentrant {
+		PoolInfo storage pool = poolInfo[pid];
+		UserInfo storage user = userInfo[pid][msg.sender];
 
-	// CORE
+		if (amount > user.amount) revert BadWithdrawal();
 
-	function deposit(address _token, uint256 _amount) public nonReentrant {
-		if (!stakingTokens.contains(_token)) revert NotStakingToken();
-		if (_amount > IERC20(_token).balanceOf(msg.sender)) revert BadDeposit();
+		_updateEmissions(pool);
+		_harvest(pool, user, to);
 
-		_harvest(msg.sender);
+		user.amount -= amount;
+		pool.supply -= amount;
+		pool.token.safeTransfer(to, amount);
 
-		if (_amount > 0) {
-			IERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
-		}
+		_updateDebts(pool, user);
 
-		stakingTokenData[_token].userStaked[msg.sender] += _amount;
-		stakingTokenData[_token].total += _amount;
-
-		_updateAllUserDebts(msg.sender);
-
-		emit Deposit(msg.sender, _token, _amount);
+		emit Withdraw(msg.sender, pid, amount, to);
 	}
 
-	function withdraw(address _token, uint256 _amount) public nonReentrant {
-		if (_amount > stakingTokenData[_token].userStaked[msg.sender]) revert BadWithdrawal();
-
-		_harvest(msg.sender);
-
-		if (_amount > 0) {
-			stakingTokenData[_token].userStaked[msg.sender] -= _amount;
-			stakingTokenData[_token].total -= _amount;
-			IERC20(_token).safeTransfer(msg.sender, _amount);
-		}
-
-		_updateAllUserDebts(msg.sender);
-
-		emit Withdraw(msg.sender, _token, _amount);
+	function _pending(
+		PoolInfo storage pool,
+		UserInfo storage user
+	) internal view returns (PendingAmounts memory pendingAmounts) {
+		pendingAmounts.go = ((user.amount * pool.accGoPerShare) / REWARD_PRECISION) - user.goDebt;
+		pendingAmounts.voucher = ((user.amount * pool.accVoucherPerShare) / REWARD_PRECISION) - user.voucherDebt;
+		pendingAmounts.usd = ((user.amount * pool.accUsdPerShare) / REWARD_PRECISION) - user.usdDebt;
 	}
 
-	// HARVEST
+	function pending(uint256 pid, address _user) public nonReentrant returns (PendingAmounts memory pendingAmounts) {
+		PoolInfo storage pool = poolInfo[pid];
+		UserInfo storage user = userInfo[pid][_user];
 
-	function _updateAllUserDebts(address _user) internal {
-		_updateUserDebts(address(USD), _user);
-		_updateUserDebts(address(GO), _user);
-		_updateUserDebts(address(BID), _user);
+		_updateEmissions(pool);
+		pendingAmounts = _pending(pool, user);
 	}
 
-	function _updateUserDebts(address _emissionToken, address _user) internal {
-		for (uint8 i = 0; i < stakingTokens.values().length; i++) {
-			stakingTokenData[stakingTokens.at(i)].userEmissionDebt[_user][_emissionToken] =
-				stakingTokenData[stakingTokens.at(i)].userStaked[_user] *
-				stakingTokenData[stakingTokens.at(i)].emissionRewPerShare[_emissionToken];
-		}
+	function _harvest(PoolInfo storage pool, UserInfo storage user, address to) internal {
+		PendingAmounts memory pendingAmounts = _pending(pool, user);
+
+		if (pendingAmounts.go > 0) GO.safeTransfer(to, pendingAmounts.go);
+		if (pendingAmounts.voucher > 0) VOUCHER.safeTransfer(to, pendingAmounts.voucher);
+		if (pendingAmounts.usd > 0) USD.safeTransfer(to, pendingAmounts.usd);
+
+		emit Harvest(msg.sender, pool.pid, pendingAmounts, to);
 	}
 
-	function _pending(address _user) internal returns (PendingAmounts memory pendingAmounts) {
-		bringAllDripEmissionsCurrent();
-		pendingAmounts.usd = _getUserEmissionsPending(address(USD), _user);
-		pendingAmounts.go = _getUserEmissionsPending(address(GO), _user);
-		pendingAmounts.bid = _getUserEmissionsPending(address(BID), _user);
+	function _updateDebts(PoolInfo storage pool, UserInfo storage user) internal {
+		user.goDebt = (user.amount * pool.accGoPerShare) / REWARD_PRECISION;
+		user.voucherDebt = (user.amount * pool.accVoucherPerShare) / REWARD_PRECISION;
+		user.usdDebt = (user.amount * pool.accUsdPerShare) / REWARD_PRECISION;
 	}
 
-	function bringAllDripEmissionsCurrent() internal {
-		_bringDripEmissionsCurrent(emissionData[address(GO)]);
-		_bringDripEmissionsCurrent(emissionData[address(BID)]);
+	function harvest(uint256 pid, address to) public validPid(pid) nonReentrant {
+		PoolInfo storage pool = poolInfo[pid];
+		UserInfo storage user = userInfo[pid][msg.sender];
+
+		_updateEmissions(pool);
+		_harvest(pool, user, to);
+		_updateDebts(pool, user);
 	}
 
-	function _harvest(address _user) internal {
-		PendingAmounts memory pendingAmounts = _pending(_user);
-		if (pendingAmounts.usd > 0) USD.safeTransfer(msg.sender, pendingAmounts.usd);
-		if (pendingAmounts.go > 0) GO.safeTransfer(msg.sender, pendingAmounts.go);
-		if (pendingAmounts.bid > 0) BID.safeTransfer(msg.sender, pendingAmounts.bid);
-		emit Harvested(msg.sender, pendingAmounts);
-	}
+	function emergencyWithdraw(uint256 pid, address to) public validPid(pid) nonReentrant {
+		PoolInfo storage pool = poolInfo[pid];
+		UserInfo storage user = userInfo[pid][msg.sender];
+		uint256 amount = user.amount;
 
-	function harvest() public nonReentrant {
-		_harvest(msg.sender);
-		_updateAllUserDebts(msg.sender);
-	}
+		pool.supply -= amount;
+		user.amount = 0;
+		user.goDebt = 0;
+		user.voucherDebt = 0;
+		user.usdDebt = 0;
 
-	function pending(address _user) public returns (PendingAmounts memory pendingAmounts) {
-		return _pending(_user);
-	}
-
-	function getEmissionData(address _token) public view returns (TokenEmission memory tokenEmissionData) {
-		tokenEmissionData = emissionData[_token];
-	}
-
-	function getStakingTokenEmissionRewPerShare(
-		address _stakingToken,
-		address _emissionToken
-	) public returns (uint256 state, uint256 current) {
-		state = stakingTokenData[_stakingToken].emissionRewPerShare[_emissionToken];
-		_bringDripEmissionsCurrent(emissionData[_emissionToken]);
-		current = stakingTokenData[_stakingToken].emissionRewPerShare[_emissionToken];
-	}
-
-	// EMISSIONS
-
-	function min(uint256 a, uint256 b) internal pure returns (uint256) {
-		return a <= b ? a : b;
-	}
-
-	function _distributeEmissions(address _token, uint256 _emission) internal {
-		for (uint8 i = 0; i < stakingTokens.values().length; i++) {
-			if (stakingTokenData[stakingTokens.at(i)].total > 0) {
-				stakingTokenData[stakingTokens.at(i)].emissionRewPerShare[_token] +=
-					(_emission * REWARD_PRECISION * stakingTokenData[stakingTokens.at(i)].boost) /
-					(totalAlloc * stakingTokenData[stakingTokens.at(i)].total);
-			}
-		}
-	}
-
-	function _bringDripEmissionsCurrent(TokenEmission storage tokenEmission) internal {
-		if (tokenEmission.token == address(0)) return;
-		if (tokenEmission.emissionType != EmissionType.DRIP) return;
-		if (block.timestamp <= tokenEmission.lastRewardTimestamp) return;
-		if (tokenEmission.lastRewardTimestamp >= tokenEmission.emissionFinalTimestamp) return;
-
-		// Take into account last emission block when calculating multiplier
-		uint256 multiplier = min(block.timestamp, tokenEmission.emissionFinalTimestamp) - tokenEmission.lastRewardTimestamp;
-		uint256 emission = tokenEmission.rewPerSecond * multiplier;
-
-		// Give emissions to each staking token based on their alloc
-		_distributeEmissions(tokenEmission.token, emission);
-	}
-
-	function _getUserEmissionsPending(address _emissionToken, address _user) internal view returns (uint256 userPending) {
-		StakingTokenData storage tokenData;
-		for (uint8 i = 0; i < stakingTokens.values().length; i++) {
-			tokenData = stakingTokenData[stakingTokens.at(i)];
-			userPending +=
-				((tokenData.userStaked[_user] * tokenData.emissionRewPerShare[_emissionToken]) -
-					tokenData.userEmissionDebt[_user][_emissionToken]) /
-				1e18;
-		}
-	}
-
-	function _setEmissions(TokenEmission storage tokenEmission, uint256 _amount, uint256 _duration) internal {
-		tokenEmission.lastRewardTimestamp = block.timestamp;
-		tokenEmission.emissionFinalTimestamp = block.timestamp + _duration;
-		tokenEmission.rewPerSecond = _amount / _duration;
-
-		if (IERC20(tokenEmission.token).balanceOf(address(this)) < _amount) revert IAuctioneerFarm.NotEnoughEmissionToken();
+		pool.token.safeTransfer(to, amount);
+		emit EmergencyWithdraw(msg.sender, pid, amount, to);
 	}
 }
