@@ -19,7 +19,7 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 	function setUp() public override {
 		super.setUp();
 
-		farm = new AuctioneerFarm(USD, GO, BID);
+		farm = new AuctioneerFarm(USD, GO, VOUCHER);
 		auctioneer.setTreasury(treasury);
 
 		// Distribute GO
@@ -253,7 +253,7 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 		vm.prank(user1);
 		GO.approve(address(farm), 10e18);
 		vm.prank(user1);
-		farm.deposit(address(GO), 10e18);
+		farm.deposit(goPid, 10e18, user1);
 	}
 
 	function test_winning_lotPriceIsDistributedCorrectly_WithoutFallback() public {
@@ -282,8 +282,8 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 		uint256 treasuryCut = (lotPrice * treasurySplit) / 10000;
 		uint256 farmCut = (lotPrice * (10000 - treasurySplit)) / 10000;
 
-		(uint256 usdRewardPerShareInit, ) = farm.getStakingTokenEmissionRewPerShare(address(GO), address(USD));
-		assertEq(usdRewardPerShareInit, 0, "USD rew per share should start at 0");
+		uint256 usdPerShareInit = farm.getPool(goPid).accUsdPerShare;
+		assertEq(usdPerShareInit, 0, "USD rew per share should start at 0");
 
 		// Claim
 		vm.prank(user1);
@@ -300,10 +300,11 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 			"Farm and treasury receive correct split"
 		);
 
-		// Farm usdRewardPerShare should increase
-		uint256 expectedRewPerShare = (farmCut * farm.REWARD_PRECISION()) / farm.getEqualizedTotalStaked();
-		(uint256 usdRewardPerShareFinal, ) = farm.getStakingTokenEmissionRewPerShare(address(GO), address(USD));
-		assertEq(expectedRewPerShare, usdRewardPerShareFinal, "USD reward per share of farm should increase");
+		// Farm usdPerShare should increase
+		uint256 expectedUsdPerShare = (farmCut * farm.REWARD_PRECISION() * farm.getPool(goPid).allocPoint) /
+			(farm.totalAllocPoint() * farm.getPool(goPid).supply);
+		uint256 usdPerShareFinal = farm.getPool(goPid).accUsdPerShare;
+		assertEq(expectedUsdPerShare, usdPerShareFinal, "USD reward per share of farm should increase");
 	}
 
 	function test_winning_auctionIsMarkedAsClaimed() public {

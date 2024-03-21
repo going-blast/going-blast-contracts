@@ -20,7 +20,6 @@ contract AuctioneerFarmEmissionsTest is AuctioneerHelper, AuctioneerFarmEvents {
 	function setUp() public override {
 		super.setUp();
 
-		farm = new AuctioneerFarm(USD, GO, BID);
 		auctioneer.setTreasury(treasury);
 
 		// Distribute GO
@@ -79,20 +78,25 @@ contract AuctioneerFarmEmissionsTest is AuctioneerHelper, AuctioneerFarmEvents {
 
 		// Initialize farm emissions
 		farm.initializeEmissions(farmGO, 180 days);
+
+		// Initialize farm voucher emission
+		vm.prank(deployer);
+		VOUCHER.mint(address(farm), 100e18 * 180 days);
+		farm.setVoucherEmissions(100e18 * 180 days, 180 days);
 	}
 
-	function _farmDeposit(address user, address token, uint256 amount) public {
+	function _farmDeposit(address user, uint256 pid, uint256 amount) public {
 		vm.prank(user);
-		farm.deposit(token, amount);
+		farm.deposit(pid, amount, user);
 	}
-	function _farmWithdraw(address user, address token, uint256 amount) public {
+	function _farmWithdraw(address user, uint256 pid, uint256 amount) public {
 		vm.prank(user);
-		farm.withdraw(token, amount);
+		farm.withdraw(pid, amount, user);
 	}
 	function _injectFarmUSD(uint256 amount) public {
 		vm.startPrank(user1);
 		USD.approve(address(farm), amount);
-		farm.receiveUSDDistribution(amount);
+		farm.receiveUsdDistribution(amount);
 		vm.stopPrank();
 	}
 
@@ -103,27 +107,25 @@ contract AuctioneerFarmEmissionsTest is AuctioneerHelper, AuctioneerFarmEvents {
 	uint256 totalDeposited = user1Deposited + user2Deposited + user3Deposited + user4Deposited;
 
 	function test_emissions_PendingGOIncreasesProportionally() public {
-		_farmDeposit(user1, address(GO), user1Deposited);
-		_farmDeposit(user2, address(GO), user2Deposited);
-		_farmDeposit(user3, address(GO), user3Deposited);
-		_farmDeposit(user4, address(GO), user4Deposited);
-
-		uint256 goPerSecond = farm.getEmissionData(address(GO)).rewPerSecond;
+		_farmDeposit(user1, goPid, user1Deposited);
+		_farmDeposit(user2, goPid, user2Deposited);
+		_farmDeposit(user3, goPid, user3Deposited);
+		_farmDeposit(user4, goPid, user4Deposited);
 
 		uint256 initTimestamp = block.timestamp;
 		vm.warp(1 days);
 		uint256 secondsPassed = block.timestamp - initTimestamp;
 
-		uint256 emissions = goPerSecond * secondsPassed;
+		uint256 emissions = _farm_goPerSecond(goPid) * secondsPassed;
 		uint256 user1Emissions = (user1Deposited * emissions) / totalDeposited;
 		uint256 user2Emissions = (user2Deposited * emissions) / totalDeposited;
 		uint256 user3Emissions = (user3Deposited * emissions) / totalDeposited;
 		uint256 user4Emissions = (user4Deposited * emissions) / totalDeposited;
 
-		uint256 user1PendingGo = farm.pending(user1).go;
-		uint256 user2PendingGo = farm.pending(user2).go;
-		uint256 user3PendingGo = farm.pending(user3).go;
-		uint256 user4PendingGo = farm.pending(user4).go;
+		uint256 user1PendingGo = farm.pending(goPid, user1).go;
+		uint256 user2PendingGo = farm.pending(goPid, user2).go;
+		uint256 user3PendingGo = farm.pending(goPid, user3).go;
+		uint256 user4PendingGo = farm.pending(goPid, user4).go;
 
 		assertApproxEqAbs(user1Emissions, user1PendingGo, 10, "User1 emissions increase proportionally");
 		assertApproxEqAbs(user2Emissions, user2PendingGo, 10, "User2 emissions increase proportionally");
@@ -132,10 +134,10 @@ contract AuctioneerFarmEmissionsTest is AuctioneerHelper, AuctioneerFarmEvents {
 	}
 
 	function test_emissions_PendingUSDIncreasesProportionally() public {
-		_farmDeposit(user1, address(GO), user1Deposited);
-		_farmDeposit(user2, address(GO), user2Deposited);
-		_farmDeposit(user3, address(GO), user3Deposited);
-		_farmDeposit(user4, address(GO), user4Deposited);
+		_farmDeposit(user1, goPid, user1Deposited);
+		_farmDeposit(user2, goPid, user2Deposited);
+		_farmDeposit(user3, goPid, user3Deposited);
+		_farmDeposit(user4, goPid, user4Deposited);
 
 		uint256 emissions = 100e18;
 		_injectFarmUSD(emissions);
@@ -145,10 +147,10 @@ contract AuctioneerFarmEmissionsTest is AuctioneerHelper, AuctioneerFarmEvents {
 		uint256 user3Emissions = (user3Deposited * emissions) / totalDeposited;
 		uint256 user4Emissions = (user4Deposited * emissions) / totalDeposited;
 
-		uint256 user1PendingUSD = farm.pending(user1).usd;
-		uint256 user2PendingUSD = farm.pending(user2).usd;
-		uint256 user3PendingUSD = farm.pending(user3).usd;
-		uint256 user4PendingUSD = farm.pending(user4).usd;
+		uint256 user1PendingUSD = farm.pending(goPid, user1).usd;
+		uint256 user2PendingUSD = farm.pending(goPid, user2).usd;
+		uint256 user3PendingUSD = farm.pending(goPid, user3).usd;
+		uint256 user4PendingUSD = farm.pending(goPid, user4).usd;
 
 		assertApproxEqAbs(user1Emissions, user1PendingUSD, 10, "User1 emissions increase proportionally");
 		assertApproxEqAbs(user2Emissions, user2PendingUSD, 10, "User2 emissions increase proportionally");
@@ -157,48 +159,63 @@ contract AuctioneerFarmEmissionsTest is AuctioneerHelper, AuctioneerFarmEvents {
 	}
 
 	function test_emissions_EmissionsCanRunOut() public {
-		_farmDeposit(user1, address(GO), user1Deposited);
+		_farmDeposit(user1, goPid, user1Deposited);
 
-		uint256 goEmissionFinalTimestamp = farm.getEmissionData(address(GO)).emissionFinalTimestamp;
+		uint256 goEmissionFinalTimestamp = farm.getEmission(address(GO)).endTimestamp;
 
 		vm.warp(goEmissionFinalTimestamp - 30);
 		vm.prank(user1);
-		farm.harvest();
+		farm.harvest(goPid, user1);
 
-		uint256 user1PendingGo = farm.pending(user1).go;
+		uint256 user1PendingGo = farm.pending(goPid, user1).go;
 		uint256 user1PrevPendingGo = user1PendingGo;
+		uint256 user1PendingVoucher = farm.pending(goPid, user1).voucher;
+		uint256 user1PrevPendingVoucher = user1PendingVoucher;
 		for (int256 i = -29; i < 30; i++) {
 			vm.warp(uint256(int256(goEmissionFinalTimestamp) + i));
-			user1PendingGo = farm.pending(user1).go;
-			// console.log(
-			// 	"Pending GO %s, delta %s, timestamp %s",
-			// 	user1PendingGo,
-			// 	user1PendingGo - user1PrevPendingGo,
-			// 	block.timestamp
-			// );
+			user1PendingGo = farm.pending(goPid, user1).go;
+			user1PendingVoucher = farm.pending(goPid, user1).voucher;
 			if (block.timestamp > goEmissionFinalTimestamp) {
-				assertEq(user1PendingGo - user1PrevPendingGo, 0, "No more emissions");
+				assertEq(user1PendingGo - user1PrevPendingGo, 0, "No more GO emissions");
+				assertEq(user1PendingVoucher - user1PrevPendingVoucher, 0, "No more VOUCHER emissions");
 			} else {
-				assertGt(user1PendingGo - user1PrevPendingGo, 0, "No more emissions");
+				assertGt(user1PendingGo - user1PrevPendingGo, 0, "Still emitting GO");
+				assertGt(user1PendingVoucher - user1PrevPendingVoucher, 0, "Still emitting VOUCHER");
 			}
 			user1PrevPendingGo = user1PendingGo;
+			user1PrevPendingVoucher = user1PendingVoucher;
 		}
 
 		vm.expectEmit(true, true, true, true);
-		emit Harvested(user1, PendingAmounts({ go: user1PendingGo, bid: 0, usd: 0 }));
+		emit Harvest(user1, goPid, PendingAmounts({ go: user1PendingGo, voucher: user1PendingVoucher, usd: 0 }), user1);
 
 		vm.prank(user1);
-		farm.harvest();
+		farm.harvest(goPid, user1);
 
-		// getUpdatedGoRewardPerShare doesn't continue to increase
-		uint256 updatedGoRewardPerShareInit = _farm_rewPerShare_current(address(GO));
+		// getUpdatedGoPerShare doesn't continue to increase
+		uint256 updatedGoPerShareInit = farm.getPoolUpdated(goPid).accGoPerShare;
 		vm.warp(block.timestamp + 1 hours);
-		uint256 updatedGoRewardPerShareFinal = _farm_rewPerShare_current(address(GO));
-		assertEq(updatedGoRewardPerShareInit, updatedGoRewardPerShareFinal, "Updated go reward per share remains the same");
+		uint256 updatedGoPerShareFinal = farm.getPoolUpdated(goPid).accGoPerShare;
+		assertEq(updatedGoPerShareInit, updatedGoPerShareFinal, "Updated go reward per share remains the same");
 
 		// Pending doesn't increase
 		vm.warp(block.timestamp + 1 hours);
-		user1PendingGo = farm.pending(user1).go;
-		assertEq(user1PendingGo, 0, "No more emissions, forever");
+		user1PendingGo = farm.pending(goPid, user1).go;
+		assertEq(user1PendingGo, 0, "No more GO emissions, forever");
+
+		// getUpdatedVoucherPerShare doesn't continue to increase
+		uint256 updatedVoucherPerShareInit = farm.getPoolUpdated(goPid).accVoucherPerShare;
+		vm.warp(block.timestamp + 1 hours);
+		uint256 updatedVoucherPerShareFinal = farm.getPoolUpdated(goPid).accVoucherPerShare;
+		assertEq(
+			updatedVoucherPerShareInit,
+			updatedVoucherPerShareFinal,
+			"Updated VOUCHER reward per share remains the same"
+		);
+
+		// Pending doesn't increase
+		vm.warp(block.timestamp + 1 hours);
+		user1PendingVoucher = farm.pending(goPid, user1).voucher;
+		assertEq(user1PendingVoucher, 0, "No more VOUCHER emissions, forever");
 	}
 }

@@ -6,10 +6,10 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 
-contract BIDToken is ERC20, Ownable, ERC20Permit {
+contract VOUCHERToken is ERC20, Ownable, ERC20Permit {
 	constructor(
 		address initialOwner
-	) ERC20("Going Blast Bid", "$BID") Ownable(initialOwner) ERC20Permit("Going Blast Bid") {}
+	) ERC20("Going Blast Voucher", "VOUCHER") Ownable(initialOwner) ERC20Permit("Going Blast Voucher") {}
 
 	function mint(address to, uint256 amount) public onlyOwner {
 		_mint(to, amount);

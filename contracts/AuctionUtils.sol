@@ -177,7 +177,7 @@ library AuctionUtils {
 		// If farm has 0 staked, fallback to treasury
 		if (farmDistribution > 0) {
 			USD.approve(farm, farmDistribution);
-			bool received = IAuctioneerFarm(farm).receiveUSDDistribution(farmDistribution);
+			bool received = IAuctioneerFarm(farm).receiveUsdDistribution(farmDistribution);
 			if (!received) {
 				treasuryDistribution += farmDistribution;
 				USD.approve(farm, 0);

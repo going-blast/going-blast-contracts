@@ -20,7 +20,7 @@ contract AuctioneerFarmInitializeEmissionsTest is AuctioneerHelper, AuctioneerFa
 	function setUp() public override {
 		super.setUp();
 
-		farm = new AuctioneerFarm(USD, GO, BID);
+		farm = new AuctioneerFarm(USD, GO, VOUCHER);
 		auctioneer.setTreasury(treasury);
 
 		// Distribute GO
@@ -76,10 +76,7 @@ contract AuctioneerFarmInitializeEmissionsTest is AuctioneerHelper, AuctioneerFa
 		uint256 expectedGoEmission = farmGO / 180 days;
 
 		vm.expectEmit(true, true, true, true);
-		emit InitializedGOEmission(expectedGoEmission, 180 days);
-
-		vm.expectEmit(true, true, true, true);
-		emit AddedStakingToken(address(GO), 10000);
+		emit SetEmission(address(GO), expectedGoEmission, 180 days);
 
 		farm.initializeEmissions(farmGO, 180 days);
 	}
@@ -98,21 +95,13 @@ contract AuctioneerFarmInitializeEmissionsTest is AuctioneerHelper, AuctioneerFa
 		farm.initializeEmissions(farmGO, 180 days);
 	}
 
-	function test_initializeEmissions_GOAddedToStakingTokens() public {
-		address[] memory tokens = farm.getStakingTokens();
-		assertEq(tokens.length, 0, "No tokens added yet");
+	function test_constructor_goPoolAdded() public {
+		uint256 poolsCount = farm.poolLength();
+		assertEq(poolsCount, 1, "Go pool added");
+		assertEq(address(farm.getPool(goPid).token), address(GO), "GO staking token initialized in data struct");
+		assertEq(farm.getPool(goPid).allocPoint, 10000, "Go pool alloc set to 10000");
+		assertEq(farm.getPool(goPid).supply, 0, "GO Nothing staked yet");
 
-		farm.initializeEmissions(farmGO, 180 days);
-
-		tokens = farm.getStakingTokens();
-		assertEq(tokens.length, 1, "GO added as staking token");
-		assertEq(tokens[0], address(GO), "GO is first token");
-
-		StakingTokenOnlyData memory goStakingData = farm.getStakingTokenData(address(GO));
-		assertEq(address(goStakingData.token), address(GO), "GO staking token initialized in data struct");
-		assertEq(goStakingData.boost, 10000, "GO staking at 10000 bp boost");
-		assertEq(goStakingData.total, 0, "GO Nothing staked yet");
+		assertEq(farm.totalAllocPoint(), 10000, "Total allocation set to 10000");
 	}
-
-	function test_emissions_PendingGOIncreasesProportionally() public {}
 }

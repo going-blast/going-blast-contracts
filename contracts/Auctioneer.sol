@@ -61,8 +61,8 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 	uint256 public emissionPerShare = 255e18;
 	uint256[8] public epochEmissionsRemaining = [0, 0, 0, 0, 0, 0, 0, 0];
 
-	// FREE BIDS
-	IERC20 public BID;
+	// FREE BIDS using VOUCHERS
+	IERC20 public VOUCHER;
 
 	// GAS SAVINGS
 	mapping(address => uint256) public userFunds;
@@ -70,7 +70,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 	constructor(
 		IERC20 _usd,
 		IERC20 _go,
-		IERC20 _bid,
+		IERC20 _voucher,
 		IWETH _weth,
 		uint256 _bidCost,
 		uint256 _bidIncrement,
@@ -79,7 +79,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 	) Ownable(msg.sender) {
 		USD = _usd;
 		GO = _go;
-		BID = _bid;
+		VOUCHER = _voucher;
 		WETH = _weth;
 		bidCost = _bidCost;
 		bidIncrement = _bidIncrement;
@@ -381,7 +381,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		auction.bidData.bid += bidIncrement * _options.multibid;
 		auction.bidData.bidUser = msg.sender;
 		auction.bidData.bidTimestamp = block.timestamp;
-		if (_options.paymentType != BidPaymentType.BID_TOKEN) {
+		if (_options.paymentType != BidPaymentType.VOUCHER) {
 			auction.bidData.sum += auction.bidData.bidCost * _options.multibid;
 		}
 		auction.bidData.bids += _options.multibid;
@@ -400,8 +400,8 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 			if (userFunds[msg.sender] < auction.bidData.bidCost * _options.multibid) revert InsufficientFunds();
 			userFunds[msg.sender] -= (auction.bidData.bidCost * _options.multibid);
 		}
-		if (_options.paymentType == BidPaymentType.BID_TOKEN) {
-			BID.safeTransferFrom(msg.sender, burnAddress, _options.multibid * 1e18);
+		if (_options.paymentType == BidPaymentType.VOUCHER) {
+			VOUCHER.safeTransferFrom(msg.sender, burnAddress, _options.multibid * 1e18);
 		}
 
 		emit Bid(_lot, msg.sender, auction.bidData.bid, userAlias[msg.sender], _options);

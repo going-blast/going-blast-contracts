@@ -17,7 +17,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 	function setUp() public override {
 		super.setUp();
 
-		farm = new AuctioneerFarm(USD, GO, BID);
+		farm = new AuctioneerFarm(USD, GO, VOUCHER);
 		auctioneer.setTreasury(treasury);
 
 		// Distribute GO
@@ -226,7 +226,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		vm.prank(user);
 		GO.approve(address(farm), amount);
 		vm.prank(user);
-		farm.deposit(address(GO), amount);
+		farm.deposit(goPid, amount, user);
 	}
 
 	function test_bid_PrivateAuctionRequirement() public {

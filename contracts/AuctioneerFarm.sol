@@ -2,11 +2,9 @@
 pragma solidity ^0.8.20;
 pragma experimental ABIEncoderV2;
 
-import "forge-std/Test.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "./IAuctioneerFarm.sol";
 
 contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, AuctioneerFarmEvents {
@@ -29,9 +27,14 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 	uint256 public constant REWARD_PRECISION = 1e18;
 
 	constructor(IERC20 _usd, IERC20 _go, IERC20 _voucher) Ownable(msg.sender) {
-		USD = _usd;
 		GO = _go;
+		goEmission.token = GO;
 		VOUCHER = _voucher;
+		voucherEmission.token = VOUCHER;
+		USD = _usd;
+		usdEmission.token = USD;
+
+		_add(10000, GO);
 	}
 
 	function _setEmission(TokenEmission storage tokenEmission, uint256 _amount, uint256 _duration) internal {
@@ -68,6 +71,9 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 	}
 
 	function add(uint256 allocPoint, IERC20 _token) public onlyOwner nonReentrant {
+		_add(allocPoint, _token);
+	}
+	function _add(uint256 allocPoint, IERC20 _token) internal {
 		if (tokensWithPool[address(_token)] == true) revert AlreadyAdded();
 		tokensWithPool[address(_token)] = true;
 
@@ -98,7 +104,7 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 		emit UpdatedPool(pid, allocPoint);
 	}
 
-	function massUpdatePools() public nonReentrant {
+	function massUpdatePools() public {
 		uint256 len = poolInfo.length;
 		for (uint256 i = 0; i < len; ++i) {
 			_updateEmissions(poolInfo[i]);
@@ -108,20 +114,14 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 	function _updateEmissions(PoolInfo storage pool) internal {
 		if (block.timestamp > pool.lastRewardTimestamp) {
 			// GO
-			if (
-				pool.supply > 0 && //
-				block.timestamp <= goEmission.endTimestamp //
-			) {
+			if (pool.supply > 0 && totalAllocPoint > 0 && block.timestamp <= goEmission.endTimestamp) {
 				uint256 secs = block.timestamp - pool.lastRewardTimestamp;
 				uint256 reward = (secs * goEmission.perSecond * pool.allocPoint) / totalAllocPoint;
 				pool.accGoPerShare = pool.accGoPerShare + ((reward * REWARD_PRECISION) / pool.supply);
 			}
 
 			// VOUCHER
-			if (
-				pool.supply > 0 && //
-				block.timestamp <= voucherEmission.endTimestamp //
-			) {
+			if (pool.supply > 0 && totalAllocPoint > 0 && block.timestamp <= voucherEmission.endTimestamp) {
 				uint256 secs = block.timestamp - pool.lastRewardTimestamp;
 				uint256 reward = (secs * voucherEmission.perSecond * pool.allocPoint) / totalAllocPoint;
 				pool.accVoucherPerShare = pool.accVoucherPerShare + ((reward * REWARD_PRECISION) / pool.supply);
@@ -142,7 +142,9 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 
 		// Distribute USD between the pools
 		for (uint256 i = 0; i < poolInfo.length; ++i) {
-			poolInfo[i].accUsdPerShare += (_amount * poolInfo[i].allocPoint * REWARD_PRECISION) / totalAllocPoint;
+			poolInfo[i].accUsdPerShare +=
+				(_amount * poolInfo[i].allocPoint * REWARD_PRECISION) /
+				(totalAllocPoint * poolInfo[i].supply);
 		}
 
 		emit ReceivedUsdDistribution(_amount);
@@ -171,13 +173,14 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 
 		if (amount > pool.token.balanceOf(msg.sender)) revert BadDeposit();
 
-		_updateEmissions(pool);
+		if (msg.sender != to) _harvest(pool, userInfo[pid][msg.sender], to);
 		_harvest(pool, user, to);
 
 		user.amount += amount;
 		pool.supply += amount;
 		pool.token.safeTransferFrom(msg.sender, address(this), amount);
 
+		if (msg.sender != to) _updateDebts(pool, userInfo[pid][msg.sender]);
 		_updateDebts(pool, user);
 
 		emit Deposit(msg.sender, pid, amount, to);
@@ -189,7 +192,6 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 
 		if (amount > user.amount) revert BadWithdrawal();
 
-		_updateEmissions(pool);
 		_harvest(pool, user, to);
 
 		user.amount -= amount;
@@ -210,22 +212,17 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 		pendingAmounts.usd = ((user.amount * pool.accUsdPerShare) / REWARD_PRECISION) - user.usdDebt;
 	}
 
-	function pending(uint256 pid, address _user) public nonReentrant returns (PendingAmounts memory pendingAmounts) {
-		PoolInfo storage pool = poolInfo[pid];
-		UserInfo storage user = userInfo[pid][_user];
-
-		_updateEmissions(pool);
-		pendingAmounts = _pending(pool, user);
-	}
-
 	function _harvest(PoolInfo storage pool, UserInfo storage user, address to) internal {
-		PendingAmounts memory pendingAmounts = _pending(pool, user);
+		_updateEmissions(pool);
 
+		PendingAmounts memory pendingAmounts = _pending(pool, user);
 		if (pendingAmounts.go > 0) GO.safeTransfer(to, pendingAmounts.go);
 		if (pendingAmounts.voucher > 0) VOUCHER.safeTransfer(to, pendingAmounts.voucher);
 		if (pendingAmounts.usd > 0) USD.safeTransfer(to, pendingAmounts.usd);
 
-		emit Harvest(msg.sender, pool.pid, pendingAmounts, to);
+		if (pendingAmounts.go > 0 || pendingAmounts.voucher > 0 || pendingAmounts.usd > 0) {
+			emit Harvest(msg.sender, pool.pid, pendingAmounts, to);
+		}
 	}
 
 	function _updateDebts(PoolInfo storage pool, UserInfo storage user) internal {
@@ -238,9 +235,15 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 		PoolInfo storage pool = poolInfo[pid];
 		UserInfo storage user = userInfo[pid][msg.sender];
 
-		_updateEmissions(pool);
 		_harvest(pool, user, to);
 		_updateDebts(pool, user);
+	}
+
+	function allHarvest(address to) public nonReentrant {
+		for (uint256 i = 0; i < poolInfo.length; i++) {
+			_harvest(poolInfo[i], userInfo[i][msg.sender], to);
+			_updateDebts(poolInfo[i], userInfo[i][msg.sender]);
+		}
 	}
 
 	function emergencyWithdraw(uint256 pid, address to) public validPid(pid) nonReentrant {
@@ -256,5 +259,40 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 
 		pool.token.safeTransfer(to, amount);
 		emit EmergencyWithdraw(msg.sender, pid, amount, to);
+	}
+
+	// VIEW
+
+	function pending(uint256 pid, address _user) public returns (PendingAmounts memory pendingAmounts) {
+		PoolInfo storage pool = poolInfo[pid];
+		UserInfo storage user = userInfo[pid][_user];
+
+		_updateEmissions(pool);
+		pendingAmounts = _pending(pool, user);
+	}
+	function allPending(address _user) public returns (PendingAmounts memory pendingAmounts) {
+		for (uint256 i = 0; i < poolInfo.length; i++) {
+			_updateEmissions(poolInfo[i]);
+			PendingAmounts memory tmpPending = _pending(poolInfo[i], userInfo[i][_user]);
+			pendingAmounts.go += tmpPending.go;
+			pendingAmounts.voucher += tmpPending.voucher;
+			pendingAmounts.usd += tmpPending.usd;
+		}
+	}
+
+	function getPool(uint256 pid) public view validPid(pid) returns (PoolInfo memory pool) {
+		pool = poolInfo[pid];
+	}
+	function getPoolUpdated(uint256 pid) public validPid(pid) returns (PoolInfo memory pool) {
+		_updateEmissions(poolInfo[pid]);
+		pool = poolInfo[pid];
+	}
+	function getPoolUser(uint256 pid, address _user) public view validPid(pid) returns (UserInfo memory user) {
+		user = userInfo[pid][_user];
+	}
+	function getEmission(address _token) public view returns (TokenEmission memory emission) {
+		if (_token == address(GO)) emission = goEmission;
+		if (_token == address(VOUCHER)) emission = voucherEmission;
+		if (_token == address(USD)) emission = usdEmission;
 	}
 }

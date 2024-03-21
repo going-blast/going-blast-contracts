@@ -5,10 +5,11 @@ import "forge-std/Test.sol";
 import { Auctioneer } from "../Auctioneer.sol";
 import "../IAuctioneer.sol";
 import { GOToken } from "../GOToken.sol";
-import { BIDToken } from "../BIDToken.sol";
+import { VOUCHERToken } from "../VOUCHERToken.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { AuctioneerFarm } from "../AuctioneerFarm.sol";
+import { UserInfo } from "../IAuctioneerFarm.sol";
 import { BasicERC20 } from "../BasicERC20.sol";
 import { BasicERC721 } from "../BasicERC721.sol";
 import { IWETH, WETH9 } from "../WETH9.sol";
@@ -44,7 +45,13 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	BasicERC721 public mockNFT2;
 	IERC20 public GO;
 	BasicERC20 public GO_LP;
-	IERC20 public BID;
+	VOUCHERToken public VOUCHER;
+
+	// FARM consts
+	uint256 goPid = 0;
+	uint256 goLpPid = 1;
+	uint256 xxPid = 2;
+	uint256 yyPid = 3;
 
 	// SETUP
 
@@ -53,12 +60,12 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		WETH = IWETH(address(new WETH9()));
 		GO = new GOToken(deployer);
 		GO_LP = new BasicERC20("UniswapV2Pair", "GO_LP");
-		BID = new BIDToken(deployer);
+		VOUCHER = new VOUCHERToken(deployer);
 		XXToken = new BasicERC20("XX", "XX");
 		YYToken = new BasicERC20("YY", "YY");
 
-		auctioneer = new AuctioneerHarness(USD, GO, BID, WETH, 1e18, 1e16, 1e18, 20e18);
-		farm = new AuctioneerFarm(USD, GO, BID);
+		auctioneer = new AuctioneerHarness(USD, GO, VOUCHER, WETH, 1e18, 1e16, 1e18, 20e18);
+		farm = new AuctioneerFarm(USD, GO, VOUCHER);
 
 		// Create NFTs
 		mockNFT1 = new BasicERC721("MOCK_NFT_1", "MOCK_NFT_1", "https://tokenBaseURI", "https://contractURI", sender);
@@ -232,24 +239,7 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	}
 
 	// Farm helpers
-
-	// These defaults all look at the staking token GO
-	function _farm_rewPerShare_state(address _emissionToken) public returns (uint256 state) {
-		(state, ) = farm.getStakingTokenEmissionRewPerShare(address(GO), _emissionToken);
-	}
-	function _farm_rewPerShare_current(address _emissionToken) public returns (uint256 current) {
-		(, current) = farm.getStakingTokenEmissionRewPerShare(address(GO), _emissionToken);
-	}
-	function _farm_userDebt(address _emissionToken, address _user) public returns (uint256 debt) {
-		debt = farm.getStakingTokenEmissionUserDebt(address(GO), _emissionToken, _user);
-	}
-	function _farm_userDebtGO(address _user) public returns (uint256 debt) {
-		debt = _farm_userDebt(address(GO), _user);
-	}
-	function _farm_userDebtUSD(address _user) public returns (uint256 debt) {
-		debt = _farm_userDebt(address(USD), _user);
-	}
-	function _farm_userDebtBID(address _user) public returns (uint256 debt) {
-		debt = _farm_userDebt(address(BID), _user);
+	function _farm_goPerSecond(uint256 pid) public view returns (uint256) {
+		return (farm.getEmission(address(GO)).perSecond * farm.getPool(pid).allocPoint) / farm.totalAllocPoint();
 	}
 }

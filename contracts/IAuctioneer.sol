@@ -9,7 +9,7 @@ enum BidWindowType {
 enum BidPaymentType {
 	WALLET,
 	FUNDS,
-	BID_TOKEN
+	VOUCHER
 }
 enum LotPaymentType {
 	WALLET,

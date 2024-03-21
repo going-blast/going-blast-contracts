@@ -18,7 +18,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 	function setUp() public override {
 		super.setUp();
 
-		farm = new AuctioneerFarm(USD, GO, BID);
+		farm = new AuctioneerFarm(USD, GO, VOUCHER);
 		auctioneer.setTreasury(treasury);
 
 		// Distribute GO
@@ -43,7 +43,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 	// INITIALIZE
 
 	function test_initialize_RevertWhen_GONotYetReceived() public {
-		auctioneer = new AuctioneerHarness(USD, GO, BID, WETH, 1e18, 1e16, 1e18, 20e18);
+		auctioneer = new AuctioneerHarness(USD, GO, VOUCHER, WETH, 1e18, 1e16, 1e18, 20e18);
 
 		vm.expectRevert(GONotYetReceived.selector);
 

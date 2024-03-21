@@ -1,7 +1,7 @@
 {
-	"name": "solidity-typescript-hardhat-template",
+	"name": "going-blast-contracts",
 	"version": "1.0.0",
-	"description": "Basic Hardhat template to get you started with Solidity and TypeScript",
+	"description": "You know what it is",
 	"scripts": {
 		"compile": "hardhat compile",
 		"test": "hardhat test",
@@ -17,7 +17,7 @@
 		"lint:fix": "eslint --fix .",
 		"forge:coverage": "forge coverage --report lcov && genhtml lcov.info --branch-coverage --output-dir coverage"
 	},
-	"author": "Kristjan Kosic <kristjan@protokol.com>",
+	"author": "Architect <halftonedev@gmail.com>",
 	"license": "MIT",
 	"devDependencies": {
 		"@nomicfoundation/hardhat-chai-matchers": "^2.0.6",

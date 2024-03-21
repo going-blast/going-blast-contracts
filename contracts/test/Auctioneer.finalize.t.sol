@@ -19,7 +19,7 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 	function setUp() public override {
 		super.setUp();
 
-		farm = new AuctioneerFarm(USD, GO, BID);
+		farm = new AuctioneerFarm(USD, GO, VOUCHER);
 		auctioneer.setTreasury(treasury);
 
 		// Distribute GO
@@ -258,7 +258,7 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 		vm.prank(user1);
 		GO.approve(address(farm), 10e18);
 		vm.prank(user1);
-		farm.deposit(address(GO), 10e18);
+		farm.deposit(goPid, 10e18, user1);
 	}
 
 	function test_finalizeAuction_Should_DistributeLotRevenue_RevenueGreaterThanLotValue() public {

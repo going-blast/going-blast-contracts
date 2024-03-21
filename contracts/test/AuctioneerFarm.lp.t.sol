@@ -20,7 +20,7 @@ contract AuctioneerFarmLpTest is AuctioneerHelper, AuctioneerFarmEvents {
 	function setUp() public override {
 		super.setUp();
 
-		farm = new AuctioneerFarm(USD, GO, BID);
+		farm = new AuctioneerFarm(USD, GO, VOUCHER);
 		auctioneer.setTreasury(treasury);
 
 		// Distribute GO
@@ -81,18 +81,18 @@ contract AuctioneerFarmLpTest is AuctioneerHelper, AuctioneerFarmEvents {
 		farm.initializeEmissions(farmGO, 180 days);
 	}
 
-	function _farmDeposit(address user, address token, uint256 amount) public {
+	function _farmDeposit(address user, uint256 pid, uint256 amount) public {
 		vm.prank(user);
-		farm.deposit(token, amount);
+		farm.deposit(pid, amount, user);
 	}
-	function _farmWithdraw(address user, address token, uint256 amount) public {
+	function _farmWithdraw(address user, uint256 pid, uint256 amount) public {
 		vm.prank(user);
-		farm.withdraw(token, amount);
+		farm.withdraw(pid, amount, user);
 	}
 	function _injectFarmUSD(uint256 amount) public {
 		vm.startPrank(user1);
 		USD.approve(address(farm), amount);
-		farm.receiveUSDDistribution(amount);
+		farm.receiveUsdDistribution(amount);
 		vm.stopPrank();
 	}
 
@@ -104,131 +104,87 @@ contract AuctioneerFarmLpTest is AuctioneerHelper, AuctioneerFarmEvents {
 
 	// ADMIN
 
-	function test_addLp_RevertWhen_CallerIsNotOwner() public {
+	function test_add_RevertWhen_CallerIsNotOwner() public {
 		vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, address(0)));
 		vm.prank(address(0));
-		farm.addLp(address(GO_LP), 20000);
+		farm.add(20000, GO_LP);
 	}
 
-	function test_addLp_RevertWhen_AlreadyAdded() public {
-		farm.addLp(address(GO_LP), 20000);
+	function test_add_RevertWhen_AlreadyAdded() public {
+		farm.add(20000, GO_LP);
 
 		vm.expectRevert(IAuctioneerFarm.AlreadyAdded.selector);
-		farm.addLp(address(GO_LP), 20000);
+		farm.add(20000, GO_LP);
 	}
 
-	function test_addLp_RevertWhen_OutsideRange() public {
-		vm.expectRevert(IAuctioneerFarm.OutsideRange.selector);
-		farm.addLp(address(GO_LP), 9999);
-
-		vm.expectRevert(IAuctioneerFarm.OutsideRange.selector);
-		farm.addLp(address(GO_LP), 30001);
-	}
-
-	function test_addLp_ExpectEmit_AddedStakingToken() public {
+	function test_add_ExpectEmit_AddedStakingToken() public {
 		vm.expectEmit(true, true, true, true);
-		emit AddedStakingToken(address(GO_LP), 20000);
+		emit AddedPool(goLpPid, 20000, address(GO_LP));
 
-		farm.addLp(address(GO_LP), 20000);
+		farm.add(20000, GO_LP);
 	}
 
-	function test_addLp_Should_SetStakingTokenData() public {
-		address[] memory stakingTokens = farm.getStakingTokens();
-		assertEq(stakingTokens.length, 1, "Should only have GO staking token");
-		assertEq(
-			farm.getStakingTokenData(address(GO_LP)).token,
-			address(0),
-			"GO_LP staking token data should not be initialized"
-		);
+	function test_add_Should_AddPool() public {
+		uint256 poolCount = farm.poolLength();
+		assertEq(poolCount, 1, "Should only have GO pool");
 
-		farm.addLp(address(GO_LP), 20000);
+		farm.add(20000, GO_LP);
 
-		stakingTokens = farm.getStakingTokens();
-		assertEq(stakingTokens.length, 2, "Should have GO & GO_LP staking token");
-		assertEq(
-			farm.getStakingTokenData(address(GO_LP)).token,
-			address(GO_LP),
-			"GO_LP staking token should be initialized"
-		);
-		assertEq(farm.getStakingTokenData(address(GO_LP)).boost, 20000, "GO_LP boost should be 20000");
-		assertEq(farm.getStakingTokenData(address(GO_LP)).total, 0, "GO_LP total should be 0");
+		poolCount = farm.poolLength();
+		assertEq(poolCount, 2, "Should have GO & GO_LP pools");
+		assertEq(address(farm.getPool(goLpPid).token), address(GO_LP), "GO_LP staking token should be initialized");
+		assertEq(farm.getPool(goLpPid).allocPoint, 20000, "GO_LP allocPoint should be 20000");
+		assertEq(farm.getPool(goLpPid).supply, 0, "GO_LP supply should be 0");
 	}
 
-	function test_addLp_deposit_ExpectEmit_Deposit() public {
-		vm.expectRevert(IAuctioneerFarm.NotStakingToken.selector);
-		_farmDeposit(user1, address(GO_LP), 2e18);
+	function test_add_deposit_ExpectEmit_Deposit() public {
+		vm.expectRevert(IAuctioneerFarm.InvalidPid.selector);
+		_farmDeposit(user1, goLpPid, 2e18);
 
-		farm.addLp(address(GO_LP), 20000);
+		farm.add(20000, GO_LP);
 
 		vm.expectEmit(true, true, true, true);
-		emit Deposit(user1, address(GO_LP), 2e18);
-		_farmDeposit(user1, address(GO_LP), 2e18);
+		emit Deposit(user1, goLpPid, 2e18, user1);
+		_farmDeposit(user1, goLpPid, 2e18);
 	}
 
-	function test_removeLp_RevertWhen_CallerIsNotOwner() public {
+	function test_set_RevertWhen_CallerIsNotOwner() public {
+		farm.add(20000, GO_LP);
+
 		vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, address(0)));
 		vm.prank(address(0));
-		farm.removeLp(address(GO_LP));
+		farm.set(goLpPid, 0);
 	}
 
-	function test_removeLp_ExpectEmit_UpdatedLpBoost() public {
-		vm.expectEmit(true, true, true, true);
-		emit UpdatedLpBoost(address(GO_LP), 0);
-
-		farm.removeLp(address(GO_LP));
-	}
-
-	function test_removeLp_Should_UpdateStakingTokenData() public {
-		farm.removeLp(address(GO_LP));
-
-		assertEq(farm.getStakingTokenData(address(GO_LP)).boost, 0, "GO_LP boost should be 0");
-	}
-
-	function test_removeLp_withdraw_ExpectEmit_Withdraw() public {
-		farm.addLp(address(GO_LP), 20000);
-
-		_farmDeposit(user1, address(GO_LP), 2e18);
-
-		farm.removeLp(address(GO_LP));
+	function test_set_ExpectEmit_UpdatedPool() public {
+		farm.add(20000, GO_LP);
 
 		vm.expectEmit(true, true, true, true);
-		emit Withdraw(user1, address(GO_LP), 2e18);
-		_farmWithdraw(user1, address(GO_LP), 2e18);
+		emit UpdatedPool(goLpPid, 0);
+
+		farm.set(goLpPid, 0);
 	}
 
-	function test_updateLpBoost_RevertWhen_CallerIsNotOwner() public {
-		vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, address(0)));
-		vm.prank(address(0));
-		farm.updateLpBoost(address(GO_LP), 20000);
+	function test_set_Should_UpdateAllocPoint() public {
+		farm.add(20000, GO_LP);
+
+		assertEq(farm.getPool(goLpPid).allocPoint, 20000, "GO_LP alloc point initial value should be 20000");
+
+		farm.set(goLpPid, 0);
+
+		assertEq(farm.getPool(goLpPid).allocPoint, 0, "GO_LP allocPoint should be 0");
 	}
 
-	function test_updateLpBoost_RevertWhen_OutsideRange() public {
-		farm.addLp(address(GO_LP), 20000);
+	function test_set_withdraw_ExpectEmit_Withdraw() public {
+		farm.add(20000, GO_LP);
 
-		vm.expectRevert(IAuctioneerFarm.OutsideRange.selector);
-		farm.updateLpBoost(address(GO_LP), 9999);
+		_farmDeposit(user1, goLpPid, 2e18);
 
-		vm.expectRevert(IAuctioneerFarm.OutsideRange.selector);
-		farm.updateLpBoost(address(GO_LP), 30001);
-	}
-
-	function test_updateLpBoost_ExpectEmit_UpdatedLpBoost() public {
-		farm.addLp(address(GO_LP), 20000);
+		farm.set(goLpPid, 0);
 
 		vm.expectEmit(true, true, true, true);
-		emit UpdatedLpBoost(address(GO_LP), 15000);
-
-		farm.updateLpBoost(address(GO_LP), 15000);
-	}
-
-	function test_updateLpBoost_Should_SetStakingTokenData() public {
-		farm.addLp(address(GO_LP), 20000);
-
-		assertEq(farm.getStakingTokenData(address(GO_LP)).boost, 20000, "GO_LP boost should be 20000");
-
-		farm.updateLpBoost(address(GO_LP), 25000);
-
-		assertEq(farm.getStakingTokenData(address(GO_LP)).boost, 25000, "GO_LP boost should be 25000");
+		emit Withdraw(user1, goLpPid, 2e18, user1);
+		_farmWithdraw(user1, goLpPid, 2e18);
 	}
 
 	uint256[4] userGOStaked = [15e18, 3.5e18, 0, 0];
@@ -236,10 +192,10 @@ contract AuctioneerFarmLpTest is AuctioneerHelper, AuctioneerFarmEvents {
 	uint256[4] userXXTokenStaked = [3e18, 13e18, 0, 0];
 	uint256[4] userYYTokenStaked = [2e18, 3.33e18, 0, 0];
 
-	uint256 GOBonus = 10000;
-	uint256 GO_LPBonus = 20000;
-	uint256 XXTokenBonus = 15000;
-	uint256 YYTokenBonus = 25000;
+	uint256 GOAlloc = 10000;
+	uint256 GO_LPAlloc = 20000;
+	uint256 XXTokenAlloc = 15000;
+	uint256 YYTokenAlloc = 25000;
 
 	function _getUserIndex(address user) internal view returns (uint256) {
 		return
@@ -255,16 +211,16 @@ contract AuctioneerFarmLpTest is AuctioneerHelper, AuctioneerFarmEvents {
 	function _getExpectedEqualizedStaked(address user) internal view returns (uint256) {
 		uint256 userIndex = _getUserIndex(user);
 		return
-			((userGOStaked[userIndex] * GOBonus) +
-				(userGO_LPStaked[userIndex] * GO_LPBonus) +
-				(userXXTokenStaked[userIndex] * XXTokenBonus) +
-				(userYYTokenStaked[userIndex] * YYTokenBonus)) / 10000;
+			((userGOStaked[userIndex] * GOAlloc) +
+				(userGO_LPStaked[userIndex] * GO_LPAlloc) +
+				(userXXTokenStaked[userIndex] * XXTokenAlloc) +
+				(userYYTokenStaked[userIndex] * YYTokenAlloc)) / 10000;
 	}
 
 	function _farmAddLpTokens(bool addGO_LP, bool addXXToken, bool addYYToken) internal {
-		if (addGO_LP) farm.addLp(address(GO_LP), GO_LPBonus);
-		if (addXXToken) farm.addLp(address(XXToken), XXTokenBonus);
-		if (addYYToken) farm.addLp(address(YYToken), YYTokenBonus);
+		if (addGO_LP) farm.add(GO_LPAlloc, GO_LP);
+		if (addXXToken) farm.add(XXTokenAlloc, XXToken);
+		if (addYYToken) farm.add(YYTokenAlloc, YYToken);
 	}
 	function _farmAddAllLpTokens() internal {
 		_farmAddLpTokens(true, true, true);
@@ -278,17 +234,17 @@ contract AuctioneerFarmLpTest is AuctioneerHelper, AuctioneerFarmEvents {
 		bool depositYY
 	) internal {
 		uint256 userIndex = _getUserIndex(user);
-		if (depositGO) _farmDeposit(user, address(GO), userGOStaked[userIndex]);
-		if (depositGO_LP) _farmDeposit(user, address(GO_LP), userGO_LPStaked[userIndex]);
-		if (depositXX) _farmDeposit(user, address(XXToken), userXXTokenStaked[userIndex]);
-		if (depositYY) _farmDeposit(user, address(YYToken), userYYTokenStaked[userIndex]);
+		if (depositGO) _farmDeposit(user, goPid, userGOStaked[userIndex]);
+		if (depositGO_LP) _farmDeposit(user, goLpPid, userGO_LPStaked[userIndex]);
+		if (depositXX) _farmDeposit(user, xxPid, userXXTokenStaked[userIndex]);
+		if (depositYY) _farmDeposit(user, yyPid, userYYTokenStaked[userIndex]);
 	}
 	function _farmDepositAllTokens(address user) internal {
 		_farmDepositTokens(user, true, true, true, true);
 	}
 
 	// EQUALIZED USER STAKES
-	function test_getEqualizedStaked_Should_UpdateWithBoosts() public {
+	function test_getEqualizedStaked_Should_UpdateWithAllocs() public {
 		_farmAddAllLpTokens();
 
 		_farmDepositAllTokens(user1);
@@ -303,12 +259,12 @@ contract AuctioneerFarmLpTest is AuctioneerHelper, AuctioneerFarmEvents {
 		assertEq(expectedEqualizedUser2Staked, farm.getEqualizedUserStaked(user2), "User2 equalized staked correct");
 		assertEq(expectedEqualizedTotalStaked, farm.getEqualizedTotalStaked(), "Total equalized staked correct");
 
-		GO_LPBonus = 17000;
-		XXTokenBonus = 22000;
-		YYTokenBonus = 19500;
-		farm.updateLpBoost(address(GO_LP), GO_LPBonus);
-		farm.updateLpBoost(address(XXToken), XXTokenBonus);
-		farm.updateLpBoost(address(YYToken), YYTokenBonus);
+		GO_LPAlloc = 17000;
+		XXTokenAlloc = 22000;
+		YYTokenAlloc = 19500;
+		farm.set(goLpPid, GO_LPAlloc);
+		farm.set(xxPid, XXTokenAlloc);
+		farm.set(yyPid, YYTokenAlloc);
 
 		expectedEqualizedUser1Staked = _getExpectedEqualizedStaked(user1);
 		expectedEqualizedUser2Staked = _getExpectedEqualizedStaked(user2);
@@ -332,56 +288,39 @@ contract AuctioneerFarmLpTest is AuctioneerHelper, AuctioneerFarmEvents {
 		);
 	}
 
-	// UPDATE goRewardPerShare
-	function test_addLp_Should_UpdateGoRewardPerShare() public {
+	// UPDATE goPerShare
+	function test_add_Should_UpdateGoPerShare() public {
 		_farmAddLpTokens(true, false, false);
 		_farmDepositTokens(user1, true, true, false, false);
 		_farmDepositTokens(user2, true, true, false, false);
 
 		vm.warp(block.timestamp + 1 days);
 
-		(, uint256 expectedGoRewardPerShare) = farm.getGOEmissions();
+		uint256 expectedGoPerShare = farm.getPoolUpdated(goPid).accGoPerShare;
 
-		farm.addLp(address(XXToken), XXTokenBonus);
-		farm.addLp(address(YYToken), YYTokenBonus);
+		farm.add(XXTokenAlloc, XXToken);
+		farm.add(YYTokenAlloc, YYToken);
 
-		(TokenEmission memory goEmission, ) = farm.getGOEmissions();
-		assertEq(goEmission.rewPerShare, expectedGoRewardPerShare, "goRewardPerShare updated during addLp");
+		assertEq(farm.getPool(goPid).accGoPerShare, expectedGoPerShare, "goPerShare updated during add pools");
 	}
-	function test_removeLp_Should_UpdateGoRewardPerShare() public {
+	function test_set_Should_UpdateGoPerShare() public {
 		_farmAddAllLpTokens();
 		_farmDepositAllTokens(user1);
 		_farmDepositAllTokens(user2);
 
 		vm.warp(block.timestamp + 1 days);
 
-		(, uint256 expectedGoRewardPerShare) = farm.getGOEmissions();
+		uint256 expectedGoPerShare = farm.getPoolUpdated(goPid).accGoPerShare;
 
-		farm.removeLp(address(XXToken));
-		farm.removeLp(address(YYToken));
+		farm.set(xxPid, 0);
+		farm.set(yyPid, 0);
 
-		(TokenEmission memory goEmission, ) = farm.getGOEmissions();
-		assertEq(goEmission.rewPerShare, expectedGoRewardPerShare, "goRewardPerShare updated during removeLp");
-	}
-	function test_updateLpBoost_Should_UpdateGoRewardPerShare() public {
-		_farmAddAllLpTokens();
-		_farmDepositAllTokens(user1);
-		_farmDepositAllTokens(user2);
-
-		vm.warp(block.timestamp + 1 days);
-
-		(, uint256 expectedGoRewardPerShare) = farm.getGOEmissions();
-
-		farm.updateLpBoost(address(XXToken), XXTokenBonus);
-		farm.updateLpBoost(address(YYToken), YYTokenBonus);
-
-		(TokenEmission memory goEmission, ) = farm.getGOEmissions();
-		assertEq(goEmission.rewPerShare, expectedGoRewardPerShare, "goRewardPerShare updated during updateLpBoost");
+		assertEq(farm.getPool(goPid).accGoPerShare, expectedGoPerShare, "goPerShare updated during set");
 	}
 
 	// PENDING
 
-	function test_addLp_Should_PendingRemainConstant() public {
+	function test_add_Should_PendingRemainConstant() public {
 		_farmAddLpTokens(true, false, false);
 
 		_farmDepositTokens(user1, true, true, false, false);
@@ -389,20 +328,20 @@ contract AuctioneerFarmLpTest is AuctioneerHelper, AuctioneerFarmEvents {
 
 		vm.warp(block.timestamp + 1 days);
 
-		PendingAmounts memory user1PendingInit = farm.pending(user1);
-		PendingAmounts memory user2PendingInit = farm.pending(user2);
+		PendingAmounts memory user1PendingInit = farm.allPending(user1);
+		PendingAmounts memory user2PendingInit = farm.allPending(user2);
 
-		farm.addLp(address(XXToken), XXTokenBonus);
-		farm.addLp(address(YYToken), YYTokenBonus);
+		farm.add(XXTokenAlloc, XXToken);
+		farm.add(YYTokenAlloc, YYToken);
 
-		PendingAmounts memory user1PendingFinal = farm.pending(user1);
-		PendingAmounts memory user2PendingFinal = farm.pending(user2);
+		PendingAmounts memory user1PendingFinal = farm.allPending(user1);
+		PendingAmounts memory user2PendingFinal = farm.allPending(user2);
 
-		assertEq(user1PendingInit.go, user1PendingFinal.go, "User 1 pending go not affected by addLp");
-		assertEq(user2PendingInit.go, user2PendingFinal.go, "User 2 pending go not affected by addLp");
+		assertEq(user1PendingInit.go, user1PendingFinal.go, "User 1 pending go not affected by add");
+		assertEq(user2PendingInit.go, user2PendingFinal.go, "User 2 pending go not affected by add");
 	}
 
-	function test_removeLp_Should_PendingRemainConstant() public {
+	function test_set_Should_PendingRemainConstant() public {
 		_farmAddAllLpTokens();
 
 		_farmDepositAllTokens(user1);
@@ -410,45 +349,16 @@ contract AuctioneerFarmLpTest is AuctioneerHelper, AuctioneerFarmEvents {
 
 		vm.warp(block.timestamp + 1 days);
 
-		(TokenEmission memory goEmission, uint256 updatedGOPerShare) = farm.getGOEmissions();
-		console.log("Rew per share actual %s, updated %s", goEmission.rewPerShare, updatedGOPerShare);
-		PendingAmounts memory user1PendingInit = farm.pending(user1);
-		PendingAmounts memory user2PendingInit = farm.pending(user2);
+		PendingAmounts memory user1PendingInit = farm.allPending(user1);
+		PendingAmounts memory user2PendingInit = farm.allPending(user2);
 
-		farm.removeLp(address(XXToken));
-		farm.removeLp(address(YYToken));
+		farm.set(xxPid, 0);
+		farm.set(yyPid, 0);
 
-		PendingAmounts memory user1PendingFinal = farm.pending(user1);
-		PendingAmounts memory user2PendingFinal = farm.pending(user2);
+		PendingAmounts memory user1PendingFinal = farm.allPending(user1);
+		PendingAmounts memory user2PendingFinal = farm.allPending(user2);
 
-		(goEmission, ) = farm.getGOEmissions();
-		console.log("Rew Per Share", goEmission.rewPerShare);
-		assertEq(user1PendingInit.go, user1PendingFinal.go, "User 1 pending go not affected by removeLp");
-		assertEq(user2PendingInit.go, user2PendingFinal.go, "User 2 pending go not affected by removeLp");
-	}
-
-	function test_updateLpBoost_Should_PendingRemainConstant() public {
-		_farmAddAllLpTokens();
-
-		_farmDepositAllTokens(user1);
-		_farmDepositAllTokens(user2);
-
-		vm.warp(block.timestamp + 1 days);
-
-		PendingAmounts memory user1PendingInit = farm.pending(user1);
-		PendingAmounts memory user2PendingInit = farm.pending(user2);
-
-		GO_LPBonus = 17000;
-		XXTokenBonus = 22000;
-		YYTokenBonus = 19500;
-		farm.updateLpBoost(address(GO_LP), GO_LPBonus);
-		farm.updateLpBoost(address(XXToken), XXTokenBonus);
-		farm.updateLpBoost(address(YYToken), YYTokenBonus);
-
-		PendingAmounts memory user1PendingFinal = farm.pending(user1);
-		PendingAmounts memory user2PendingFinal = farm.pending(user2);
-
-		assertEq(user1PendingInit.go, user1PendingFinal.go, "User 1 pending go not affected by updateLpBoost");
-		assertEq(user2PendingInit.go, user2PendingFinal.go, "User 2 pending go not affected by updateLpBoost");
+		assertEq(user1PendingInit.go, user1PendingFinal.go, "User 1 pending go not affected by set");
+		assertEq(user2PendingInit.go, user2PendingFinal.go, "User 2 pending go not affected by set");
 	}
 }

@@ -90,6 +90,17 @@ Tests to run (remaining)
     [x] Harvested matches pending
     [x] goPerShare brought current
 
+[x] AuctioneerFarmV2
+  [x] Emergency withdrawal
+  [x] Voucher emissions
+  [x] Harvest all
+  [x] to
+    [x] deposit
+    [x] withdraw
+    [x] harvest
+    [x] allHarvest
+    [x] emergencyWithdraw
+
 
 
 [x] Auctioneer / Farm interaction
