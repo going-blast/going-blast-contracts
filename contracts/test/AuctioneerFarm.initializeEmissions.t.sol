@@ -20,7 +20,7 @@ contract AuctioneerFarmInitializeEmissionsTest is AuctioneerHelper, AuctioneerFa
 	function setUp() public override {
 		super.setUp();
 
-		farm = new AuctioneerFarm(USD, GO);
+		farm = new AuctioneerFarm(USD, GO, BID);
 		auctioneer.setTreasury(treasury);
 
 		// Distribute GO
@@ -67,8 +67,8 @@ contract AuctioneerFarmInitializeEmissionsTest is AuctioneerHelper, AuctioneerFa
 		auctioneer.createDailyAuctions(params);
 	}
 
-	function test_initializeEmissions_RevertWhen_NotEnoughGo() public {
-		vm.expectRevert(IAuctioneerFarm.NotEnoughGo.selector);
+	function test_initializeEmissions_RevertWhen_NotEnoughEmissionToken() public {
+		vm.expectRevert(IAuctioneerFarm.NotEnoughEmissionToken.selector);
 		farm.initializeEmissions(farmGO + 1e18, 180 days);
 	}
 
@@ -76,7 +76,7 @@ contract AuctioneerFarmInitializeEmissionsTest is AuctioneerHelper, AuctioneerFa
 		uint256 expectedGoEmission = farmGO / 180 days;
 
 		vm.expectEmit(true, true, true, true);
-		emit InitializedGOEmission(expectedGoEmission);
+		emit InitializedGOEmission(expectedGoEmission, 180 days);
 
 		vm.expectEmit(true, true, true, true);
 		emit AddedStakingToken(address(GO), 10000);

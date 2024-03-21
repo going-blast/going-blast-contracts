@@ -58,7 +58,7 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		YYToken = new BasicERC20("YY", "YY");
 
 		auctioneer = new AuctioneerHarness(USD, GO, BID, WETH, 1e18, 1e16, 1e18, 20e18);
-		farm = new AuctioneerFarm(USD, GO);
+		farm = new AuctioneerFarm(USD, GO, BID);
 
 		// Create NFTs
 		mockNFT1 = new BasicERC721("MOCK_NFT_1", "MOCK_NFT_1", "https://tokenBaseURI", "https://contractURI", sender);

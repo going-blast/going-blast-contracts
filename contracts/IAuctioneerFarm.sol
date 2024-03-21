@@ -4,9 +4,9 @@ pragma experimental ABIEncoderV2;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-struct UserDebts {
-	uint256 debtGO;
-	uint256 debtUSD;
+enum EmissionType {
+	DRIP, // Emission drips over time (GO, BID)
+	CHUNK // Emission is added in chunks (USD)
 }
 
 struct StakingTokenOnlyData {
@@ -19,17 +19,24 @@ struct StakingTokenData {
 	uint256 boost;
 	uint256 total;
 	mapping(address => uint256) userStaked;
+	mapping(address => uint256) emissionRewPerShare;
+	mapping(address => mapping(address => uint256)) userEmissionDebt;
 }
 struct PendingAmounts {
 	uint256 usd;
 	uint256 go;
 	uint256 bid;
 }
+struct StakingTokenRewPerShare {
+	address stakingToken;
+	address emissionToken;
+	uint256 rewPerShare;
+}
 
 struct TokenEmission {
-	IERC20 token;
+	address token; // Initialization check
+	EmissionType emissionType;
 	uint256 rewPerSecond;
-	uint256 rewPerShare;
 	uint256 lastRewardTimestamp;
 	uint256 emissionFinalTimestamp;
 }
@@ -51,7 +58,6 @@ interface IAuctioneerFarm {
 	error BadDeposit();
 	error NotStakingToken();
 	error OutsideRange();
-	error NotEnoughGo();
 	error NotEnoughEmissionToken();
 	error AlreadySet();
 	error AlreadyAdded();

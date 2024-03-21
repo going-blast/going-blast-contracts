@@ -20,7 +20,7 @@ contract AuctioneerFarmEmissionsTest is AuctioneerHelper, AuctioneerFarmEvents {
 	function setUp() public override {
 		super.setUp();
 
-		farm = new AuctioneerFarm(USD, GO);
+		farm = new AuctioneerFarm(USD, GO, BID);
 		auctioneer.setTreasury(treasury);
 
 		// Distribute GO
@@ -108,7 +108,8 @@ contract AuctioneerFarmEmissionsTest is AuctioneerHelper, AuctioneerFarmEvents {
 		_farmDeposit(user3, address(GO), user3Deposited);
 		_farmDeposit(user4, address(GO), user4Deposited);
 
-		uint256 goPerSecond = farm.goPerSecond();
+		(TokenEmission memory goEmission, ) = farm.getGOEmissions();
+		uint256 goPerSecond = goEmission.rewPerSecond;
 
 		uint256 initTimestamp = block.timestamp;
 		vm.warp(1 days);
@@ -120,10 +121,10 @@ contract AuctioneerFarmEmissionsTest is AuctioneerHelper, AuctioneerFarmEvents {
 		uint256 user3Emissions = (user3Deposited * emissions) / totalDeposited;
 		uint256 user4Emissions = (user4Deposited * emissions) / totalDeposited;
 
-		(, uint256 user1PendingGo) = farm.pending(user1);
-		(, uint256 user2PendingGo) = farm.pending(user2);
-		(, uint256 user3PendingGo) = farm.pending(user3);
-		(, uint256 user4PendingGo) = farm.pending(user4);
+		uint256 user1PendingGo = farm.pending(user1).go;
+		uint256 user2PendingGo = farm.pending(user2).go;
+		uint256 user3PendingGo = farm.pending(user3).go;
+		uint256 user4PendingGo = farm.pending(user4).go;
 
 		assertApproxEqAbs(user1Emissions, user1PendingGo, 10, "User1 emissions increase proportionally");
 		assertApproxEqAbs(user2Emissions, user2PendingGo, 10, "User2 emissions increase proportionally");
@@ -145,10 +146,10 @@ contract AuctioneerFarmEmissionsTest is AuctioneerHelper, AuctioneerFarmEvents {
 		uint256 user3Emissions = (user3Deposited * emissions) / totalDeposited;
 		uint256 user4Emissions = (user4Deposited * emissions) / totalDeposited;
 
-		(uint256 user1PendingUSD, ) = farm.pending(user1);
-		(uint256 user2PendingUSD, ) = farm.pending(user2);
-		(uint256 user3PendingUSD, ) = farm.pending(user3);
-		(uint256 user4PendingUSD, ) = farm.pending(user4);
+		uint256 user1PendingUSD = farm.pending(user1).usd;
+		uint256 user2PendingUSD = farm.pending(user2).usd;
+		uint256 user3PendingUSD = farm.pending(user3).usd;
+		uint256 user4PendingUSD = farm.pending(user4).usd;
 
 		assertApproxEqAbs(user1Emissions, user1PendingUSD, 10, "User1 emissions increase proportionally");
 		assertApproxEqAbs(user2Emissions, user2PendingUSD, 10, "User2 emissions increase proportionally");
@@ -159,17 +160,18 @@ contract AuctioneerFarmEmissionsTest is AuctioneerHelper, AuctioneerFarmEvents {
 	function test_emissions_EmissionsCanRunOut() public {
 		_farmDeposit(user1, address(GO), user1Deposited);
 
-		uint256 goEmissionFinalTimestamp = farm.goEmissionFinalTimestamp();
+		(TokenEmission memory goEmission, ) = farm.getGOEmissions();
+		uint256 goEmissionFinalTimestamp = goEmission.emissionFinalTimestamp;
 
 		vm.warp(goEmissionFinalTimestamp - 30);
 		vm.prank(user1);
 		farm.harvest();
 
-		(, uint256 user1PendingGo) = farm.pending(user1);
+		uint256 user1PendingGo = farm.pending(user1).go;
 		uint256 user1PrevPendingGo = user1PendingGo;
 		for (int256 i = -29; i < 30; i++) {
 			vm.warp(uint256(int256(goEmissionFinalTimestamp) + i));
-			(, user1PendingGo) = farm.pending(user1);
+			user1PendingGo = farm.pending(user1).go;
 			// console.log(
 			// 	"Pending GO %s, delta %s, timestamp %s",
 			// 	user1PendingGo,
@@ -185,20 +187,20 @@ contract AuctioneerFarmEmissionsTest is AuctioneerHelper, AuctioneerFarmEvents {
 		}
 
 		vm.expectEmit(true, true, true, true);
-		emit Harvested(user1, 0, user1PendingGo);
+		emit Harvested(user1, PendingAmounts({ go: user1PendingGo, bid: 0, usd: 0 }));
 
 		vm.prank(user1);
 		farm.harvest();
 
 		// getUpdatedGoRewardPerShare doesn't continue to increase
-		uint256 updatedGoRewardPerShareInit = farm.getUpdatedGoRewardPerShare();
+		(, uint256 updatedGoRewardPerShareInit) = farm.getGOEmissions();
 		vm.warp(block.timestamp + 1 hours);
-		uint256 updatedGoRewardPerShareFinal = farm.getUpdatedGoRewardPerShare();
+		(, uint256 updatedGoRewardPerShareFinal) = farm.getGOEmissions();
 		assertEq(updatedGoRewardPerShareInit, updatedGoRewardPerShareFinal, "Updated go reward per share remains the same");
 
 		// Pending doesn't increase
 		vm.warp(block.timestamp + 1 hours);
-		(, user1PendingGo) = farm.pending(user1);
+		user1PendingGo = farm.pending(user1).go;
 		assertEq(user1PendingGo, 0, "No more emissions, forever");
 	}
 }

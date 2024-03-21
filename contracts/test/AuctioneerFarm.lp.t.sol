@@ -20,7 +20,7 @@ contract AuctioneerFarmLpTest is AuctioneerHelper, AuctioneerFarmEvents {
 	function setUp() public override {
 		super.setUp();
 
-		farm = new AuctioneerFarm(USD, GO);
+		farm = new AuctioneerFarm(USD, GO, BID);
 		auctioneer.setTreasury(treasury);
 
 		// Distribute GO
@@ -340,12 +340,13 @@ contract AuctioneerFarmLpTest is AuctioneerHelper, AuctioneerFarmEvents {
 
 		vm.warp(block.timestamp + 1 days);
 
-		uint256 expectedGoRewardPerShare = farm.getUpdatedGoRewardPerShare();
+		(, uint256 expectedGoRewardPerShare) = farm.getGOEmissions();
 
 		farm.addLp(address(XXToken), XXTokenBonus);
 		farm.addLp(address(YYToken), YYTokenBonus);
 
-		assertEq(farm.goRewardPerShare(), expectedGoRewardPerShare, "goRewardPerShare updated during addLp");
+		(TokenEmission memory goEmission, ) = farm.getGOEmissions();
+		assertEq(goEmission.rewPerShare, expectedGoRewardPerShare, "goRewardPerShare updated during addLp");
 	}
 	function test_removeLp_Should_UpdateGoRewardPerShare() public {
 		_farmAddAllLpTokens();
@@ -354,12 +355,13 @@ contract AuctioneerFarmLpTest is AuctioneerHelper, AuctioneerFarmEvents {
 
 		vm.warp(block.timestamp + 1 days);
 
-		uint256 expectedGoRewardPerShare = farm.getUpdatedGoRewardPerShare();
+		(, uint256 expectedGoRewardPerShare) = farm.getGOEmissions();
 
 		farm.removeLp(address(XXToken));
 		farm.removeLp(address(YYToken));
 
-		assertEq(farm.goRewardPerShare(), expectedGoRewardPerShare, "goRewardPerShare updated during removeLp");
+		(TokenEmission memory goEmission, ) = farm.getGOEmissions();
+		assertEq(goEmission.rewPerShare, expectedGoRewardPerShare, "goRewardPerShare updated during removeLp");
 	}
 	function test_updateLpBoost_Should_UpdateGoRewardPerShare() public {
 		_farmAddAllLpTokens();
@@ -368,12 +370,13 @@ contract AuctioneerFarmLpTest is AuctioneerHelper, AuctioneerFarmEvents {
 
 		vm.warp(block.timestamp + 1 days);
 
-		uint256 expectedGoRewardPerShare = farm.getUpdatedGoRewardPerShare();
+		(, uint256 expectedGoRewardPerShare) = farm.getGOEmissions();
 
 		farm.updateLpBoost(address(XXToken), XXTokenBonus);
 		farm.updateLpBoost(address(YYToken), YYTokenBonus);
 
-		assertEq(farm.goRewardPerShare(), expectedGoRewardPerShare, "goRewardPerShare updated during updateLpBoost");
+		(TokenEmission memory goEmission, ) = farm.getGOEmissions();
+		assertEq(goEmission.rewPerShare, expectedGoRewardPerShare, "goRewardPerShare updated during updateLpBoost");
 	}
 
 	// PENDING
@@ -386,17 +389,17 @@ contract AuctioneerFarmLpTest is AuctioneerHelper, AuctioneerFarmEvents {
 
 		vm.warp(block.timestamp + 1 days);
 
-		(uint256 user1PendingGOInit, ) = farm.pending(user1);
-		(uint256 user2PendingGOInit, ) = farm.pending(user2);
+		PendingAmounts memory user1PendingInit = farm.pending(user1);
+		PendingAmounts memory user2PendingInit = farm.pending(user2);
 
 		farm.addLp(address(XXToken), XXTokenBonus);
 		farm.addLp(address(YYToken), YYTokenBonus);
 
-		(uint256 user1PendingGOFinal, ) = farm.pending(user1);
-		(uint256 user2PendingGOFinal, ) = farm.pending(user2);
+		PendingAmounts memory user1PendingFinal = farm.pending(user1);
+		PendingAmounts memory user2PendingFinal = farm.pending(user2);
 
-		assertEq(user1PendingGOInit, user1PendingGOFinal, "User 1 pending go not affected by addLp");
-		assertEq(user2PendingGOInit, user2PendingGOFinal, "User 2 pending go not affected by addLp");
+		assertEq(user1PendingInit.go, user1PendingFinal.go, "User 1 pending go not affected by addLp");
+		assertEq(user2PendingInit.go, user2PendingFinal.go, "User 2 pending go not affected by addLp");
 	}
 
 	function test_removeLp_Should_PendingRemainConstant() public {
@@ -407,17 +410,21 @@ contract AuctioneerFarmLpTest is AuctioneerHelper, AuctioneerFarmEvents {
 
 		vm.warp(block.timestamp + 1 days);
 
-		(uint256 user1PendingGOInit, ) = farm.pending(user1);
-		(uint256 user2PendingGOInit, ) = farm.pending(user2);
+		(TokenEmission memory goEmission, uint256 updatedGOPerShare) = farm.getGOEmissions();
+		console.log("Rew per share actual %s, updated %s", goEmission.rewPerShare, updatedGOPerShare);
+		PendingAmounts memory user1PendingInit = farm.pending(user1);
+		PendingAmounts memory user2PendingInit = farm.pending(user2);
 
 		farm.removeLp(address(XXToken));
 		farm.removeLp(address(YYToken));
 
-		(uint256 user1PendingGOFinal, ) = farm.pending(user1);
-		(uint256 user2PendingGOFinal, ) = farm.pending(user2);
+		PendingAmounts memory user1PendingFinal = farm.pending(user1);
+		PendingAmounts memory user2PendingFinal = farm.pending(user2);
 
-		assertEq(user1PendingGOInit, user1PendingGOFinal, "User 1 pending go not affected by removeLp");
-		assertEq(user2PendingGOInit, user2PendingGOFinal, "User 2 pending go not affected by removeLp");
+		(goEmission, ) = farm.getGOEmissions();
+		console.log("Rew Per Share", goEmission.rewPerShare);
+		assertEq(user1PendingInit.go, user1PendingFinal.go, "User 1 pending go not affected by removeLp");
+		assertEq(user2PendingInit.go, user2PendingFinal.go, "User 2 pending go not affected by removeLp");
 	}
 
 	function test_updateLpBoost_Should_PendingRemainConstant() public {
@@ -428,8 +435,8 @@ contract AuctioneerFarmLpTest is AuctioneerHelper, AuctioneerFarmEvents {
 
 		vm.warp(block.timestamp + 1 days);
 
-		(uint256 user1PendingGOInit, ) = farm.pending(user1);
-		(uint256 user2PendingGOInit, ) = farm.pending(user2);
+		PendingAmounts memory user1PendingInit = farm.pending(user1);
+		PendingAmounts memory user2PendingInit = farm.pending(user2);
 
 		GO_LPBonus = 17000;
 		XXTokenBonus = 22000;
@@ -438,10 +445,10 @@ contract AuctioneerFarmLpTest is AuctioneerHelper, AuctioneerFarmEvents {
 		farm.updateLpBoost(address(XXToken), XXTokenBonus);
 		farm.updateLpBoost(address(YYToken), YYTokenBonus);
 
-		(uint256 user1PendingGOFinal, ) = farm.pending(user1);
-		(uint256 user2PendingGOFinal, ) = farm.pending(user2);
+		PendingAmounts memory user1PendingFinal = farm.pending(user1);
+		PendingAmounts memory user2PendingFinal = farm.pending(user2);
 
-		assertEq(user1PendingGOInit, user1PendingGOFinal, "User 1 pending go not affected by updateLpBoost");
-		assertEq(user2PendingGOInit, user2PendingGOFinal, "User 2 pending go not affected by updateLpBoost");
+		assertEq(user1PendingInit.go, user1PendingFinal.go, "User 1 pending go not affected by updateLpBoost");
+		assertEq(user2PendingInit.go, user2PendingFinal.go, "User 2 pending go not affected by updateLpBoost");
 	}
 }
