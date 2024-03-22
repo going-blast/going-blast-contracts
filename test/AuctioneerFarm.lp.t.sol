@@ -2,14 +2,10 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
-import { Auctioneer } from "../src/Auctioneer.sol";
 import "../src/IAuctioneer.sol";
-import { GOToken } from "../src/GoToken.sol";
 import { AuctioneerHelper } from "./Auctioneer.base.t.sol";
 import { AuctioneerFarm } from "../src/AuctioneerFarm.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { BasicERC20 } from "../src/BasicERC20.sol";
-import { WETH9 } from "../src/WETH9.sol";
 import "../src/IAuctioneerFarm.sol";
 
 contract AuctioneerFarmLpTest is AuctioneerHelper, AuctioneerFarmEvents {
@@ -96,11 +92,11 @@ contract AuctioneerFarmLpTest is AuctioneerHelper, AuctioneerFarmEvents {
 		vm.stopPrank();
 	}
 
-	uint256 user1Deposited = 5e18;
-	uint256 user2Deposited = 15e18;
-	uint256 user3Deposited = 0.75e18;
-	uint256 user4Deposited = 2.8e18;
-	uint256 totalDeposited = user1Deposited + user2Deposited + user3Deposited + user4Deposited;
+	uint256 public user1Deposited = 5e18;
+	uint256 public user2Deposited = 15e18;
+	uint256 public user3Deposited = 0.75e18;
+	uint256 public user4Deposited = 2.8e18;
+	uint256 public totalDeposited = user1Deposited + user2Deposited + user3Deposited + user4Deposited;
 
 	// ADMIN
 
@@ -187,15 +183,15 @@ contract AuctioneerFarmLpTest is AuctioneerHelper, AuctioneerFarmEvents {
 		_farmWithdraw(user1, goLpPid, 2e18);
 	}
 
-	uint256[4] userGOStaked = [15e18, 3.5e18, 0, 0];
-	uint256[4] userGO_LPStaked = [4e18, 0.25e18, 0, 0];
-	uint256[4] userXXTokenStaked = [3e18, 13e18, 0, 0];
-	uint256[4] userYYTokenStaked = [2e18, 3.33e18, 0, 0];
+	uint256[4] public userGOStaked = [15e18, 3.5e18, 0, 0];
+	uint256[4] public userGO_LPStaked = [4e18, 0.25e18, 0, 0];
+	uint256[4] public userXXTokenStaked = [3e18, 13e18, 0, 0];
+	uint256[4] public userYYTokenStaked = [2e18, 3.33e18, 0, 0];
 
-	uint256 GOAlloc = 10000;
-	uint256 GO_LPAlloc = 20000;
-	uint256 XXTokenAlloc = 15000;
-	uint256 YYTokenAlloc = 25000;
+	uint256 public GOAlloc = 10000;
+	uint256 public GO_LPAlloc = 20000;
+	uint256 public XXTokenAlloc = 15000;
+	uint256 public YYTokenAlloc = 25000;
 
 	function _getUserIndex(address user) internal view returns (uint256) {
 		return

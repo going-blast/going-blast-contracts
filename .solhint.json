@@ -3,6 +3,10 @@
 	"plugins": [],
 	"rules": {
 		"func-visibility": ["error", { "ignoreConstructors": true }],
-		"var-name-mixedcase": false
+		"var-name-mixedcase": false,
+		"no-global-import": false,
+		"func-name-mixedcase": false,
+		"one-contract-per-file": false,
+		"max-states-count": false
 	}
 }

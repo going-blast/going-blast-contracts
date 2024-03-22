@@ -2,14 +2,9 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
-import { Auctioneer } from "../src/Auctioneer.sol";
 import "../src/IAuctioneer.sol";
-import { GOToken } from "../src/GoToken.sol";
 import { AuctioneerHelper } from "./Auctioneer.base.t.sol";
-import { AuctioneerFarm } from "../src/AuctioneerFarm.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { BasicERC20 } from "../src/BasicERC20.sol";
-import { WETH9 } from "../src/WETH9.sol";
 import "../src/IAuctioneerFarm.sol";
 
 contract AuctioneerFarmEmissionsTest is AuctioneerHelper, AuctioneerFarmEvents {
@@ -99,11 +94,11 @@ contract AuctioneerFarmEmissionsTest is AuctioneerHelper, AuctioneerFarmEvents {
 		vm.stopPrank();
 	}
 
-	uint256 user1Deposited = 5e18;
-	uint256 user2Deposited = 15e18;
-	uint256 user3Deposited = 0.75e18;
-	uint256 user4Deposited = 2.8e18;
-	uint256 totalDeposited = user1Deposited + user2Deposited + user3Deposited + user4Deposited;
+	uint256 public user1Deposited = 5e18;
+	uint256 public user2Deposited = 15e18;
+	uint256 public user3Deposited = 0.75e18;
+	uint256 public user4Deposited = 2.8e18;
+	uint256 public totalDeposited = user1Deposited + user2Deposited + user3Deposited + user4Deposited;
 
 	function test_emissions_PendingGOIncreasesProportionally() public {
 		_farmDeposit(user1, goPid, user1Deposited);

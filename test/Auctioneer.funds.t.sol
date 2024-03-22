@@ -2,14 +2,10 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
-import { Auctioneer } from "../src/Auctioneer.sol";
 import "../src/IAuctioneer.sol";
-import { GOToken } from "../src/GoToken.sol";
 import { AuctioneerHelper } from "./Auctioneer.base.t.sol";
 import { AuctioneerFarm } from "../src/AuctioneerFarm.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { BasicERC20 } from "../src/BasicERC20.sol";
-import { WETH9 } from "../src/WETH9.sol";
 
 contract AuctioneerFundsTest is AuctioneerHelper {
 	using SafeERC20 for IERC20;

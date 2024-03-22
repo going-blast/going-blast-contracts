@@ -4,39 +4,38 @@ pragma solidity ^0.8.20;
 import "forge-std/Script.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ChainJsonUtils } from "./ChainJsonUtils.sol";
-import { BasicERC20 } from "../src/BasicERC20.sol";
-import { IWETH, WETH9 } from "../src/WETH9.sol";
+import { IWETH } from "../src/WETH9.sol";
 import { Auctioneer } from "../src/Auctioneer.sol";
 import { AuctioneerFarm } from "../src/AuctioneerFarm.sol";
-import { GOToken } from "../src/GOToken.sol";
-import { VOUCHERToken } from "../src/VOUCHERToken.sol";
+import { GoToken } from "../src/GoToken.sol";
+import { VoucherToken } from "../src/VoucherToken.sol";
 
 contract GBScriptUtils is Script, ChainJsonUtils {
 	using SafeERC20 for IERC20;
 
 	// Ecosystem contracts
-	Auctioneer auctioneer;
-	AuctioneerFarm auctioneerFarm;
-	GOToken GO;
-	VOUCHERToken VOUCHER;
-	IERC20 USD;
-	IWETH WETH;
+	Auctioneer public auctioneer;
+	AuctioneerFarm public auctioneerFarm;
+	GoToken public GO;
+	VoucherToken public VOUCHER;
+	IERC20 public USD;
+	IWETH public WETH;
 
 	// Config
-	bool isBlast;
-	bool isAnvil;
+	bool public isBlast;
+	bool public isAnvil;
 
 	// Default bidding values for a 18 decimal USD
-	uint256 bidCost = 0.6e18;
-	uint256 bidIncrement = 0.01e18;
-	uint256 startingBid = 1e18;
+	uint256 public bidCost = 0.6e18;
+	uint256 public bidIncrement = 0.01e18;
+	uint256 public startingBid = 1e18;
 
 	// Config values
-	uint256 privateAuctionRequirement = 20e18;
-	uint256 earlyHarvestTax = 5000;
-	uint256 emissionTaxDuration = 30 days;
-	address treasury;
-	uint256 treasurySplit = 2000;
+	uint256 public privateAuctionRequirement = 20e18;
+	uint256 public earlyHarvestTax = 5000;
+	uint256 public emissionTaxDuration = 30 days;
+	address public treasury;
+	uint256 public treasurySplit = 2000;
 
 	modifier startBroadcast() {
 		string memory mnemonic = vm.envString("MNEMONIC");
@@ -50,8 +49,8 @@ contract GBScriptUtils is Script, ChainJsonUtils {
 		if (bytes(chainName).length == 0) revert ChainNameNotSet();
 		auctioneer = Auctioneer(payable(readAddress(contractPath("auctioneer"))));
 		auctioneerFarm = AuctioneerFarm(readAddress(contractPath("auctioneerFarm")));
-		GO = GOToken(readAddress(contractPath("GO")));
-		VOUCHER = VOUCHERToken(readAddress(contractPath("VOUCHER")));
+		GO = GoToken(readAddress(contractPath("GO")));
+		VOUCHER = VoucherToken(readAddress(contractPath("VOUCHER")));
 		USD = IERC20(readAddress(contractPath("USD")));
 		WETH = IWETH(readAddress(contractPath("WETH")));
 		_;

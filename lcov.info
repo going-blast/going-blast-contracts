@@ -1552,9 +1552,9 @@ BRF:2
 BRH:0
 end_of_record
 TN:
-SF:contracts/VOUCHERToken.sol
-FN:14,VOUCHERToken.mint
-FNDA:30,VOUCHERToken.mint
+SF:contracts/VoucherToken.sol
+FN:14,VoucherToken.mint
+FNDA:30,VoucherToken.mint
 DA:15,30
 DA:15,30
 FNF:1

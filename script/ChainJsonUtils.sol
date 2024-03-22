@@ -6,9 +6,9 @@ import "forge-std/Script.sol";
 contract ChainJsonUtils is Script {
 	using stdJson for string;
 
-	string chainName;
-	string jsonPath;
-	string json;
+	string public chainName;
+	string public jsonPath;
+	string public json;
 
 	error ChainNameNotSet();
 	error MissingPath();

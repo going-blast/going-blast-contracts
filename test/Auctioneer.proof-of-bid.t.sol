@@ -2,14 +2,10 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
-import { Auctioneer } from "../src/Auctioneer.sol";
 import "../src/IAuctioneer.sol";
-import { GOToken } from "../src/GoToken.sol";
 import { AuctioneerHelper } from "./Auctioneer.base.t.sol";
 import { AuctioneerFarm } from "../src/AuctioneerFarm.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { BasicERC20 } from "../src/BasicERC20.sol";
-import { WETH9 } from "../src/WETH9.sol";
 import { AuctionUtils } from "../src/AuctionUtils.sol";
 
 contract AuctioneerProofOfBidTest is AuctioneerHelper {
@@ -136,12 +132,6 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 
 		// Day 3 expected daily emission
 		EpochData memory epochData = auctioneer.exposed_getEpochDataAtTimestamp(day2Timestamp);
-		// console.log(
-		// 	"Day3 Init: daysRemaining %s, emissionsRemaining %s, dailyEmission %s",
-		// 	epochData.daysRemaining,
-		// 	epochData.emissionsRemaining,
-		// 	epochData.dailyEmission
-		// );
 		uint256 day2ExpectedDailyEmission = epochData.dailyEmission;
 
 		// Create auction
@@ -156,12 +146,6 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 
 		// Day 3 expected daily emission
 		epochData = auctioneer.exposed_getEpochDataAtTimestamp(day3Timestamp);
-		// console.log(
-		// 	"Day3 Final: daysRemaining %s, emissionsRemaining %s, dailyEmission %s",
-		// 	epochData.daysRemaining,
-		// 	epochData.emissionsRemaining,
-		// 	epochData.dailyEmission
-		// );
 		uint256 day3ExpectedDailyEmission = epochData.dailyEmission;
 
 		assertApproxEqAbs(day2ExpectedDailyEmission, day2ActualEmission, 10, "Day 2 emissions match");
@@ -179,12 +163,6 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 
 		// Day 3 expected daily emission
 		EpochData memory epochData = auctioneer.exposed_getEpochDataAtTimestamp(day2Timestamp);
-		// console.log(
-		// 	"Day3 Init: daysRemaining %s, emissionsRemaining %s, dailyEmission %s",
-		// 	epochData.daysRemaining,
-		// 	epochData.emissionsRemaining,
-		// 	epochData.dailyEmission
-		// );
 		uint256 day2ExpectedDailyEmission = epochData.dailyEmission;
 		uint256 day3ExpectedDailyEmission = (epochData.emissionsRemaining - (epochData.dailyEmission * 2)) /
 			(epochData.daysRemaining - 1);
@@ -201,12 +179,6 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 
 		// Day 3 actual daily emission
 		epochData = auctioneer.exposed_getEpochDataAtTimestamp(day3Timestamp);
-		// console.log(
-		// 	"Day3 Final: daysRemaining %s, emissionsRemaining %s, dailyEmission %s",
-		// 	epochData.daysRemaining,
-		// 	epochData.emissionsRemaining,
-		// 	epochData.dailyEmission
-		// );
 		uint256 day3ActualDailyEmission = epochData.dailyEmission;
 
 		assertApproxEqAbs(
@@ -230,12 +202,6 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 
 		// Day 3 expected daily emission
 		EpochData memory epochData = auctioneer.exposed_getEpochDataAtTimestamp(day2Timestamp);
-		// console.log(
-		// 	"Day3 Init: daysRemaining %s, emissionsRemaining %s, dailyEmission %s",
-		// 	epochData.daysRemaining,
-		// 	epochData.emissionsRemaining,
-		// 	epochData.dailyEmission
-		// );
 		uint256 day2ExpectedDailyEmission = epochData.dailyEmission;
 		uint256 day3ExpectedDailyEmission = (epochData.emissionsRemaining - ((epochData.dailyEmission * 5000) / 10000)) /
 			(epochData.daysRemaining - 1);
@@ -252,12 +218,6 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 
 		// Day 3 actual daily emission
 		epochData = auctioneer.exposed_getEpochDataAtTimestamp(day3Timestamp);
-		// console.log(
-		// 	"Day3 Final: daysRemaining %s, emissionsRemaining %s, dailyEmission %s",
-		// 	epochData.daysRemaining,
-		// 	epochData.emissionsRemaining,
-		// 	epochData.dailyEmission
-		// );
 		uint256 day3ActualDailyEmission = epochData.dailyEmission;
 
 		assertApproxEqAbs(
@@ -281,12 +241,6 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 
 		// Day 3 expected daily emission
 		EpochData memory epochData = auctioneer.exposed_getEpochDataAtTimestamp(day2Timestamp);
-		// console.log(
-		// 	"Day3 Init: daysRemaining %s, emissionsRemaining %s, dailyEmission %s",
-		// 	epochData.daysRemaining,
-		// 	epochData.emissionsRemaining,
-		// 	epochData.dailyEmission
-		// );
 		uint256 initialEmissionsRemaining = epochData.emissionsRemaining;
 		uint256 day2ExpectedDailyEmission = epochData.dailyEmission;
 		uint256 day3ExpectedDailyEmission = (epochData.emissionsRemaining - (epochData.dailyEmission * 2)) /
@@ -308,13 +262,6 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 
 		// Day 3 actual daily emission
 		epochData = auctioneer.exposed_getEpochDataAtTimestamp(day3Timestamp);
-		// console.log(
-		// 	"Day3 Final: daysRemaining %s, emissionsRemaining %s, dailyEmission %s",
-		// 	epochData.daysRemaining,
-		// 	epochData.emissionsRemaining,
-		// 	epochData.dailyEmission
-		// );
-		uint256 midEmissionsRemaining = epochData.emissionsRemaining;
 		uint256 day3ActualDailyEmission = epochData.dailyEmission;
 
 		assertApproxEqAbs(
@@ -336,12 +283,6 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 
 		// Day 3 should return to initial conditions
 		epochData = auctioneer.exposed_getEpochDataAtTimestamp(day3Timestamp);
-		console.log(
-			"Emissions remaining, init %s, mid %s, final %s",
-			initialEmissionsRemaining,
-			midEmissionsRemaining,
-			epochData.emissionsRemaining
-		);
 		assertApproxEqAbs(
 			initialEmissionsRemaining,
 			epochData.emissionsRemaining,
@@ -356,11 +297,11 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 		);
 	}
 
-	uint256 user1Bids = 1100;
-	uint256 user2Bids = 580;
-	uint256 user3Bids = 1520;
-	uint256 user4Bids = 960;
-	uint256 totalBids = user1Bids + user2Bids + user3Bids + user4Bids;
+	uint256 public user1Bids = 1100;
+	uint256 public user2Bids = 580;
+	uint256 public user3Bids = 1520;
+	uint256 public user4Bids = 960;
+	uint256 public totalBids = user1Bids + user2Bids + user3Bids + user4Bids;
 
 	function _setUpFarmBids(uint256 lot) internal {
 		// Set farm
@@ -426,20 +367,6 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 		(uint256 user1Lot0ExpectedEmissions, , , ) = _getUsersExpectedEmissions(0);
 		(uint256 user1Lot1ExpectedEmissions, , , ) = _getUsersExpectedEmissions(1);
 		(uint256 user1Lot2ExpectedEmissions, , , ) = _getUsersExpectedEmissions(2);
-
-		// console.log(
-		// 	"Emissions, 1 %s, 2 %s, 3 %s",
-		// 	auctioneer.getAuction(0).emissions.biddersEmission,
-		// 	auctioneer.getAuction(1).emissions.biddersEmission,
-		// 	auctioneer.getAuction(2).emissions.biddersEmission
-		// );
-
-		// console.log(
-		// 	"User1 emissions, 1 %s, 2 %s, 3 %s",
-		// 	user1Lot0ExpectedEmissions,
-		// 	user1Lot1ExpectedEmissions,
-		// 	user1Lot2ExpectedEmissions
-		// );
 
 		vm.expectEmit(true, true, true, true);
 		emit UserClaimedLotEmissions(

@@ -2,14 +2,10 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
-import { Auctioneer } from "../src/Auctioneer.sol";
 import "../src/IAuctioneer.sol";
-import { GOToken } from "../src/GoToken.sol";
 import { AuctioneerHelper } from "./Auctioneer.base.t.sol";
 import { AuctioneerFarm } from "../src/AuctioneerFarm.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { BasicERC20 } from "../src/BasicERC20.sol";
-import { WETH9 } from "../src/WETH9.sol";
 import { AuctionUtils } from "../src/AuctionUtils.sol";
 
 contract AuctioneerWindowsTest is AuctioneerHelper {
@@ -125,7 +121,7 @@ contract AuctioneerWindowsTest is AuctioneerHelper {
 		nextBidBy = auctioneer.getAuction(0).bidData.nextBidBy;
 		expectedNextBidBy = block.timestamp + windowTimer;
 		assertEq(nextBidBy, expectedNextBidBy, "TIMED window, bidding should increase nextBidBy");
-		console.log("User Bid :: timestamp: %s, next bid by: %s", block.timestamp, nextBidBy);
+		// console.log("User Bid :: timestamp: %s, next bid by: %s", block.timestamp, nextBidBy);
 
 		vm.warp(block.timestamp + 60);
 		// Bidding should change nextBidBy
@@ -134,7 +130,7 @@ contract AuctioneerWindowsTest is AuctioneerHelper {
 		nextBidBy = auctioneer.getAuction(0).bidData.nextBidBy;
 		expectedNextBidBy = block.timestamp + windowTimer;
 		assertEq(nextBidBy, expectedNextBidBy, "TIMED window, bidding should increase nextBidBy");
-		console.log("User Bid :: timestamp: %s, next bid by: %s", block.timestamp, nextBidBy);
+		// console.log("User Bid :: timestamp: %s, next bid by: %s", block.timestamp, nextBidBy);
 	}
 
 	function test_windows_nextBidBy_BiddingCloses_WhenNextBidByPassed() public {
@@ -176,7 +172,7 @@ contract AuctioneerWindowsTest is AuctioneerHelper {
 
 		// Warp to open window
 		uint256 timestamp = auctioneer.getAuction(0).unlockTimestamp;
-		console.log("Unlock timestamp: %s", timestamp);
+		// console.log("Unlock timestamp: %s", timestamp);
 		vm.warp(timestamp);
 
 		assertEq(auctioneer.exposed_auction_activeWindow(0), 0, "Auction unlocked, active window is 0");

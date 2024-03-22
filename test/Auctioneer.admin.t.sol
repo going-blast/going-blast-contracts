@@ -2,13 +2,8 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
-import { Auctioneer } from "../src/Auctioneer.sol";
 import "../src/IAuctioneer.sol";
-import { GOToken } from "../src/GoToken.sol";
 import { AuctioneerHelper } from "./Auctioneer.base.t.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { BasicERC20 } from "../src/BasicERC20.sol";
-import { IWETH, WETH9 } from "../src/WETH9.sol";
 
 contract AuctioneerAdminTest is AuctioneerHelper {
 	function setUp() public override {

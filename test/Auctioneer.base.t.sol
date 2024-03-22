@@ -2,14 +2,11 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
-import { Auctioneer } from "../src/Auctioneer.sol";
 import "../src/IAuctioneer.sol";
-import { GOToken } from "../src/GoToken.sol";
-import { VOUCHERToken } from "../src/VoucherToken.sol";
+import { GoToken } from "../src/GoToken.sol";
+import { VoucherToken } from "../src/VoucherToken.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { AuctioneerFarm } from "../src/AuctioneerFarm.sol";
-import { UserInfo } from "../src/IAuctioneerFarm.sol";
 import { BasicERC20 } from "../src/BasicERC20.sol";
 import { BasicERC721 } from "../src/BasicERC721.sol";
 import { IWETH, WETH9 } from "../src/WETH9.sol";
@@ -45,22 +42,22 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	BasicERC721 public mockNFT2;
 	IERC20 public GO;
 	BasicERC20 public GO_LP;
-	VOUCHERToken public VOUCHER;
+	VoucherToken public VOUCHER;
 
 	// FARM consts
-	uint256 goPid = 0;
-	uint256 goLpPid = 1;
-	uint256 xxPid = 2;
-	uint256 yyPid = 3;
+	uint256 public goPid = 0;
+	uint256 public goLpPid = 1;
+	uint256 public xxPid = 2;
+	uint256 public yyPid = 3;
 
 	// SETUP
 
 	function setUp() public virtual {
 		USD = new BasicERC20("USD", "USD");
 		WETH = IWETH(address(new WETH9()));
-		GO = new GOToken();
+		GO = new GoToken();
 		GO_LP = new BasicERC20("UniswapV2Pair", "GO_LP");
-		VOUCHER = new VOUCHERToken();
+		VOUCHER = new VoucherToken();
 		XXToken = new BasicERC20("XX", "XX");
 		YYToken = new BasicERC20("YY", "YY");
 

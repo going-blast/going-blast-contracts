@@ -13,8 +13,8 @@
 	"editor.defaultFormatter": "esbenp.prettier-vscode",
 	"editor.formatOnSave": true,
 	"solidity.formatter": "prettier",
-	"solidity.packageDefaultDependenciesContractsDirectory": "contracts",
-	"solidity.packageDefaultDependenciesDirectory": ["node_modules", "lib"],
+	"solidity.packageDefaultDependenciesContractsDirectory": "src",
+	"solidity.packageDefaultDependenciesDirectory": "lib",
 	"solidity.compileUsingRemoteVersion": "v0.8.20",
 	"solidity-va.hover": true
 }

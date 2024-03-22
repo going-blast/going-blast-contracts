@@ -1,8 +1,9 @@
 [profile.default]
-src = 'contracts'
+src = 'src'
 out = 'out'
-libs = ['node_modules', 'lib']
+libs = ['lib']
 test = 'test'
+script = 'script'
 cache_path  = 'cache_forge'
 solc = '0.8.20'
 fs_permissions = [{ access = "read-write", path = "./data" }]

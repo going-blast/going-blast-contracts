@@ -8,8 +8,8 @@ import { BasicERC20 } from "../src/BasicERC20.sol";
 import { IWETH, WETH9 } from "../src/WETH9.sol";
 import { Auctioneer } from "../src/Auctioneer.sol";
 import { AuctioneerFarm } from "../src/AuctioneerFarm.sol";
-import { GOToken } from "../src/GOToken.sol";
-import { VOUCHERToken } from "../src/VOUCHERToken.sol";
+import { GoToken } from "../src/GoToken.sol";
+import { VoucherToken } from "../src/VoucherToken.sol";
 import { IERC20Rebasing } from "../src/BlastYield.sol";
 
 contract GBDeploy is GBScriptUtils {
@@ -24,10 +24,10 @@ contract GBDeploy is GBScriptUtils {
 			WETH = IWETH(readAddress(contractPath("WETH")));
 		}
 
-		GO = new GOToken();
+		GO = new GoToken();
 		writeAddress(contractPath("GO"), address(GO));
 
-		VOUCHER = new VOUCHERToken();
+		VOUCHER = new VoucherToken();
 		writeAddress(contractPath("VOUCHER"), address(VOUCHER));
 
 		auctioneer = new Auctioneer(USD, GO, VOUCHER, WETH, bidCost, bidIncrement, startingBid, privateAuctionRequirement);
