@@ -5,9 +5,4 @@ libs = ['node_modules', 'lib']
 test = 'test'
 cache_path  = 'cache_forge'
 solc = '0.8.20'
-
-[rpc_endpoints]
-ftm_testnet = "${FTM_TESTNET_RPC_URL}"
-
-[etherscan]
-ftm_testnet = { key = "${FANTOMSCAN_API_KEY}" }
+fs_permissions = [{ access = "read-write", path = "./data" }]

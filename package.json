@@ -15,7 +15,11 @@
 		"format:write": "prettier --write .",
 		"lint:check": "eslint .",
 		"lint:fix": "eslint --fix .",
-		"forge:coverage": "forge coverage --report lcov && genhtml lcov.info --branch-coverage --output-dir coverage"
+		"forge:coverage": "forge coverage --report lcov && genhtml lcov.info --branch-coverage --output-dir coverage",
+		"env:anvil": "dotenv -e .env.anvil --",
+		"deploy:anvil": "yarn env:anvil forge script contracts/script/GoingBlast.s.sol:GBDeploy ",
+		"initializeAuctioneer:anvil": "yarn env:anvil forge script contracts/script/GoingBlast.s.sol:GBInitializeAuctioneer --rpc-url http://localhost:8545",
+		"syncConfigValues:anvil": "yarn env:anvil forge script contracts/script/GoingBlast.s.sol:GBSyncConfigValues --rpc-url http://localhost:8545"
 	},
 	"author": "Architect <halftonedev@gmail.com>",
 	"license": "MIT",
@@ -40,7 +44,6 @@
 		"@typescript-eslint/eslint-plugin": "^6.10.0",
 		"@typescript-eslint/parser": "^6.10.0",
 		"bn.js": "^5.2.1",
-		"dotenv": "^16.3.1",
 		"eslint": "^8.53.0",
 		"eslint-config-prettier": "^9.0.0",
 		"eslint-plugin-prettier": "^5.0.1",
