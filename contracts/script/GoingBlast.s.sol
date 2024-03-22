@@ -37,6 +37,14 @@ contract GBDeploy is GBScriptUtils {
 	}
 }
 
+contract GBSetTreasuryFromMnemonic is GBScriptUtils {
+	function run() external loadChain {
+		string memory mnemonic = vm.envString("MNEMONIC");
+		(treasury, ) = deriveRememberKey(mnemonic, 0);
+		writeAddress(auctioneerConfigPath("treasury"), treasury);
+	}
+}
+
 contract GBInitializeAuctioneer is GBScriptUtils {
 	using SafeERC20 for IERC20;
 	error AlreadyInitialized();

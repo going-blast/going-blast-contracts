@@ -19,7 +19,8 @@
 		"env:anvil": "dotenv -e .env.anvil --",
 		"deploy:anvil": "yarn env:anvil forge script contracts/script/GoingBlast.s.sol:GBDeploy ",
 		"initializeAuctioneer:anvil": "yarn env:anvil forge script contracts/script/GoingBlast.s.sol:GBInitializeAuctioneer --rpc-url http://localhost:8545",
-		"syncConfigValues:anvil": "yarn env:anvil forge script contracts/script/GoingBlast.s.sol:GBSyncConfigValues --rpc-url http://localhost:8545"
+		"syncConfigValues:anvil": "yarn env:anvil forge script contracts/script/GoingBlast.s.sol:GBSyncConfigValues --rpc-url http://localhost:8545",
+		"setTreasuryFromMnemonic:anvil": "yarn env:anvil forge script contracts/script/GoingBlast.s.sol:GBSetTreasuryFromMnemonic --rpc-url http://localhost:8545"
 	},
 	"author": "Architect <halftonedev@gmail.com>",
 	"license": "MIT",
