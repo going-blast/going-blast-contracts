@@ -10,9 +10,10 @@ import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { IWETH } from "./WETH9.sol";
 import { IAuctioneerFarm } from "./IAuctioneerFarm.sol";
 import "./IAuctioneer.sol";
+import { BlastYield } from "./BlastYield.sol";
 import { AuctionUtils, AuctionParamsUtils } from "./AuctionUtils.sol";
 
-contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiver {
+contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiver, BlastYield {
 	using SafeERC20 for IERC20;
 	using EnumerableSet for EnumerableSet.UintSet;
 	using AuctionUtils for Auction;
@@ -175,6 +176,22 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		initializeAuctions(_unlockTimestamp);
 		initialized = true;
 		emit Initialized();
+	}
+
+	///////////////////
+	// BLAST
+	///////////////////
+
+	function initializeBlast() public onlyOwner {
+		_initializeBlast(address(USD), address(WETH));
+	}
+	function claimYieldAll(
+		address _recipient,
+		uint256 _amountWETH,
+		uint256 _amountUSDB,
+		uint256 _minClaimRateBips
+	) public onlyOwner {
+		_claimYieldAll(_recipient, _amountWETH, _amountUSDB, _minClaimRateBips);
 	}
 
 	///////////////////

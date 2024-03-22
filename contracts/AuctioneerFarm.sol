@@ -6,8 +6,9 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./IAuctioneerFarm.sol";
+import { BlastYield } from "./BlastYield.sol";
 
-contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, AuctioneerFarmEvents {
+contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, AuctioneerFarmEvents, BlastYield {
 	using SafeERC20 for IERC20;
 
 	PoolInfo[] public poolInfo;
@@ -37,18 +38,24 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 		_add(10000, GO);
 	}
 
-	function _setEmission(TokenEmission storage tokenEmission, uint256 _amount, uint256 _duration) internal {
-		tokenEmission.endTimestamp = block.timestamp + _duration;
-		tokenEmission.perSecond = _amount / _duration;
-
-		if (tokenEmission.token.balanceOf(address(this)) < _amount) revert IAuctioneerFarm.NotEnoughEmissionToken();
-
-		emit SetEmission(address(tokenEmission.token), tokenEmission.perSecond, _duration);
-	}
-
 	modifier validPid(uint256 pid) {
 		if (pid >= poolInfo.length) revert InvalidPid();
 		_;
+	}
+
+	// BLAST
+
+	function initializeBlast(address WETH) public onlyOwner {
+		_initializeBlast(address(USD), WETH);
+	}
+
+	function claimYieldAll(
+		address _recipient,
+		uint256 _amountWETH,
+		uint256 _amountUSDB,
+		uint256 _minClaimRateBips
+	) public onlyOwner {
+		_claimYieldAll(_recipient, _amountWETH, _amountUSDB, _minClaimRateBips);
 	}
 
 	// ADMIN
@@ -64,6 +71,15 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 	function setVoucherEmissions(uint256 _emissionAmount, uint256 _emissionDuration) public onlyOwner {
 		massUpdatePools();
 		_setEmission(voucherEmission, _emissionAmount, _emissionDuration);
+	}
+
+	function _setEmission(TokenEmission storage tokenEmission, uint256 _amount, uint256 _duration) internal {
+		tokenEmission.endTimestamp = block.timestamp + _duration;
+		tokenEmission.perSecond = _amount / _duration;
+
+		if (tokenEmission.token.balanceOf(address(this)) < _amount) revert IAuctioneerFarm.NotEnoughEmissionToken();
+
+		emit SetEmission(address(tokenEmission.token), tokenEmission.perSecond, _duration);
 	}
 
 	function poolLength() public view returns (uint256 pools) {

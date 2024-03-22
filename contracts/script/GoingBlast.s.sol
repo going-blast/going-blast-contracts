@@ -10,6 +10,7 @@ import { Auctioneer } from "../Auctioneer.sol";
 import { AuctioneerFarm } from "../AuctioneerFarm.sol";
 import { GOToken } from "../GOToken.sol";
 import { VOUCHERToken } from "../VOUCHERToken.sol";
+import { IERC20Rebasing } from "../BlastYield.sol";
 
 contract GBDeploy is GBScriptUtils {
 	function run() external startBroadcast loadChain loadConfigValues {
@@ -34,6 +35,11 @@ contract GBDeploy is GBScriptUtils {
 
 		auctioneerFarm = new AuctioneerFarm(USD, GO, VOUCHER);
 		writeAddress(contractPath("auctioneerFarm"), address(auctioneerFarm));
+
+		if (isBlast) {
+			auctioneer.initializeBlast();
+			auctioneerFarm.initializeBlast(address(WETH));
+		}
 	}
 }
 
@@ -41,6 +47,8 @@ contract GBSetTreasuryFromMnemonic is GBScriptUtils {
 	function run() external loadChain {
 		string memory mnemonic = vm.envString("MNEMONIC");
 		(treasury, ) = deriveRememberKey(mnemonic, 0);
+
+		auctioneer.setTreasury(treasury);
 		writeAddress(auctioneerConfigPath("treasury"), treasury);
 	}
 }
@@ -99,9 +107,19 @@ contract GBSyncConfigValues is GBScriptUtils {
 			auctioneer.setTreasurySplit(treasurySplit);
 		}
 
-		console.log("Update Treasury:", treasury, auctioneer.treasury());
 		if (treasury != auctioneer.treasury()) {
 			auctioneer.setTreasury(treasury);
 		}
+	}
+}
+
+contract GBClaimYieldAll is GBScriptUtils {
+	error NotBlastChain();
+
+	function run(address _recipient) external startBroadcast loadChain loadContracts loadConfigValues {
+		if (!isBlast) revert NotBlastChain();
+		uint256 amountWETH = IERC20Rebasing(address(WETH)).getClaimableAmount(address(auctioneer));
+		uint256 amountUSDB = IERC20Rebasing(address(USD)).getClaimableAmount(address(auctioneer));
+		auctioneer.claimYieldAll(_recipient, amountWETH, amountUSDB, 0);
 	}
 }

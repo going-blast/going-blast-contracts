@@ -1,0 +1,24 @@
+{
+  "contracts": {
+    "WETH": "0x4200000000000000000000000000000000000023",
+    "USD": "0x4200000000000000000000000000000000000022",
+    "GO": "0xDdC73AB59862bE9f949a663b4C5235BA40AeEb4E",
+    "VOUCHER": "0x31904E61ddcC7F91CD12f703F16d796B7562fe07",
+    "auctioneer": "0x4361696C9f52c0da7e263D17a1D5E180C8E1b591",
+    "auctioneerFarm": "0x21FF46055fc5bf3399fb5Fa52016a653D538Aa63"
+  },
+  "config": {
+    "isBlast": true,
+    "isAnvil": false
+  },
+  "auctioneerConfig": {
+    "bidCost": 0.6e18,
+    "startingBid": 1e18,
+    "bidIncrement": 0.01e18,
+    "privateAuctionRequirement": 20e18,
+    "earlyHarvestTax": 5000,
+    "emissionTaxDurationDays": 30,
+    "treasury": "",
+    "treasurySplit": 2000
+  }
+}
