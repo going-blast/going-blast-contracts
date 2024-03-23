@@ -129,6 +129,7 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 			isPrivate: false,
 			lotValue: 4000e18,
 			emissionBP: 10000,
+			runeSymbols: new uint8[](0),
 			tokens: tokens,
 			nfts: new NftData[](0),
 			name: "Single Token Auction",
@@ -162,6 +163,7 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 			lotValue: 6000e18,
 			emissionBP: 10000,
 			tokens: tokens,
+			runeSymbols: new uint8[](0),
 			nfts: new NftData[](0),
 			name: "Multi Token Auction",
 			windows: windows,
@@ -203,28 +205,38 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	function _bidShouldEmit(address user) public {
 		uint256 expectedBid = auctioneer.getAuction(0).bidData.bid + auctioneer.bidIncrement();
 		vm.expectEmit(true, true, true, true);
-		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "" });
+		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "", rune: 0 });
 		emit Bid(0, user, expectedBid, "", options);
 		_bid(user);
 	}
 	function _bid(address user) public {
 		vm.prank(user);
-		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "" });
+		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "", rune: 0 });
 		auctioneer.bid(0, options);
 	}
 	function _bidOnLot(address user, uint256 lot) public {
 		vm.prank(user);
-		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "" });
+		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "", rune: 0 });
 		auctioneer.bid(lot, options);
 	}
 	function _multibid(address user, uint256 bidCount) public {
 		vm.prank(user);
-		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: bidCount, message: "" });
+		BidOptions memory options = BidOptions({
+			paymentType: BidPaymentType.WALLET,
+			multibid: bidCount,
+			message: "",
+			rune: 0
+		});
 		auctioneer.bid(0, options);
 	}
 	function _multibidLot(address user, uint256 bidCount, uint256 lot) public {
 		vm.prank(user);
-		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: bidCount, message: "" });
+		BidOptions memory options = BidOptions({
+			paymentType: BidPaymentType.WALLET,
+			multibid: bidCount,
+			message: "",
+			rune: 0
+		});
 		auctioneer.bid(lot, options);
 	}
 	function _bidUntil(address user, uint256 timer, uint256 until) public {

@@ -432,7 +432,7 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 
 		vm.warp(block.timestamp + 1 days);
 
-		bool claimed = auctioneer.getAuctionUser(0, user1).claimed;
+		bool claimed = auctioneer.getAuctionUser(0, user1).emissionsClaimed;
 		assertEq(claimed, false, "User has not claimed emissions");
 
 		uint256[] memory auctionsToClaim = new uint256[](1);
@@ -440,7 +440,7 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 		vm.prank(user1);
 		auctioneer.claimAuctionEmissions(auctionsToClaim);
 
-		claimed = auctioneer.getAuctionUser(0, user1).claimed;
+		claimed = auctioneer.getAuctionUser(0, user1).emissionsClaimed;
 		assertEq(claimed, true, "User has claimed emissions");
 	}
 

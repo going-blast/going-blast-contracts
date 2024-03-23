@@ -3,44 +3,39 @@
 	"version": "1.0.0",
 	"description": "You know what it is",
 	"scripts": {
-		"generate:abi:Auctioneer": "forge inspect contracts/Auctioneer.sol:Auctioneer abi > abi/Auctioneer.json",
-		"generate:abi:AuctioneerFarm": "forge inspect contracts/AuctioneerFarm.sol:AuctioneerFarm abi > abi/AuctioneerFarm.json",
+		"generate:abi:Auctioneer": "forge inspect src/Auctioneer.sol:Auctioneer abi > abi/Auctioneer.json",
+		"generate:abi:AuctioneerFarm": "forge inspect src/AuctioneerFarm.sol:AuctioneerFarm abi > abi/AuctioneerFarm.json",
 		"generate:abi": "yarn generate:abi:Auctioneer & yarn generate:abi:AuctioneerFarm",
 		"forge:coverage": "forge coverage --report lcov && genhtml lcov.info --branch-coverage --output-dir coverage",
 		"env:anvil": "dotenv -e .env.anvil --",
 		"env:blast:testnet": "dotenv -e .env.blast.testnet --",
-		"deploy:root": "forge script contracts/script/GoingBlast.s.sol:GBDeploy --rpc-url $RPC_URL --legacy --with-gas-price $GAS_PRICE -vv",
+		"deploy:root": "forge script script/GoingBlast.s.sol:GBDeploy --rpc-url $RPC_URL --legacy --with-gas-price $GAS_PRICE -vv",
 		"deploy:anvil": "yarn env:anvil yarn deploy:root",
 		"deploy:blast:testnet": "yarn env:blast:testnet yarn deploy:root",
-		"initializeAuctioneer:root": "forge script contracts/script/GoingBlast.s.sol:GBInitializeAuctioneer --rpc-url $RPC_URL --legacy --with-gas-price $GAS_PRICE -vv",
+		"initializeAuctioneer:root": "forge script script/GoingBlast.s.sol:GBInitializeAuctioneer --rpc-url $RPC_URL --legacy --with-gas-price $GAS_PRICE -vv",
 		"initializeAuctioneer:anvil": "yarn env:anvil yarn initializeAuctioneer:root",
 		"initializeAuctioneer:blast:testnet": "yarn env:blast:testnet yarn initializeAuctioneer:root",
-		"syncConfigValues:root": "forge script contracts/script/GoingBlast.s.sol:GBSyncConfigValues --rpc-url $RPC_URL --legacy --with-gas-price $GAS_PRICE -vv",
+		"syncConfigValues:root": "forge script script/GoingBlast.s.sol:GBSyncConfigValues --rpc-url $RPC_URL --legacy --with-gas-price $GAS_PRICE -vv",
 		"syncConfigValues:anvil": "yarn env:anvil syncConfigValues:root",
 		"syncConfigValues:blast:testnet": "yarn env:blast:testnet syncConfigValues:root",
-		"setTreasuryFromMnemonic:root": "forge script contracts/script/GoingBlast.s.sol:GBSetTreasuryFromMnemonic --rpc-url $RPC_URL --legacy --with-gas-price $GAS_PRICE -vv",
+		"setTreasuryFromMnemonic:root": "forge script script/GoingBlast.s.sol:GBSetTreasuryFromMnemonic --rpc-url $RPC_URL --legacy --with-gas-price $GAS_PRICE -vv",
 		"setTreasuryFromMnemonic:anvil": "yarn env:anvil setTreasuryFromMnemonic:root",
 		"setTreasuryFromMnemonic:blast:testnet": "yarn env:blast:testnet setTreasuryFromMnemonic:root"
 	},
 	"author": "Architect <halftonedev@gmail.com>",
 	"license": "MIT",
 	"devDependencies": {
-		"@openzeppelin/contracts": "5.0.2",
 		"@types/node": "^20.11.20",
 		"@typescript-eslint/eslint-plugin": "^6.10.0",
 		"@typescript-eslint/parser": "^6.10.0",
-		"bn.js": "^5.2.1",
 		"eslint": "^8.53.0",
 		"eslint-config-prettier": "^9.0.0",
 		"eslint-plugin-prettier": "^5.0.1",
-		"ethers": "^6.8.1",
 		"prettier": "^3.0.3",
 		"prettier-plugin-solidity": "^1.2.0",
 		"solhint": "^4.0.0",
 		"ts-node": "^10.9.2",
 		"typescript": "^5.2.2"
 	},
-	"dependencies": {
-		"chai": "4.3.7"
-	}
+	"dependencies": {}
 }

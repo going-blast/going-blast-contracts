@@ -70,13 +70,13 @@ contract AuctioneerBidTest is AuctioneerHelper {
 
 	function test_bid_RevertWhen_InvalidAuctionLot() public {
 		vm.expectRevert(InvalidAuctionLot.selector);
-		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "" });
+		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "", rune: 0 });
 		auctioneer.bid(1, options);
 	}
 
 	function test_bid_RevertWhen_AuctionNotYetOpen() public {
 		vm.expectRevert(BiddingClosed.selector);
-		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "" });
+		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "", rune: 0 });
 		auctioneer.bid(0, options);
 	}
 
@@ -91,7 +91,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 
 		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
 		vm.prank(user1);
-		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "" });
+		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "", rune: 0 });
 		auctioneer.bid(0, options);
 	}
 
@@ -105,7 +105,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 
 		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
 		vm.prank(user1);
-		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "" });
+		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "", rune: 0 });
 		auctioneer.bid(0, options);
 	}
 
@@ -118,7 +118,12 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		auctioneer.setAlias("XXXX");
 
 		vm.expectEmit(true, true, true, true);
-		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "Hello World" });
+		BidOptions memory options = BidOptions({
+			paymentType: BidPaymentType.WALLET,
+			multibid: 1,
+			message: "Hello World",
+			rune: 0
+		});
 		emit Bid(0, user1, expectedBid, "XXXX", options);
 
 		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
@@ -131,7 +136,12 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		Auction memory auctionInit = auctioneer.getAuction(0);
 
 		vm.prank(user1);
-		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "Hello World" });
+		BidOptions memory options = BidOptions({
+			paymentType: BidPaymentType.WALLET,
+			multibid: 1,
+			message: "Hello World",
+			rune: 0
+		});
 		auctioneer.bid(0, options);
 
 		uint256 bidCost = auctioneer.bidCost();
@@ -157,7 +167,12 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		uint256 auctioneerUsdBalInit = USD.balanceOf(address(auctioneer));
 
 		vm.prank(user1);
-		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "Hello World" });
+		BidOptions memory options = BidOptions({
+			paymentType: BidPaymentType.WALLET,
+			multibid: 1,
+			message: "Hello World",
+			rune: 0
+		});
 		auctioneer.bid(0, options);
 
 		assertEq(USD.balanceOf(user1), user1UsdBalInit - bidCost, "Should remove funds from users wallet");
@@ -177,7 +192,12 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		uint256 user1Funds = auctioneer.userFunds(user1);
 
 		vm.prank(user1);
-		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.FUNDS, multibid: 1, message: "Hello World" });
+		BidOptions memory options = BidOptions({
+			paymentType: BidPaymentType.FUNDS,
+			multibid: 1,
+			message: "Hello World",
+			rune: 0
+		});
 		auctioneer.bid(0, options);
 
 		assertEq(USD.balanceOf(user1), user1UsdBalInit, "Should not remove funds from users wallet");
@@ -200,7 +220,8 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		BidOptions memory options = BidOptions({
 			paymentType: BidPaymentType.WALLET,
 			multibid: multibid,
-			message: "Hello World"
+			message: "Hello World",
+			rune: 0
 		});
 		emit Bid(0, user1, expectedBid, "", options);
 
@@ -247,7 +268,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		// user 1 can bid
 		uint256 expectedBid = auctioneer.startingBid() + auctioneer.bidIncrement();
 		vm.expectEmit(true, true, true, true);
-		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "" });
+		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "", rune: 0 });
 		emit Bid(1, user1, expectedBid, "", options);
 
 		vm.prank(user1);
@@ -265,7 +286,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		vm.expectRevert(PrivateAuction.selector);
 
 		vm.prank(user2);
-		options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "" });
+		options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "", rune: 0 });
 		auctioneer.bid(1, options);
 
 		// USER 3
@@ -279,7 +300,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		// user 3 can bid
 		expectedBid = auctioneer.getAuction(1).bidData.bid + auctioneer.bidIncrement();
 		vm.expectEmit(true, true, true, true);
-		options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "" });
+		options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "", rune: 0 });
 		emit Bid(1, user3, expectedBid, "", options);
 
 		vm.prank(user3);
@@ -305,7 +326,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 	function test_bid_GAS_WALLET() public {
 		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
 		vm.prank(user1);
-		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "" });
+		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "", rune: 0 });
 		auctioneer.bid(0, options);
 	}
 
@@ -313,7 +334,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 	function test_bid_GAS_FUNDS() public {
 		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
 		vm.prank(user2);
-		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.FUNDS, multibid: 1, message: "" });
+		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.FUNDS, multibid: 1, message: "", rune: 0 });
 		auctioneer.bid(0, options);
 	}
 }

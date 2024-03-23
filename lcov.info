@@ -987,8 +987,8 @@ FN:568,Auctioneer.getAuctionUser
 FNDA:3,Auctioneer.getAuctionUser
 DA:569,3
 DA:569,3
-FN:572,Auctioneer.getAuctionTokenEarned
-FNDA:0,Auctioneer.getAuctionTokenEarned
+FN:572,Auctioneer.getAuctionUserEmissions
+FNDA:0,Auctioneer.getAuctionUserEmissions
 DA:574,0
 DA:574,0
 DA:574,0

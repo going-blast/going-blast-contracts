@@ -17,6 +17,10 @@ library AuctionUtils {
 		return a > b ? a : b;
 	}
 
+	function hasRunes(Auction storage auction) internal view returns (bool) {
+		return auction.runes.length > 0;
+	}
+
 	function finalize(Auction storage auction) internal {
 		auction.finalized = true;
 	}
@@ -113,29 +117,54 @@ library AuctionUtils {
 		}
 	}
 
-	function _transferLotTokenTo(TokenData memory token, address to, bool unwrapETH, address ETH, address WETH) internal {
-		if (token.token == ETH) {
-			if (unwrapETH) {
-				// If lot token is ETH, it is held in contract as WETH, and needs to be unwrapped before being sent to user
-				IWETH(WETH).withdraw(token.amount);
-				(bool sent, ) = to.call{ value: token.amount }("");
-				if (!sent) revert ETHTransferFailed();
-			} else {
-				IERC20(address(WETH)).safeTransfer(to, token.amount);
-			}
-		} else {
-			// Transfer as default ERC20
-			IERC20(token.token).safeTransfer(to, token.amount);
+	function addRunes(Auction storage auction, AuctionParams memory params) internal {
+		if (params.runeSymbols.length == 0) return;
+
+		// Add empty rune (cannot be bid on), to offset array indices
+		auction.runes.push(BidRune({ runeSymbol: 0, bids: 0, users: 0 }));
+
+		for (uint8 i = 0; i < params.runeSymbols.length; i++) {
+			auction.runes.push(BidRune({ runeSymbol: params.runeSymbols[i], bids: 0, users: 0 }));
 		}
 	}
 
-	function transferLotTo(Auction storage auction, address to, bool unwrapETH, address ETH, address WETH) internal {
-		// Return lot to treasury
+	function _transferLotTokenTo(
+		TokenData memory token,
+		address to,
+		uint256 userShareOfLot,
+		bool unwrapETH,
+		address ETH,
+		address WETH
+	) internal {
+		if (token.token == ETH) {
+			if (unwrapETH) {
+				// If lot token is ETH, it is held in contract as WETH, and needs to be unwrapped before being sent to user
+				IWETH(WETH).withdraw((token.amount * userShareOfLot) / 1e18);
+				(bool sent, ) = to.call{ value: (token.amount * userShareOfLot) / 1e18 }("");
+				if (!sent) revert ETHTransferFailed();
+			} else {
+				IERC20(address(WETH)).safeTransfer(to, (token.amount * userShareOfLot) / 1e18);
+			}
+		} else {
+			// Transfer as default ERC20
+			IERC20(token.token).safeTransfer(to, (token.amount * userShareOfLot) / 1e18);
+		}
+	}
+
+	function transferLotTo(
+		Auction storage auction,
+		address to,
+		uint256 userShareOfLot,
+		bool unwrapETH,
+		address ETH,
+		address WETH
+	) internal {
+		// Return lot tokens
 		for (uint8 i = 0; i < auction.rewards.tokens.length; i++) {
-			_transferLotTokenTo(auction.rewards.tokens[i], to, unwrapETH, ETH, WETH);
+			_transferLotTokenTo(auction.rewards.tokens[i], to, userShareOfLot, unwrapETH, ETH, WETH);
 		}
 
-		// Transfer lot nfts to treasury
+		// Transfer lot nfts
 		for (uint8 i = 0; i < auction.rewards.nfts.length; i++) {
 			IERC721(auction.rewards.nfts[i].nft).transferFrom(address(this), to, auction.rewards.nfts[i].id);
 		}
@@ -226,6 +255,7 @@ library AuctionParamsUtils {
 
 	function validateNFTs(AuctionParams memory _params) internal pure {
 		if (_params.nfts.length > 4) revert TooManyNFTs();
+		if (_params.nfts.length > 0 && _params.runeSymbols.length > 0) revert CannotHaveNFTsWithRunes();
 	}
 
 	function validateAnyReward(AuctionParams memory _params) internal pure {
@@ -271,6 +301,33 @@ library AuctionParamsUtils {
 			// OPEN windows should have a timer of 0 (no timer)
 			if (_params.windows[i].windowType == BidWindowType.OPEN && _params.windows[i].timer != 0)
 				revert InvalidBidWindowTimer();
+		}
+	}
+
+	function validateRunes(AuctionParams memory _params) internal pure {
+		// Early escape if no runes
+		if (_params.runeSymbols.length == 0) return;
+
+		// VALIDATE: Number of runes
+		if (_params.runeSymbols.length == 1 || _params.runeSymbols.length > 5) revert InvalidRunesCount();
+
+		// VALIDATE: Rune symbols > 0 (account for empty rune at index 0)
+		for (uint8 i = 0; i < _params.runeSymbols.length; i++) {
+			if (_params.runeSymbols[i] == 0) revert InvalidRuneSymbol();
+		}
+
+		// VALIDATE: No duplicate symbols
+		// Example:
+		// Symbols = [0, 1, 2, 2]
+		// i = 0 - 2
+		// 	i = 0 :: j = 1 - 3
+		// 	i = 1 :: j = 2 - 3
+		//  i = 2 :: j = 3
+		// checks: s[0]:s[1] ✔, s[0]:s[2] ✔, s[0]:s[3] ✔, s[1]:s[2] ✔, s[1]:s[3] ✔, s[2]:s[3] ✘
+		for (uint8 i = 0; i < _params.runeSymbols.length - 1; i++) {
+			for (uint8 j = i + 1; j < _params.runeSymbols.length; j++) {
+				if (_params.runeSymbols[i] == _params.runeSymbols[j]) revert DuplicateRuneSymbols();
+			}
 		}
 	}
 }

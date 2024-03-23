@@ -5,6 +5,8 @@
 		"depositable",
 		"FANTOMSCAN",
 		"Finalizable",
+		"genhtml",
+		"lcov",
 		"mixedcase",
 		"multibid",
 		"solhint",

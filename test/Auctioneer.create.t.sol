@@ -374,7 +374,6 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		assertEq(auction.bidData.bid, auctioneer.startingBid(), "Initial bid amount should be starting bid");
 		assertEq(auction.bidData.bidTimestamp, params[0].unlockTimestamp, "Last bid timestamp should be unlock timestamp");
 		assertEq(auction.bidData.bidUser, sender, "First bid should be counted as auction creator");
-		assertEq(auction.claimed, false, "Not claimed");
 		assertEq(auction.finalized, false, "Not finalized");
 
 		assertEq(auction.windows.length, params[0].windows.length, "Param and Auction window number should match");

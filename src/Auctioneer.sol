@@ -103,6 +103,18 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		_;
 	}
 
+	modifier validRune(uint256 _lot, uint8 _rune) {
+		if (auctions[_lot].runes.length > 0 && (_rune == 0 || _rune >= auctions[_lot].runes.length)) revert InvalidRune();
+		if (auctions[_lot].runes.length == 0 && _rune != 0) revert InvalidRune();
+		_;
+	}
+
+	modifier validUserRuneSelection(uint256 _lot, uint8 _rune) {
+		if (auctionUsers[_lot][msg.sender].rune != 0 && auctionUsers[_lot][msg.sender].rune != _rune)
+			revert CantSwitchRune();
+		_;
+	}
+
 	///////////////////
 	// ADMIN
 	///////////////////
@@ -279,6 +291,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		_params.validateNFTs();
 		_params.validateAnyReward();
 		_params.validateBidWindows();
+		_params.validateRunes();
 	}
 
 	function _validateAuctionDay(AuctionParams memory _params, uint256 _paramIndex) internal view {
@@ -315,7 +328,6 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		auction.isPrivate = _params.isPrivate;
 		auction.unlockTimestamp = _params.unlockTimestamp;
 		auction.addBidWindows(_params, onceTwiceBlastBonusTime);
-		auction.claimed = false;
 		auction.finalized = false;
 
 		// Rewards
@@ -342,6 +354,9 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		auction.bidData.bidUser = msg.sender;
 		auction.bidData.nextBidBy = auction.getNextBidBy();
 
+		// Runes
+		auction.addRunes(_params);
+
 		// Frozen bidCost to prevent a change from messing up revenue calculations
 		auction.bidData.bidCost = bidCost;
 
@@ -353,15 +368,12 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 
 	function cancelAuction(uint256 _lot, bool _unwrapETH) public validAuctionLot(_lot) nonReentrant onlyOwner {
 		Auction storage auction = auctions[_lot];
-		uint256 day = _getDayOfTimestamp(auction.unlockTimestamp);
 
-		// Cannot cancel already cancelled auction
-		if (auction.finalized) revert NotCancellable();
+		// Auction only cancellable if it doesn't have any bids, or if its already been finalized
+		if (auction.bidData.bids > 0 || auction.finalized) revert NotCancellable();
 
-		// Can only cancel the auction if it doesn't have any bids yet
-		if (auction.bidData.bids > 0) revert NotCancellable();
-
-		auction.transferLotTo(treasury, _unwrapETH, ETH, address(WETH));
+		// Transfer lot tokens and nfts back to treasury
+		auction.transferLotTo(treasury, 1e18, _unwrapETH, ETH, address(WETH));
 
 		// Return emissions to epoch of auction
 		uint256 epoch = _getEpochAtTimestamp(auction.unlockTimestamp);
@@ -372,20 +384,30 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 			auction.emissions.treasuryEmission = 0;
 		}
 
+		uint256 day = _getDayOfTimestamp(auction.unlockTimestamp);
 		auctionsPerDay[day] -= 1;
 		dailyCumulativeEmissionBP[day] -= auction.emissions.bp;
 		auction.emissions.bp = 0;
 
 		// Finalize to prevent bidding and claiming
-		auction.claimed = true;
 		auction.finalized = true;
 		emit AuctionCancelled(_lot, msg.sender);
 	}
 
 	// BID
 
-	function bid(uint256 _lot, BidOptions memory _options) public validAuctionLot(_lot) nonReentrant {
+	function bid(
+		uint256 _lot,
+		BidOptions memory _options
+	)
+		public
+		validAuctionLot(_lot)
+		validRune(_lot, _options.rune)
+		validUserRuneSelection(_lot, _options.rune)
+		nonReentrant
+	{
 		Auction storage auction = auctions[_lot];
+		AuctionUser storage user = auctionUsers[_lot][msg.sender];
 		auction.validateBiddingOpen();
 
 		// Always bid at least once
@@ -405,11 +427,29 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		auction.bidData.nextBidBy = auction.getNextBidBy();
 
 		// Give user bid point
-		auctionUsers[_lot][msg.sender].bids += _options.multibid;
+		user.bids += _options.multibid;
 
-		// A single bid guarantees emissions, add the lot to a list of the users lots that have claimable emissions
-		userClaimableLots[msg.sender].add(_lot);
+		// Runes
+		if (auction.hasRunes()) {
+			// If user hasn't selected rune, select it, and add 1 to rune's user count
+			if (user.rune == 0) {
+				user.rune = _options.rune;
+				auction.runes[user.rune].users += 1;
+			}
 
+			// Add bids to rune, used for calculating emissions
+			auction.runes[user.rune].bids += _options.multibid;
+
+			// Mark bidRune
+			auction.bidData.bidRune = user.rune;
+		}
+
+		// Mark emissions from lot as claimable, if there are any emissions
+		if (auction.emissions.biddersEmission > 0) {
+			userClaimableLots[msg.sender].add(_lot);
+		}
+
+		// Pay for bid
 		if (_options.paymentType == BidPaymentType.WALLET) {
 			USD.safeTransferFrom(msg.sender, address(this), (auction.bidData.bidCost * _options.multibid));
 		}
@@ -444,31 +484,58 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		_finalizeAuction(auction);
 	}
 
+	function _validateUserIsWinner(Auction storage auction) internal view returns (bool) {
+		if (auction.hasRunes()) {
+			return auctionUsers[auction.lot][msg.sender].rune == auction.bidData.bidRune;
+		}
+		return msg.sender == auction.bidData.bidUser;
+	}
+
+	function _getUserShareOfLot(Auction storage auction, AuctionUser storage user) internal view returns (uint256) {
+		if (auction.hasRunes()) {
+			return (user.bids * 1e18) / auction.runes[user.rune].bids;
+		}
+		return 1e18;
+	}
+
 	function _claimLotWinnings(Auction storage auction, ClaimLotOptions memory _options) internal {
 		// User is not winner
-		if (msg.sender != auction.bidData.bidUser) revert NotWinner();
+		if (!_validateUserIsWinner(auction)) revert NotWinner();
 
-		// Winner has already paid for and claimed the lot
-		if (auction.claimed) revert AuctionLotAlreadyClaimed();
+		AuctionUser storage user = auctionUsers[auction.lot][msg.sender];
+
+		// Winner has already paid for and claimed the lot (or their share of it)
+		if (user.lotClaimed) revert UserAlreadyClaimedLot();
+
+		uint256 userShareOfLot = _getUserShareOfLot(auction, user);
+		uint256 userShareOfPayment = (auction.bidData.bid * userShareOfLot) / 1e18;
 
 		// Transfer lot to last bidder (this comes first so it shows up first in explorer)
-		auction.transferLotTo(auction.bidData.bidUser, _options.unwrapETH, ETH, address(WETH));
+		auction.transferLotTo(msg.sender, userShareOfLot, _options.unwrapETH, ETH, address(WETH));
 
 		// Pay for lot
 		if (_options.paymentType == LotPaymentType.FUNDS) {
-			if (userFunds[msg.sender] < auction.bidData.bid) revert InsufficientFunds();
-			userFunds[msg.sender] -= auction.bidData.bid;
+			if (userFunds[msg.sender] < userShareOfPayment) revert InsufficientFunds();
+			userFunds[msg.sender] -= userShareOfPayment;
 		}
 		if (_options.paymentType == LotPaymentType.WALLET) {
-			USD.safeTransferFrom(msg.sender, address(this), auction.bidData.bid);
+			USD.safeTransferFrom(msg.sender, address(this), userShareOfPayment);
 		}
 
 		// Distribute payment
-		auction.distributeLotProfit(USD, auction.bidData.bid, treasury, farm, treasurySplit);
+		auction.distributeLotProfit(USD, userShareOfPayment, treasury, farm, treasurySplit);
 
 		// Mark Claimed
-		auction.claimed = true;
-		emit AuctionLotClaimed(auction.lot, msg.sender, auction.rewards.tokens, auction.rewards.nfts);
+		user.lotClaimed = true;
+
+		emit UserClaimedLot(
+			auction.lot,
+			msg.sender,
+			user.rune,
+			userShareOfLot,
+			auction.rewards.tokens,
+			auction.rewards.nfts
+		);
 	}
 
 	function _finalizeAuction(Auction storage auction) internal {
@@ -501,7 +568,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		auction.validateEnded();
 
 		// Exit if user already claimed emissions from auction
-		if (user.claimed) return;
+		if (user.emissionsClaimed) return;
 
 		// Exit early if nothing to claim
 		if (user.bids == 0) return;
@@ -520,8 +587,9 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 			GO.safeTransfer(burnAddress, (emissions * earlyHarvestTax) / 10000);
 		}
 		// Mark claimed
-		user.claimed = true;
+		user.emissionsClaimed = true;
 		userClaimableLots[msg.sender].remove(_lot); // Remove from list of lots with emissions still to claim
+
 		emit UserClaimedLotEmissions(auction.lot, msg.sender, userEmissions, burnEmissions);
 	}
 
@@ -566,12 +634,16 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 	// VIEW
 	///////////////////
 
-	function getBidsData(
+	function getBidsCount(
 		address _user,
 		uint256 _lot
-	) public view validAuctionLot(_lot) returns (uint256 userBids, uint256 auctionBids) {
-		userBids = auctionUsers[_lot][_user].bids;
-		auctionBids = auctions[_lot].bidData.bids;
+	) public view validAuctionLot(_lot) returns (AuctionUserBidsCount memory bidsCount) {
+		Auction memory auction = auctions[_lot];
+		AuctionUser memory user = auctionUsers[_lot][_user];
+
+		bidsCount.user = user.bids;
+		bidsCount.rune = auction.runes.length == 0 || user.rune == 0 ? 0 : auction.runes[user.rune].bids;
+		bidsCount.auction = auction.bidData.bids;
 	}
 
 	function getAuction(uint256 _lot) public view validAuctionLot(_lot) returns (Auction memory) {
@@ -586,7 +658,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		return auctionUsers[_lot][_user];
 	}
 
-	function getAuctionTokenEarned(address _user, uint256 _lot) public view validAuctionLot(_lot) returns (uint256) {
+	function getAuctionUserEmissions(address _user, uint256 _lot) public view validAuctionLot(_lot) returns (uint256) {
 		// Prevent div by 0
 		if (auctionUsers[_lot][_user].bids == 0 || auctions[_lot].bidData.bids == 0) return 0;
 

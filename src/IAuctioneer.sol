@@ -18,10 +18,17 @@ enum LotPaymentType {
 
 // Params
 
+struct BidRune {
+	uint8 runeSymbol;
+	uint256 bids;
+	uint256 users;
+}
+
 struct BidOptions {
 	BidPaymentType paymentType;
 	uint256 multibid;
 	string message;
+	uint8 rune;
 }
 struct ClaimLotOptions {
 	LotPaymentType paymentType;
@@ -48,6 +55,7 @@ struct AuctionParams {
 	bool isPrivate;
 	uint256 emissionBP; // Emission of this auction of the day's emission (usually 100%)
 	string name;
+	uint8[] runeSymbols;
 	TokenData[] tokens;
 	NftData[] nfts;
 	BidWindowParams[] windows;
@@ -80,6 +88,7 @@ struct AuctionBidData {
 	uint256 bidTimestamp;
 	uint256 nextBidBy;
 	address bidUser;
+	uint8 bidRune;
 	uint256 bids; // number of bids during auction
 	uint256 bidCost; // Frozen value to prevent updating bidCost from messing with revenue calculations
 }
@@ -90,17 +99,19 @@ struct Auction {
 	string name;
 	bool isPrivate; // whether the auction requires wallet / staked Gavel
 	uint256 unlockTimestamp;
+	BidRune[] runes;
 	BidWindow[] windows;
 	AuctionEmissions emissions;
 	AuctionLot rewards;
 	AuctionBidData bidData;
-	bool claimed;
 	bool finalized;
 }
 
 struct AuctionUser {
 	uint256 bids;
-	bool claimed;
+	uint8 rune; // indexed starting at 1 to check if rune has been set (defaults to 0)
+	bool emissionsClaimed;
+	bool lotClaimed;
 }
 
 // Returns
@@ -117,6 +128,11 @@ struct ClaimableLotData {
 	uint256 emissions;
 	uint256 day;
 	uint256 timeUntilMature;
+}
+struct AuctionUserBidsCount {
+	uint256 user;
+	uint256 rune;
+	uint256 auction;
 }
 
 error GONotYetReceived();
@@ -152,7 +168,13 @@ error AliasTaken();
 error ETHTransferFailed();
 error MustBidAtLeastOnce();
 error NotWinner();
-error AuctionLotAlreadyClaimed();
+error UserAlreadyClaimedLot();
+error InvalidRune();
+error InvalidRuneSymbol();
+error InvalidRunesCount();
+error DuplicateRuneSymbols();
+error CantSwitchRune();
+error CannotHaveNFTsWithRunes();
 
 interface AuctioneerEvents {
 	event Initialized();
@@ -163,7 +185,14 @@ interface AuctioneerEvents {
 	event AuctionCreated(uint256 indexed _lot);
 	event Bid(uint256 indexed _lot, address indexed _user, uint256 _bid, string _alias, BidOptions _options);
 	event AuctionFinalized(uint256 indexed _lot);
-	event AuctionLotClaimed(uint256 indexed _lot, address indexed _user, TokenData[] _tokens, NftData[] _nfts);
+	event UserClaimedLot(
+		uint256 indexed _lot,
+		address indexed _user,
+		uint8 _rune,
+		uint256 _userShareOfLot,
+		TokenData[] _tokens,
+		NftData[] _nfts
+	);
 	event UserClaimedLotEmissions(uint256 _lot, address indexed _user, uint256 _userEmissions, uint256 _burnEmissions);
 	event AuctionCancelled(uint256 indexed _lot, address indexed _owner);
 	event UpdatedTreasury(address indexed _treasury);
