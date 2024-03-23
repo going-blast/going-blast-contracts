@@ -313,7 +313,7 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 		_multibidLot(user4, user4Bids, lot);
 		_multibidLot(user1, user1Bids, lot);
 
-		// Claimable after next bid by
+		// Harvestable after next bid by
 		vm.warp(auctioneer.getAuction(lot).bidData.nextBidBy + 1);
 	}
 
@@ -336,13 +336,13 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 		user4ExpectedEmissions = (emissions * user4Bids) / totalBids;
 	}
 
-	function test_proofOfBid_claimAuctionEmissions_ExpectEmit_UserClaimedLotEmissions() public {
+	function test_proofOfBid_harvestAuctionEmissions_ExpectEmit_UserHarvestedLotEmissions() public {
 		_setUpFarmBids(0);
 
 		(uint256 user1ExpectedEmissions, , , ) = _getUsersExpectedEmissions(0);
 
 		vm.expectEmit(true, true, true, true);
-		emit UserClaimedLotEmissions(
+		emit UserHarvestedLotEmissions(
 			0,
 			user1,
 			user1ExpectedEmissions / 2,
@@ -350,12 +350,12 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 		);
 
 		vm.prank(user1);
-		uint256[] memory auctionsToClaim = new uint256[](1);
-		auctionsToClaim[0] = 0;
-		auctioneer.claimAuctionEmissions(auctionsToClaim);
+		uint256[] memory auctionsToHarvest = new uint256[](1);
+		auctionsToHarvest[0] = 0;
+		auctioneer.harvestAuctionEmissions(auctionsToHarvest);
 	}
 
-	function test_proofOfBid_claimAuctionEmissions_MultipleAuctions() public {
+	function test_proofOfBid_harvestAuctionEmissions_MultipleAuctions() public {
 		// Create day 1 auction
 		_createBaseAuctionOnDay(2);
 		_createBaseAuctionOnDay(3);
@@ -369,21 +369,21 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 		(uint256 user1Lot2ExpectedEmissions, , , ) = _getUsersExpectedEmissions(2);
 
 		vm.expectEmit(true, true, true, true);
-		emit UserClaimedLotEmissions(
+		emit UserHarvestedLotEmissions(
 			0,
 			user1,
 			user1Lot0ExpectedEmissions / 2,
 			user1Lot0ExpectedEmissions - (user1Lot0ExpectedEmissions / 2)
 		);
 		vm.expectEmit(true, true, true, true);
-		emit UserClaimedLotEmissions(
+		emit UserHarvestedLotEmissions(
 			1,
 			user1,
 			user1Lot1ExpectedEmissions / 2,
 			user1Lot1ExpectedEmissions - (user1Lot1ExpectedEmissions / 2)
 		);
 		vm.expectEmit(true, true, true, true);
-		emit UserClaimedLotEmissions(
+		emit UserHarvestedLotEmissions(
 			2,
 			user1,
 			user1Lot2ExpectedEmissions / 2,
@@ -391,90 +391,98 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 		);
 
 		vm.prank(user1);
-		uint256[] memory auctionsToClaim = new uint256[](3);
-		auctionsToClaim[0] = 0;
-		auctionsToClaim[1] = 1;
-		auctionsToClaim[2] = 2;
-		auctioneer.claimAuctionEmissions(auctionsToClaim);
+		uint256[] memory auctionsToHarvest = new uint256[](3);
+		auctionsToHarvest[0] = 0;
+		auctionsToHarvest[1] = 1;
+		auctionsToHarvest[2] = 2;
+		auctioneer.harvestAuctionEmissions(auctionsToHarvest);
 	}
 
-	function test_proofOfBid_firstBidAddsAuctionToUserClaimableLots() public {
+	function test_proofOfBid_firstBidAddsAuctionToUserInteractedLots() public {
 		vm.warp(auctioneer.getAuction(0).unlockTimestamp);
 
-		uint256[] memory lots = auctioneer.getUserClaimableLots(user1);
-		assertEq(lots.length, 0, "Claimable lots should be []");
+		uint256[] memory unharvestedLots = auctioneer.getUserUnharvestedLots(user1);
+		assertEq(unharvestedLots.length, 0, "unharvestedLots lots should be []");
 
 		_bid(user1);
 
-		lots = auctioneer.getUserClaimableLots(user1);
-		assertEq(lots.length, 1, "Claimable lots should be [0]");
-		assertEq(lots[0], 0, "First claimable lots should be 0");
+		unharvestedLots = auctioneer.getUserUnharvestedLots(user1);
+		assertEq(unharvestedLots.length, 1, "unharvestedLots should be [0]");
+		assertEq(unharvestedLots[0], 0, "First unharvestedLot should be 0");
 	}
 
-	function test_proofOfBid_claimAuctionEmissions_RevertWhen_AuctionNotEnded() public {
+	function test_proofOfBid_harvestAuctionEmissions_RevertWhen_AuctionNotEnded() public {
 		vm.warp(auctioneer.getAuction(0).unlockTimestamp);
 
 		_bid(user1);
 
 		vm.expectRevert(AuctionStillRunning.selector);
 
-		// Claim
-		uint256[] memory auctionsToClaim = new uint256[](1);
-		auctionsToClaim[0] = 0;
+		// Harvest
+		uint256[] memory auctionsToHarvest = new uint256[](1);
+		auctionsToHarvest[0] = 0;
 		vm.prank(user1);
-		auctioneer.claimAuctionEmissions(auctionsToClaim);
+		auctioneer.harvestAuctionEmissions(auctionsToHarvest);
 	}
 
-	function test_proofOfBid_claimAuctionEmissions_MarkedAsClaimed() public {
+	function test_proofOfBid_harvestAuctionEmissions_MarkedAsHarvested() public {
 		vm.warp(auctioneer.getAuction(0).unlockTimestamp);
 
 		_bid(user1);
 
 		vm.warp(block.timestamp + 1 days);
 
-		bool claimed = auctioneer.getAuctionUser(0, user1).emissionsClaimed;
-		assertEq(claimed, false, "User has not claimed emissions");
+		bool harvested = auctioneer.getAuctionUser(0, user1).emissionsHarvested;
+		assertEq(harvested, false, "User has not harvested emissions");
 
-		uint256[] memory auctionsToClaim = new uint256[](1);
-		auctionsToClaim[0] = 0;
+		uint256[] memory auctionsToHarvest = new uint256[](1);
+		auctionsToHarvest[0] = 0;
 		vm.prank(user1);
-		auctioneer.claimAuctionEmissions(auctionsToClaim);
+		auctioneer.harvestAuctionEmissions(auctionsToHarvest);
 
-		claimed = auctioneer.getAuctionUser(0, user1).emissionsClaimed;
-		assertEq(claimed, true, "User has claimed emissions");
+		harvested = auctioneer.getAuctionUser(0, user1).emissionsHarvested;
+		assertEq(harvested, true, "User has harvested emissions");
 	}
 
-	function test_proofOfBid_claimAuctionEmissions_AfterClaim_LotRemovedFromList() public {
+	function test_proofOfBid_harvestAuctionEmissions_AfterClaim_LotRemovedFromList() public {
 		vm.warp(auctioneer.getAuction(0).unlockTimestamp);
+
+		uint256[] memory interactedLots = auctioneer.getUserInteractedLots(user1);
+		uint256[] memory unharvestedLots = auctioneer.getUserUnharvestedLots(user1);
+		assertEq(interactedLots.length, 0, "User has not interacted with any lots");
+		assertEq(unharvestedLots.length, 0, "User has no unharvested lots");
 
 		_bid(user1);
 
 		vm.warp(block.timestamp + 1 days);
 
-		ClaimableLotData[] memory lotDatas = auctioneer.getUserClaimableLotsData(user1);
-		uint256[] memory claimableLots = auctioneer.getUserClaimableLots(user1);
-		assertGt(lotDatas.length, 0, "User has lotDatas to claim");
-		assertGt(claimableLots.length, 0, "User has lots to claim");
+		interactedLots = auctioneer.getUserInteractedLots(user1);
+		unharvestedLots = auctioneer.getUserUnharvestedLots(user1);
+		assertEq(interactedLots.length, 1, "User has interacted with one lot");
+		assertEq(interactedLots[0], 0, "Users first interacted lot is lot 0");
+		assertEq(unharvestedLots.length, 1, "User has one unharvested lots");
+		assertEq(unharvestedLots[0], 0, "Users unharvested lot is lot 0");
 
 		// Claim
-		uint256[] memory auctionsToClaim = new uint256[](1);
-		auctionsToClaim[0] = 0;
+		uint256[] memory auctionsToHarvest = new uint256[](1);
+		auctionsToHarvest[0] = 0;
 		vm.prank(user1);
-		auctioneer.claimAuctionEmissions(auctionsToClaim);
+		auctioneer.harvestAuctionEmissions(auctionsToHarvest);
 
-		lotDatas = auctioneer.getUserClaimableLotsData(user1);
-		claimableLots = auctioneer.getUserClaimableLots(user1);
-		assertEq(lotDatas.length, 0, "LotData removed from lotData list");
-		assertEq(claimableLots.length, 0, "Lot removed from claimableLots list");
+		interactedLots = auctioneer.getUserInteractedLots(user1);
+		unharvestedLots = auctioneer.getUserUnharvestedLots(user1);
+		assertEq(interactedLots.length, 1, "User has still interacted with one lot");
+		assertEq(interactedLots[0], 0, "Users first interacted lot is still lot 0");
+		assertEq(unharvestedLots.length, 0, "Lot removed from unharvestedLots list");
 	}
 
-	function test_proofOfBid_claimAuctionEmissions_EarlyHarvest_50PercTax() public {
+	function test_proofOfBid_harvestAuctionEmissions_EarlyHarvest_50PercTax() public {
 		vm.warp(auctioneer.getAuction(0).unlockTimestamp);
 
 		_bid(user1);
 
-		ClaimableLotData[] memory lotDatas = auctioneer.getUserClaimableLotsData(user1);
-		assertGt(lotDatas[0].timeUntilMature, 0, "Emissions immature, incurs tax");
+		UserLotInfo memory user1LotInfo = auctioneer.getUserLotInfo(0, user1);
+		assertGt(user1LotInfo.timeUntilMature, 0, "Emissions immature, incurs tax");
 
 		vm.warp(block.timestamp + 1 days);
 
@@ -482,48 +490,137 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 		uint256 userGOInit = GO.balanceOf(user1);
 		uint256 deadGOInit = GO.balanceOf(dead);
 
-		uint256[] memory auctionsToClaim = new uint256[](1);
-		auctionsToClaim[0] = 0;
+		uint256[] memory auctionsToHarvest = new uint256[](1);
+		auctionsToHarvest[0] = 0;
 		vm.prank(user1);
-		auctioneer.claimAuctionEmissions(auctionsToClaim);
+		auctioneer.harvestAuctionEmissions(auctionsToHarvest);
 
 		// Final status
 		uint256 userGOFinal = GO.balanceOf(user1);
 		uint256 deadGOFinal = GO.balanceOf(dead);
 
 		// Checks
-		assertEq(userGOFinal - userGOInit, lotDatas[0].emissions / 2, "User receives taxed emissions");
-		assertEq(deadGOFinal - deadGOInit, lotDatas[0].emissions - (lotDatas[0].emissions / 2), "Emission taxes burned");
+		assertEq(userGOFinal - userGOInit, user1LotInfo.emissionsEarned / 2, "User receives taxed emissions");
+		assertEq(
+			deadGOFinal - deadGOInit,
+			user1LotInfo.emissionsEarned - (user1LotInfo.emissionsEarned / 2),
+			"Emission taxes burned"
+		);
 	}
 
-	function test_proofOfBid_claimAuctionEmissions_DelayedHarvest_0PercTax() public {
+	function test_proofOfBid_harvestAuctionEmissions_DelayedHarvest_0PercTax() public {
 		vm.warp(auctioneer.getAuction(0).unlockTimestamp);
 
 		_bid(user1);
 
-		ClaimableLotData[] memory lotDatas = auctioneer.getUserClaimableLotsData(user1);
-		assertGt(lotDatas[0].timeUntilMature, 0, "Emissions immature, incurs tax");
+		UserLotInfo memory user1LotInfo = auctioneer.getUserLotInfo(0, user1);
+		assertGt(user1LotInfo.timeUntilMature, 0, "Emissions immature, incurs tax");
 
 		// Warp to mature time
-		vm.warp(block.timestamp + lotDatas[0].timeUntilMature);
-		lotDatas = auctioneer.getUserClaimableLotsData(user1);
-		assertEq(lotDatas[0].timeUntilMature, 0, "Emissions mature, no tax");
+		vm.warp(block.timestamp + user1LotInfo.timeUntilMature);
+		user1LotInfo = auctioneer.getUserLotInfo(0, user1);
+		assertEq(user1LotInfo.timeUntilMature, 0, "Emissions mature, no tax");
 
 		// Initial status
 		uint256 userGOInit = GO.balanceOf(user1);
 		uint256 deadGOInit = GO.balanceOf(dead);
 
-		uint256[] memory auctionsToClaim = new uint256[](1);
-		auctionsToClaim[0] = 0;
+		uint256[] memory auctionsToHarvest = new uint256[](1);
+		auctionsToHarvest[0] = 0;
 		vm.prank(user1);
-		auctioneer.claimAuctionEmissions(auctionsToClaim);
+		auctioneer.harvestAuctionEmissions(auctionsToHarvest);
 
 		// Final status
 		uint256 userGOFinal = GO.balanceOf(user1);
 		uint256 deadGOFinal = GO.balanceOf(dead);
 
 		// Checks
-		assertEq(userGOFinal - userGOInit, lotDatas[0].emissions, "User receives full emissions");
+		assertEq(userGOFinal - userGOInit, user1LotInfo.emissionsEarned, "User receives full emissions");
 		assertEq(deadGOFinal - deadGOInit, 0, "Emission not taxed");
+
+		// LotEmissionInfo checks
+		user1LotInfo = auctioneer.getUserLotInfo(0, user1);
+		assertEq(user1LotInfo.emissionsHarvested, true, "Emissions are marked as harvested in lotEmissionInfo");
+	}
+
+	function test_proofOfBid_auctionWithRunes_harvestAuctionEmissions_EarlyHarvest_50PercTax() public {
+		uint256 lot = _createDailyAuctionWithRunes(2, true);
+
+		_multibidWithRune(user1, lot, 86, 1);
+		_multibidWithRune(user2, lot, 91, 2);
+		_multibidWithRune(user3, lot, 32, 1);
+		_multibidWithRune(user4, lot, 77, 2);
+
+		uint256 auctionEmissions = auctioneer.getAuction(lot).emissions.biddersEmission;
+
+		vm.warp(block.timestamp + 1 days);
+
+		// Initial status
+		uint256[] memory auctionsToHarvest = new uint256[](1);
+		auctionsToHarvest[0] = lot;
+
+		// USER 1
+		BidCounts memory user1BidCounts = auctioneer.getUserLotInfo(lot, user1).bidCounts;
+		uint256 user1EmissionsTotal = (auctionEmissions * user1BidCounts.user) / user1BidCounts.auction;
+		uint256 user1Harvestable = user1EmissionsTotal / 2;
+		uint256 user1Burnable = user1EmissionsTotal - user1Harvestable;
+		_expectTokenTransfer(GO, address(auctioneer), user1, user1Harvestable);
+		_expectTokenTransfer(GO, address(auctioneer), dead, user1Burnable);
+
+		vm.prank(user1);
+		auctioneer.harvestAuctionEmissions(auctionsToHarvest);
+
+		// USER 2
+		BidCounts memory user2BidCounts = auctioneer.getUserLotInfo(lot, user2).bidCounts;
+		uint256 user2EmissionsTotal = (auctionEmissions * user2BidCounts.user) / user2BidCounts.auction;
+		uint256 user2Harvestable = user2EmissionsTotal / 2;
+		uint256 user2Burnable = user2EmissionsTotal - user2Harvestable;
+		_expectTokenTransfer(GO, address(auctioneer), user2, user2Harvestable);
+		_expectTokenTransfer(GO, address(auctioneer), dead, user2Burnable);
+
+		vm.prank(user2);
+		auctioneer.harvestAuctionEmissions(auctionsToHarvest);
+	}
+
+	function test_proofOfBid_auctionWithRunes_harvestAuctionEmissions_MatureHarvest_0PercTax() public {
+		uint256 lot = _createDailyAuctionWithRunes(2, true);
+
+		_multibidWithRune(user1, lot, 36, 1);
+		_multibidWithRune(user2, lot, 1, 2);
+		_multibidWithRune(user3, lot, 32, 1);
+		_multibidWithRune(user4, lot, 77, 2);
+
+		uint256 auctionEmissions = auctioneer.getAuction(lot).emissions.biddersEmission;
+
+		vm.warp(block.timestamp + 1 days);
+		vm.warp(block.timestamp + auctioneer.getUserLotInfo(0, user1).timeUntilMature);
+
+		// Initial status
+		uint256[] memory auctionsToHarvest = new uint256[](1);
+		auctionsToHarvest[0] = lot;
+
+		// USER 1
+		BidCounts memory user1BidCounts = auctioneer.getUserLotInfo(lot, user1).bidCounts;
+		_expectTokenTransfer(
+			GO,
+			address(auctioneer),
+			user1,
+			(auctionEmissions * user1BidCounts.user) / (user1BidCounts.auction)
+		);
+
+		vm.prank(user1);
+		auctioneer.harvestAuctionEmissions(auctionsToHarvest);
+
+		// USER 2
+		BidCounts memory user2BidCounts = auctioneer.getUserLotInfo(lot, user2).bidCounts;
+		_expectTokenTransfer(
+			GO,
+			address(auctioneer),
+			user2,
+			(auctionEmissions * user2BidCounts.user) / (user2BidCounts.auction)
+		);
+
+		vm.prank(user2);
+		auctioneer.harvestAuctionEmissions(auctionsToHarvest);
 	}
 }

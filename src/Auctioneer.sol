@@ -7,6 +7,7 @@ import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableS
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IWETH } from "./WETH9.sol";
 import { IAuctioneerFarm } from "./IAuctioneerFarm.sol";
 import "./IAuctioneer.sol";
@@ -25,7 +26,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 	address public farm;
 	uint256 public treasurySplit = 2000;
 	uint256 public earlyHarvestTax = 5000;
-	address public burnAddress = 0x000000000000000000000000000000000000dEaD;
+	address public deadAddress = 0x000000000000000000000000000000000000dEaD;
 
 	// CORE
 
@@ -37,7 +38,8 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 	mapping(uint256 => Auction) public auctions;
 	mapping(uint256 => mapping(uint8 => BidWindow)) public auctionBidWindows;
 	mapping(uint256 => mapping(address => AuctionUser)) public auctionUsers;
-	mapping(address => EnumerableSet.UintSet) internal userClaimableLots;
+	mapping(address => EnumerableSet.UintSet) internal userInteractedLots;
+	mapping(address => EnumerableSet.UintSet) internal userUnharvestedLots;
 	uint256 public startTimestamp;
 	uint256 public epochDuration = 90 days;
 	uint256 public emissionTaxDuration = 30 days;
@@ -49,6 +51,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 
 	// BID PARAMS
 	IERC20 public USD;
+	uint256 public usdDecimals;
 	uint256 public bidIncrement;
 	uint256 public startingBid;
 	uint256 public privateAuctionRequirement;
@@ -79,6 +82,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		uint256 _privateRequirement
 	) Ownable(msg.sender) {
 		USD = _usd;
+		usdDecimals = IERC20Metadata(address(_usd)).decimals();
 		GO = _go;
 		VOUCHER = _voucher;
 		WETH = _weth;
@@ -94,6 +98,12 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 
 	function onERC721Received(address, address, uint256, bytes calldata) external pure override returns (bytes4) {
 		return this.onERC721Received.selector;
+	}
+
+	// UTILS
+
+	function e(uint256 coefficient, uint256 exponent) internal pure returns (uint256) {
+		return coefficient * 10 ** exponent;
 	}
 
 	// MODIFIERS
@@ -142,14 +152,16 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 	}
 
 	function updateStartingBid(uint256 _startingBid) public onlyOwner {
-		if (_startingBid < 5e17 || _startingBid > 2e18) revert Invalid();
+		// Must be between 0.5 and 2 usd
+		if (_startingBid < e(5, usdDecimals - 1) || _startingBid > e(2, usdDecimals)) revert Invalid();
 		startingBid = _startingBid;
 		emit UpdatedStartingBid(_startingBid);
 	}
 
 	// Will not update the bid cost of any already created auctions
 	function updateBidCost(uint256 _bidCost) public onlyOwner {
-		if (_bidCost < 5e17 || _bidCost > 2e18) revert Invalid();
+		// Must be between 0.5 and 2 usd
+		if (_bidCost < e(5, usdDecimals - 1) || _bidCost > e(2, usdDecimals)) revert Invalid();
 		bidCost = _bidCost;
 		emit UpdatedBidCost(_bidCost);
 	}
@@ -389,7 +401,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		dailyCumulativeEmissionBP[day] -= auction.emissions.bp;
 		auction.emissions.bp = 0;
 
-		// Finalize to prevent bidding and claiming
+		// Finalize to prevent bidding and claiming lot
 		auction.finalized = true;
 		emit AuctionCancelled(_lot, msg.sender);
 	}
@@ -444,10 +456,13 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 			auction.bidData.bidRune = user.rune;
 		}
 
-		// Mark emissions from lot as claimable, if there are any emissions
+		// Mark lot as unharvested if it has emissions
 		if (auction.emissions.biddersEmission > 0) {
-			userClaimableLots[msg.sender].add(_lot);
+			userUnharvestedLots[msg.sender].add(_lot);
 		}
+
+		// Mark user interacted with lot
+		userInteractedLots[msg.sender].add(_lot);
 
 		// Pay for bid
 		if (_options.paymentType == BidPaymentType.WALLET) {
@@ -458,7 +473,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 			userFunds[msg.sender] -= (auction.bidData.bidCost * _options.multibid);
 		}
 		if (_options.paymentType == BidPaymentType.VOUCHER) {
-			VOUCHER.safeTransferFrom(msg.sender, burnAddress, _options.multibid * 1e18);
+			VOUCHER.safeTransferFrom(msg.sender, deadAddress, _options.multibid * 1e18);
 		}
 
 		emit Bid(_lot, msg.sender, auction.bidData.bid, userAlias[msg.sender], _options);
@@ -472,15 +487,6 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		auction.validateEnded();
 
 		_claimLotWinnings(auction, _options);
-		_finalizeAuction(auction);
-	}
-
-	// Allows the auction to be finalized without waiting for winner to claim their lot
-	function finalizeAuction(uint256 _lot) public validAuctionLot(_lot) nonReentrant {
-		Auction storage auction = auctions[_lot];
-
-		auction.validateEnded();
-
 		_finalizeAuction(auction);
 	}
 
@@ -538,6 +544,17 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		);
 	}
 
+	// FINALIZE
+
+	// Allows the auction to be finalized without waiting for a winner to claim their lot
+	function finalizeAuction(uint256 _lot) public validAuctionLot(_lot) nonReentrant {
+		Auction storage auction = auctions[_lot];
+
+		auction.validateEnded();
+
+		_finalizeAuction(auction);
+	}
+
 	function _finalizeAuction(Auction storage auction) internal {
 		// Exit if already finalized
 		if (auction.finalized) return;
@@ -555,20 +572,22 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		emit AuctionFinalized(auction.lot);
 	}
 
-	function claimAuctionEmissions(uint256[] memory _lots) public nonReentrant {
+	// HARVEST
+
+	function harvestAuctionEmissions(uint256[] memory _lots) public nonReentrant {
 		for (uint256 i = 0; i < _lots.length; i++) {
-			_claimAuctionEmissions(_lots[i]);
+			_harvestAuctionEmissions(_lots[i]);
 		}
 	}
 
-	function _claimAuctionEmissions(uint256 _lot) internal validAuctionLot(_lot) {
+	function _harvestAuctionEmissions(uint256 _lot) internal validAuctionLot(_lot) {
 		Auction storage auction = auctions[_lot];
 		AuctionUser storage user = auctionUsers[auction.lot][msg.sender];
 
 		auction.validateEnded();
 
-		// Exit if user already claimed emissions from auction
-		if (user.emissionsClaimed) return;
+		// Exit if user already harvested emissions from auction
+		if (user.emissionsHarvested) return;
 
 		// Exit early if nothing to claim
 		if (user.bids == 0) return;
@@ -578,19 +597,20 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 
 		// Calculate emission amounts
 		uint256 emissions = (auction.emissions.biddersEmission * user.bids) / auction.bidData.bids;
-		uint256 userEmissions = (emissions * (incursTax ? (10000 - earlyHarvestTax) : 10000)) / 10000;
-		uint256 burnEmissions = emissions - userEmissions;
+		user.harvestedEmissions = (emissions * (incursTax ? (10000 - earlyHarvestTax) : 10000)) / 10000;
+		user.burnedEmissions = emissions - user.harvestedEmissions;
 
 		// Transfer emissions
-		GO.safeTransfer(msg.sender, userEmissions);
-		if (burnEmissions > 0) {
-			GO.safeTransfer(burnAddress, (emissions * earlyHarvestTax) / 10000);
+		GO.safeTransfer(msg.sender, user.harvestedEmissions);
+		if (user.burnedEmissions > 0) {
+			GO.safeTransfer(deadAddress, user.burnedEmissions);
 		}
-		// Mark claimed
-		user.emissionsClaimed = true;
-		userClaimableLots[msg.sender].remove(_lot); // Remove from list of lots with emissions still to claim
 
-		emit UserClaimedLotEmissions(auction.lot, msg.sender, userEmissions, burnEmissions);
+		// Mark harvested
+		user.emissionsHarvested = true;
+		userUnharvestedLots[msg.sender].remove(_lot);
+
+		emit UserHarvestedLotEmissions(auction.lot, msg.sender, user.harvestedEmissions, user.burnedEmissions);
 	}
 
 	///////////////////
@@ -634,18 +654,6 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 	// VIEW
 	///////////////////
 
-	function getBidsCount(
-		address _user,
-		uint256 _lot
-	) public view validAuctionLot(_lot) returns (AuctionUserBidsCount memory bidsCount) {
-		Auction memory auction = auctions[_lot];
-		AuctionUser memory user = auctionUsers[_lot][_user];
-
-		bidsCount.user = user.bids;
-		bidsCount.rune = auction.runes.length == 0 || user.rune == 0 ? 0 : auction.runes[user.rune].bids;
-		bidsCount.auction = auction.bidData.bids;
-	}
-
 	function getAuction(uint256 _lot) public view validAuctionLot(_lot) returns (Auction memory) {
 		return auctions[_lot];
 	}
@@ -658,32 +666,40 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		return auctionUsers[_lot][_user];
 	}
 
-	function getAuctionUserEmissions(address _user, uint256 _lot) public view validAuctionLot(_lot) returns (uint256) {
-		// Prevent div by 0
-		if (auctionUsers[_lot][_user].bids == 0 || auctions[_lot].bidData.bids == 0) return 0;
-
-		return (auctionUsers[_lot][_user].bids * auctions[_lot].emissions.biddersEmission) / auctions[_lot].bidData.bids;
+	function getUserInteractedLots(address _user) public view returns (uint256[] memory) {
+		return userInteractedLots[_user].values();
 	}
 
-	function getUserClaimableLots(address _user) public view returns (uint256[] memory) {
-		return userClaimableLots[_user].values();
+	function getUserUnharvestedLots(address _user) public view returns (uint256[] memory) {
+		return userUnharvestedLots[_user].values();
 	}
 
-	function getUserClaimableLotsData(address _user) public view returns (ClaimableLotData[] memory lotDatas) {
-		uint256[] memory lots = userClaimableLots[_user].values();
-		lotDatas = new ClaimableLotData[](lots.length);
+	function getUserLotInfo(uint256 _lot, address _user) public view returns (UserLotInfo memory info) {
+		Auction memory auction = auctions[_lot];
+		AuctionUser memory user = auctionUsers[_lot][_user];
 
-		// Iterate through lots, add data
-		for (uint256 i = 0; i < lots.length; i++) {
-			lotDatas[i].lot = lots[i];
-			lotDatas[i].emissions =
-				(auctions[lots[i]].emissions.biddersEmission * auctionUsers[lots[i]][_user].bids) /
-				auctions[lots[i]].bidData.bids;
-			lotDatas[i].day = auctions[lots[i]].day;
+		info.lot = auction.lot;
+		info.rune = user.rune;
 
-			uint256 maturesAtTimestamp = (lotDatas[i].day * 1 days) + emissionTaxDuration;
-			lotDatas[i].timeUntilMature = block.timestamp >= maturesAtTimestamp ? 0 : maturesAtTimestamp - block.timestamp;
-		}
+		// Bids
+		info.bidCounts.user = user.bids;
+		info.bidCounts.rune = auction.runes.length == 0 || user.rune == 0 ? 0 : auction.runes[user.rune].bids;
+		info.bidCounts.auction = auction.bidData.bids;
+
+		// Emissions
+		info.matureTimestamp = (auction.day * 1 days) + emissionTaxDuration;
+		info.timeUntilMature = block.timestamp >= info.matureTimestamp ? 0 : info.matureTimestamp - block.timestamp;
+		info.emissionsEarned = user.bids == 0 || auction.bidData.bids == 0
+			? 0
+			: (user.bids * auction.emissions.biddersEmission) / auction.bidData.bids;
+
+		info.emissionsHarvested = user.emissionsHarvested;
+		info.harvestedEmissions = user.harvestedEmissions;
+		info.burnedEmissions = user.burnedEmissions;
+
+		// Winning bid
+		info.isWinner = auction.runes.length > 0 ? user.rune == auction.bidData.bidRune : _user == auction.bidData.bidUser;
+		info.lotClaimed = user.lotClaimed;
 	}
 
 	function getCurrentEpochData() public view returns (EpochData memory epochData) {

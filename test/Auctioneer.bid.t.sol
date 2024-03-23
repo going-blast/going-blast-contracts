@@ -321,6 +321,70 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		auctioneer.bid(1, options);
 	}
 
+	// VOUCHER
+
+	function test_bid_Voucher_ExpectRevert_InsufficientBalance() public {
+		vm.prank(user1);
+		VOUCHER.approve(address(auctioneer), 10e18);
+
+		vm.expectRevert(abi.encodeWithSelector(ERC20InsufficientBalance.selector, user1, 0, 1e18));
+
+		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
+		vm.prank(user1);
+		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.VOUCHER, multibid: 1, message: "", rune: 0 });
+		auctioneer.bid(0, options);
+	}
+	function test_bid_Voucher_ExpectRevert_InsufficientAllowance() public {
+		_giveVoucher(user1, 10e18);
+
+		vm.expectRevert(abi.encodeWithSelector(ERC20InsufficientAllowance.selector, address(auctioneer), 0, 1e18));
+
+		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
+		vm.prank(user1);
+		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.VOUCHER, multibid: 1, message: "", rune: 0 });
+		auctioneer.bid(0, options);
+	}
+	function test_bid_Voucher_ExpectEmit_Bid() public {
+		_giveVoucher(user1, 10e18);
+
+		vm.prank(user1);
+		VOUCHER.approve(address(auctioneer), 10e18);
+
+		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
+
+		uint256 expectedBid = auctioneer.startingBid() + auctioneer.bidIncrement();
+		vm.expectEmit(true, true, true, true);
+
+		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.VOUCHER, multibid: 1, message: "", rune: 0 });
+		emit Bid(0, user1, expectedBid, "", options);
+
+		vm.prank(user1);
+		auctioneer.bid(0, options);
+	}
+	function test_bid_Voucher_ExpectEmit_Multibid() public {
+		_giveVoucher(user1, 10e18);
+
+		vm.prank(user1);
+		VOUCHER.approve(address(auctioneer), 10e18);
+
+		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
+
+		uint256 multibid = 6;
+		uint256 expectedBid = auctioneer.startingBid() + auctioneer.bidIncrement() * multibid;
+		vm.expectEmit(true, true, true, true);
+
+		BidOptions memory options = BidOptions({
+			paymentType: BidPaymentType.VOUCHER,
+			multibid: multibid,
+			message: "",
+			rune: 0
+		});
+		emit Bid(0, user1, expectedBid, "", options);
+
+		vm.prank(user1);
+		auctioneer.bid(0, options);
+	}
+
 	// GAS
 
 	function test_bid_GAS_WALLET() public {

@@ -52,7 +52,35 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 
 	// SETUP
 
+	function setLabels() public {
+		vm.label(deployer, "deployer");
+		vm.label(sender, "sender");
+		vm.label(dead, "dead");
+		vm.label(presale, "presale");
+		vm.label(liquidity, "liquidity");
+		vm.label(treasury, "treasury");
+		vm.label(treasury2, "treasury2");
+		vm.label(user1, "user1");
+		vm.label(user2, "user2");
+		vm.label(user3, "user3");
+		vm.label(user4, "user4");
+		vm.label(address(auctioneer), "auctioneer");
+		vm.label(address(farm), "farm");
+		vm.label(address(USD), "USD");
+		vm.label(address(WETH), "WETH");
+		vm.label(address(0), "ETH_0");
+		vm.label(address(XXToken), "XXToken");
+		vm.label(address(YYToken), "YYToken");
+		vm.label(address(mockNFT1), "mockNFT1");
+		vm.label(address(mockNFT2), "mockNFT2");
+		vm.label(address(GO), "GO");
+		vm.label(address(GO_LP), "GO_LP");
+		vm.label(address(VOUCHER), "VOUCHER");
+	}
+
 	function setUp() public virtual {
+		setLabels();
+
 		USD = new BasicERC20("USD", "USD");
 		WETH = IWETH(address(new WETH9()));
 		GO = new GoToken();
@@ -107,7 +135,17 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		mockNFT2.approve(address(auctioneer), 4);
 	}
 
+	// TOKEN UTILS
+
+	function _giveVoucher(address user, uint256 amount) public {
+		VOUCHER.mint(user, amount);
+	}
+
 	// UTILS
+
+	function _warpToUnlockTimestamp(uint256 lot) public {
+		vm.warp(auctioneer.getAuction(lot).unlockTimestamp);
+	}
 
 	function _getNextDay2PMTimestamp() public view returns (uint256) {
 		return (block.timestamp / 1 days) * 1 days + 14 hours;
@@ -147,6 +185,16 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		params.nfts[1] = NftData({ nft: address(mockNFT2), id: 1 });
 	}
 
+	function _getRunesAuctionParams(uint8 numberOfRunes) public view returns (AuctionParams memory params) {
+		params = _getBaseSingleAuctionParams();
+
+		// Add RUNEs to auction
+		params.runeSymbols = new uint8[](numberOfRunes);
+		for (uint8 i = 0; i < numberOfRunes; i++) {
+			params.runeSymbols[i] = i + 1;
+		}
+	}
+
 	function _getMultiTokenSingleAuctionParams() public view returns (AuctionParams memory params) {
 		TokenData[] memory tokens = new TokenData[](3);
 		tokens[0] = TokenData({ token: ETH_ADDR, amount: 1e18 });
@@ -181,6 +229,18 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 
 		// Create single token + nfts auction
 		auctioneer.createDailyAuctions(params);
+	}
+
+	function _createDailyAuctionWithRunes(uint8 numRunes, bool warp) internal returns (uint256 lot) {
+		AuctionParams[] memory params = new AuctionParams[](1);
+		params[0] = _getRunesAuctionParams(numRunes);
+		params[0].emissionBP = 2000;
+		auctioneer.createDailyAuctions(params);
+		lot = auctioneer.lotCount() - 1;
+
+		if (warp) {
+			_warpToUnlockTimestamp(lot);
+		}
 	}
 
 	// EVENTS
@@ -245,6 +305,18 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 			vm.warp(block.timestamp + timer);
 			_bid(user);
 		}
+	}
+	function _bidWithRune(address user, uint256 lot, uint8 rune) internal {
+		vm.prank(user);
+		auctioneer.bid(lot, BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "", rune: rune }));
+	}
+
+	function _multibidWithRune(address user, uint256 lot, uint256 multibid, uint8 rune) internal {
+		vm.prank(user);
+		auctioneer.bid(
+			lot,
+			BidOptions({ paymentType: BidPaymentType.WALLET, multibid: multibid, message: "", rune: rune })
+		);
 	}
 
 	// Farm helpers

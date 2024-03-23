@@ -100,139 +100,376 @@ contract AuctioneerFarmRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 	uint256 public user4Deposited = 2.8e18;
 	uint256 public totalDeposited = user1Deposited + user2Deposited + user3Deposited + user4Deposited;
 
-	// [ ] validate number of runes = 0 | 2-5
-	// [ ] validate no duplicate runeSymbols
-	// [ ] uint8 > max wraps around
-	// [ ] runes added correctly to auction data from params
-	// 		[ ] 0 runes added correctly, multiple runes added correctly
-	// [ ] Auction.hasRunes is correct
-	// [ ] Rune symbols must be >= 1
-	// [ ] Users bid options rune must be from 0 - runes length - 1, 0 if no runes
-	// [ ] User can't switch rune
-	// [ ] User count of selected rune increased when user places first bid, does not increase on subsequent bids
-	// [ ] Users rune is set correctly
-	// [ ] Auction not added to claimable lots if no emissions from the auction
-	// [ ] Auction bidding data, bidRune set
-	// [ ] User is winner: if auction has rune, winning rune matches user's rune, else winning user matches msg.sender
-	// [ ] User cannot claim winnings multiple times, both with and without runes
-	// [ ] userShareOfLot: 100% (1e18) if winner without runes, user.bids / rune.bids if with runes
-	// [ ] Receives userShareOfLot % of lot
-	// [ ] Pays userShareOfLot % of lot price
-	// [ ] Distribute userShareOfLot % of lot price as profit
-	// [ ] Auction cannot have both runes and nfts
+	// CREATE
 
-	function test_runes_RevertWhen_InvalidNumberOfRuneSymbols() public {}
+	function test_runes_create_RevertWhen_InvalidNumberOfRuneSymbols() public {
+		AuctionParams[] memory params = new AuctionParams[](1);
 
-	function test_emissions_PendingGOIncreasesProportionally() public {
-		_farmDeposit(user1, goPid, user1Deposited);
-		_farmDeposit(user2, goPid, user2Deposited);
-		_farmDeposit(user3, goPid, user3Deposited);
-		_farmDeposit(user4, goPid, user4Deposited);
+		// RevertWhen 1 rune
+		params[0] = _getRunesAuctionParams(1);
+		vm.expectRevert(InvalidRunesCount.selector);
+		auctioneer.createDailyAuctions(params);
 
-		uint256 initTimestamp = block.timestamp;
-		vm.warp(1 days);
-		uint256 secondsPassed = block.timestamp - initTimestamp;
-
-		uint256 emissions = _farm_goPerSecond(goPid) * secondsPassed;
-		uint256 user1Emissions = (user1Deposited * emissions) / totalDeposited;
-		uint256 user2Emissions = (user2Deposited * emissions) / totalDeposited;
-		uint256 user3Emissions = (user3Deposited * emissions) / totalDeposited;
-		uint256 user4Emissions = (user4Deposited * emissions) / totalDeposited;
-
-		uint256 user1PendingGo = farm.pending(goPid, user1).go;
-		uint256 user2PendingGo = farm.pending(goPid, user2).go;
-		uint256 user3PendingGo = farm.pending(goPid, user3).go;
-		uint256 user4PendingGo = farm.pending(goPid, user4).go;
-
-		assertApproxEqAbs(user1Emissions, user1PendingGo, 10, "User1 emissions increase proportionally");
-		assertApproxEqAbs(user2Emissions, user2PendingGo, 10, "User2 emissions increase proportionally");
-		assertApproxEqAbs(user3Emissions, user3PendingGo, 10, "User3 emissions increase proportionally");
-		assertApproxEqAbs(user4Emissions, user4PendingGo, 10, "User4 emissions increase proportionally");
+		// RevertWhen 8 rune
+		params[0] = _getRunesAuctionParams(6);
+		vm.expectRevert(InvalidRunesCount.selector);
+		auctioneer.createDailyAuctions(params);
 	}
 
-	function test_emissions_PendingUSDIncreasesProportionally() public {
-		_farmDeposit(user1, goPid, user1Deposited);
-		_farmDeposit(user2, goPid, user2Deposited);
-		_farmDeposit(user3, goPid, user3Deposited);
-		_farmDeposit(user4, goPid, user4Deposited);
+	function test_runes_create_RevertWhen_DuplicateRuneSymbols() public {
+		AuctionParams[] memory params = new AuctionParams[](1);
+		params[0] = _getRunesAuctionParams(2);
+		params[0].runeSymbols[0] = 2;
+		params[0].runeSymbols[1] = 2;
 
-		uint256 emissions = 100e18;
-		_injectFarmUSD(emissions);
-
-		uint256 user1Emissions = (user1Deposited * emissions) / totalDeposited;
-		uint256 user2Emissions = (user2Deposited * emissions) / totalDeposited;
-		uint256 user3Emissions = (user3Deposited * emissions) / totalDeposited;
-		uint256 user4Emissions = (user4Deposited * emissions) / totalDeposited;
-
-		uint256 user1PendingUSD = farm.pending(goPid, user1).usd;
-		uint256 user2PendingUSD = farm.pending(goPid, user2).usd;
-		uint256 user3PendingUSD = farm.pending(goPid, user3).usd;
-		uint256 user4PendingUSD = farm.pending(goPid, user4).usd;
-
-		assertApproxEqAbs(user1Emissions, user1PendingUSD, 10, "User1 emissions increase proportionally");
-		assertApproxEqAbs(user2Emissions, user2PendingUSD, 10, "User2 emissions increase proportionally");
-		assertApproxEqAbs(user3Emissions, user3PendingUSD, 10, "User3 emissions increase proportionally");
-		assertApproxEqAbs(user4Emissions, user4PendingUSD, 10, "User4 emissions increase proportionally");
+		vm.expectRevert(DuplicateRuneSymbols.selector);
+		auctioneer.createDailyAuctions(params);
 	}
 
-	function test_emissions_EmissionsCanRunOut() public {
-		_farmDeposit(user1, goPid, user1Deposited);
+	function test_runes_create_RevertWhen_RuneSymbol0Used() public {
+		AuctionParams[] memory params = new AuctionParams[](1);
+		params[0] = _getRunesAuctionParams(2);
+		params[0].runeSymbols[0] = 0;
 
-		uint256 goEmissionFinalTimestamp = farm.getEmission(address(GO)).endTimestamp;
+		vm.expectRevert(InvalidRuneSymbol.selector);
+		auctioneer.createDailyAuctions(params);
+	}
 
-		vm.warp(goEmissionFinalTimestamp - 30);
-		vm.prank(user1);
-		farm.harvest(goPid, user1);
+	function test_runes_create_RevertWhen_NFTsWithRunes() public {
+		AuctionParams[] memory params = new AuctionParams[](1);
+		params[0] = _getBaseSingleAuctionParams();
 
-		uint256 user1PendingGo = farm.pending(goPid, user1).go;
-		uint256 user1PrevPendingGo = user1PendingGo;
-		uint256 user1PendingVoucher = farm.pending(goPid, user1).voucher;
-		uint256 user1PrevPendingVoucher = user1PendingVoucher;
-		for (int256 i = -29; i < 30; i++) {
-			vm.warp(uint256(int256(goEmissionFinalTimestamp) + i));
-			user1PendingGo = farm.pending(goPid, user1).go;
-			user1PendingVoucher = farm.pending(goPid, user1).voucher;
-			if (block.timestamp > goEmissionFinalTimestamp) {
-				assertEq(user1PendingGo - user1PrevPendingGo, 0, "No more GO emissions");
-				assertEq(user1PendingVoucher - user1PrevPendingVoucher, 0, "No more VOUCHER emissions");
-			} else {
-				assertGt(user1PendingGo - user1PrevPendingGo, 0, "Still emitting GO");
-				assertGt(user1PendingVoucher - user1PrevPendingVoucher, 0, "Still emitting VOUCHER");
-			}
-			user1PrevPendingGo = user1PendingGo;
-			user1PrevPendingVoucher = user1PendingVoucher;
+		// Add NFTs to auction
+		params[0].nfts = new NftData[](2);
+		params[0].nfts[0] = NftData({ nft: address(mockNFT1), id: 3 });
+		params[0].nfts[1] = NftData({ nft: address(mockNFT2), id: 1 });
+
+		// Add RUNEs to auction
+		uint8 numberOfRunes = 3;
+		params[0].runeSymbols = new uint8[](numberOfRunes);
+		for (uint8 i = 0; i < numberOfRunes; i++) {
+			params[0].runeSymbols[i] = i;
 		}
 
-		vm.expectEmit(true, true, true, true);
-		emit Harvest(user1, goPid, PendingAmounts({ go: user1PendingGo, voucher: user1PendingVoucher, usd: 0 }), user1);
+		vm.expectRevert(CannotHaveNFTsWithRunes.selector);
+		auctioneer.createDailyAuctions(params);
+	}
+
+	function test_runes_create_0RunesParams_NoRunesAddedToAuction() public {
+		AuctionParams[] memory params = new AuctionParams[](1);
+		params[0] = _getBaseSingleAuctionParams();
+		auctioneer.createDailyAuctions(params);
+
+		uint256 lot = auctioneer.lotCount() - 1;
+
+		assertEq(auctioneer.getAuction(lot).runes.length, 0, "Auction should not have any runes");
+		assertEq(auctioneer.exposed_auction_hasRunes(lot), false, "Auction should not return true from .hasRunes");
+	}
+
+	function test_runes_create_3RunesParams_4RunesInAuction() public {
+		AuctionParams[] memory params = new AuctionParams[](1);
+		params[0] = _getRunesAuctionParams(3);
+		auctioneer.createDailyAuctions(params);
+
+		uint256 lot = auctioneer.lotCount() - 1;
+
+		assertEq(auctioneer.getAuction(lot).runes.length, 4, "Auction should have 4 runes (1 empty + 3 real)");
+		assertEq(auctioneer.exposed_auction_hasRunes(lot), true, "Auction should return true from .hasRunes");
+	}
+
+	function test_runes_create_5RunesParams_6RunesInAuction() public {
+		AuctionParams[] memory params = new AuctionParams[](1);
+		params[0] = _getRunesAuctionParams(5);
+		auctioneer.createDailyAuctions(params);
+
+		uint256 lot = auctioneer.lotCount() - 1;
+
+		assertEq(auctioneer.getAuction(lot).runes.length, 6, "Auction should have 6 runes (1 empty + 5 real)");
+		assertEq(auctioneer.exposed_auction_hasRunes(lot), true, "Auction should return true from .hasRunes");
+	}
+
+	function test_runes_create_RuneSymbolsAddedCorrectly() public {
+		AuctionParams[] memory params = new AuctionParams[](1);
+
+		uint8 numberOfRunes = 5;
+		params[0] = _getRunesAuctionParams(numberOfRunes);
+		params[0].runeSymbols[0] = 4;
+		params[0].runeSymbols[1] = 1;
+		params[0].runeSymbols[2] = 3;
+		params[0].runeSymbols[3] = 10;
+		params[0].runeSymbols[4] = 7;
+		auctioneer.createDailyAuctions(params);
+
+		uint256 lot = auctioneer.lotCount() - 1;
+
+		BidRune[] memory auctionRunes = auctioneer.getAuction(lot).runes;
+
+		for (uint8 i = 0; i <= numberOfRunes; i++) {
+			assertEq(auctionRunes[i].bids, 0, "Initialized with 0 bids");
+			assertEq(auctionRunes[i].users, 0, "Initialized with 0 users");
+			if (i == 0) assertEq(auctionRunes[i].runeSymbol, 0, "First rune should have empty rune symbol");
+			else assertEq(auctionRunes[i].runeSymbol, params[0].runeSymbols[i - 1], "Rune symbol should match");
+		}
+	}
+
+	// BID
+
+	function _innerTest_runesAgainstLot(uint8 numRunes) public {
+		// console.log("Test bid rune selection, num runes: %s", numRunes);
+		uint256 lot = _createDailyAuctionWithRunes(numRunes, true);
+
+		uint256 snapshot = vm.snapshot();
+
+		// 2 runes lot
+		for (uint8 i = 0; i < 10; i++) {
+			vm.revertTo(snapshot);
+
+			bool validRune = true;
+			if (numRunes == 0 && i != 0) validRune = false;
+			if (numRunes > 0 && (i == 0 || i > numRunes)) validRune = false;
+			// console.log("    Test rune: %s, expected to: %s", i, validRune ? "EMIT" : "REVERT");
+
+			if (validRune) {
+				uint256 expectedBid = auctioneer.getAuction(lot).bidData.bid + auctioneer.bidIncrement();
+				vm.expectEmit(true, true, true, true);
+				emit Bid(
+					lot,
+					user1,
+					expectedBid,
+					"",
+					BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "", rune: i })
+				);
+			} else {
+				vm.expectRevert(InvalidRune.selector);
+			}
+			_bidWithRune(user1, lot, i);
+		}
+	}
+
+	function test_runes_bid_RevertWhen_InvalidRune() public {
+		uint256 snapshot = vm.snapshot();
+
+		uint8[5] memory numRunesPerTest = [0, 2, 3, 4, 5];
+
+		for (uint8 i = 0; i < numRunesPerTest.length; i++) {
+			vm.revertTo(snapshot);
+			_innerTest_runesAgainstLot(numRunesPerTest[i]);
+		}
+	}
+
+	function test_runes_bid_RevertWhen_SwitchRunes() public {
+		uint256 lot = _createDailyAuctionWithRunes(2, true);
+
+		_bidWithRune(user1, lot, 1);
+		assertEq(auctioneer.getAuctionUser(lot, user1).rune, 1, "Users rune should be set to 1");
+
+		vm.expectRevert(CantSwitchRune.selector);
+		_bidWithRune(user1, lot, 2);
+	}
+
+	function test_runes_bid_Expect_UsersCountOfRuneIncremented() public {
+		uint256 lot = _createDailyAuctionWithRunes(2, true);
+
+		assertEq(auctioneer.getAuction(lot).runes[1].users, 0, "No users have bid with rune 1 yet");
+		_bidWithRune(user1, lot, 1);
+		assertEq(auctioneer.getAuction(lot).runes[1].users, 1, "User has bid with rune 1");
+		_bidWithRune(user1, lot, 1);
+		assertEq(auctioneer.getAuction(lot).runes[1].users, 1, "User only added once");
+	}
+
+	function test_runes_bid_Expect_BidsAreAddedToRuneBids() public {
+		uint256 lot = _createDailyAuctionWithRunes(2, true);
+
+		assertEq(auctioneer.getAuction(lot).runes[1].bids, 0, "Rune 1 has 0 bids");
+		_bidWithRune(user1, lot, 1);
+		assertEq(auctioneer.getAuction(lot).runes[1].bids, 1, "Rune 1 has 1 bid");
+		_bidWithRune(user1, lot, 1);
+		assertEq(auctioneer.getAuction(lot).runes[1].bids, 2, "Rune 1 has 2 bids");
+	}
+
+	function test_runes_bid_Expect_AuctionBidRuneSetCorrectly() public {
+		uint256 lot = _createDailyAuctionWithRunes(2, true);
+
+		assertEq(auctioneer.getAuction(lot).bidData.bidRune, 0, "No rune has been bid on yet");
+
+		_bidWithRune(user1, lot, 1);
+		assertEq(auctioneer.getAuction(lot).bidData.bidRune, 1, "Rune 1 is currently winning rune");
+
+		_bidWithRune(user2, lot, 2);
+		assertEq(auctioneer.getAuction(lot).bidData.bidRune, 2, "Rune 2 is currently winning rune");
+	}
+
+	// CLAIMING
+
+	function test_runes_win_RevertWhen_NotWinningRune() public {
+		uint256 lot = _createDailyAuctionWithRunes(2, true);
+
+		_bidWithRune(user1, lot, 1);
+		_bidWithRune(user2, lot, 2);
+
+		vm.warp(block.timestamp + 1 days);
+
+		assertEq(auctioneer.exposed_auction_isEnded(lot), true, "Auction has ended");
+		assertEq(auctioneer.getAuction(lot).bidData.bidRune, 2, "Rune 2 has won");
+
+		vm.expectRevert(NotWinner.selector);
 
 		vm.prank(user1);
-		farm.harvest(goPid, user1);
+		auctioneer.claimAuctionLot(lot, ClaimLotOptions({ paymentType: LotPaymentType.WALLET, unwrapETH: false }));
 
-		// getUpdatedGoPerShare doesn't continue to increase
-		uint256 updatedGoPerShareInit = farm.getPoolUpdated(goPid).accGoPerShare;
-		vm.warp(block.timestamp + 1 hours);
-		uint256 updatedGoPerShareFinal = farm.getPoolUpdated(goPid).accGoPerShare;
-		assertEq(updatedGoPerShareInit, updatedGoPerShareFinal, "Updated go reward per share remains the same");
+		vm.expectEmit(true, true, true, true);
+		TokenData[] memory tokens = new TokenData[](1);
+		tokens[0] = TokenData({ token: ETH_ADDR, amount: 1e18 });
+		NftData[] memory nfts = new NftData[](0);
+		emit UserClaimedLot(lot, user2, 2, 1e18, tokens, nfts);
 
-		// Pending doesn't increase
-		vm.warp(block.timestamp + 1 hours);
-		user1PendingGo = farm.pending(goPid, user1).go;
-		assertEq(user1PendingGo, 0, "No more GO emissions, forever");
+		vm.prank(user2);
+		auctioneer.claimAuctionLot(lot, ClaimLotOptions({ paymentType: LotPaymentType.WALLET, unwrapETH: false }));
+	}
 
-		// getUpdatedVoucherPerShare doesn't continue to increase
-		uint256 updatedVoucherPerShareInit = farm.getPoolUpdated(goPid).accVoucherPerShare;
-		vm.warp(block.timestamp + 1 hours);
-		uint256 updatedVoucherPerShareFinal = farm.getPoolUpdated(goPid).accVoucherPerShare;
+	function test_runes_win_Expect_lotClaimedSetToTrue() public {
+		uint256 lot = _createDailyAuctionWithRunes(2, true);
+
+		_bidWithRune(user1, lot, 1);
+		_bidWithRune(user2, lot, 2);
+
+		vm.warp(block.timestamp + 1 days);
+
+		vm.prank(user2);
+		auctioneer.claimAuctionLot(lot, ClaimLotOptions({ paymentType: LotPaymentType.WALLET, unwrapETH: false }));
+
+		assertEq(auctioneer.getAuctionUser(lot, user2).lotClaimed, true, "User has claimed lot");
+	}
+	function test_runes_win_RevertWhen_AlreadyClaimed() public {
+		uint256 lot = _createDailyAuctionWithRunes(2, true);
+
+		_bidWithRune(user1, lot, 1);
+		_bidWithRune(user2, lot, 2);
+
+		vm.warp(block.timestamp + 1 days);
+
+		vm.prank(user2);
+		auctioneer.claimAuctionLot(lot, ClaimLotOptions({ paymentType: LotPaymentType.WALLET, unwrapETH: false }));
+
+		assertEq(auctioneer.getAuctionUser(lot, user2).lotClaimed, true, "User has claimed lot");
+
+		vm.expectRevert(UserAlreadyClaimedLot.selector);
+
+		vm.prank(user2);
+		auctioneer.claimAuctionLot(lot, ClaimLotOptions({ paymentType: LotPaymentType.WALLET, unwrapETH: false }));
+	}
+
+	function test_runes_win_Expect_0RunesUserShare100Perc() public {
+		uint256 lot = _createDailyAuctionWithRunes(0, true);
+
+		_bidWithRune(user1, lot, 0);
+		_bidWithRune(user2, lot, 0);
+
+		vm.warp(block.timestamp + 1 days);
+
+		uint256 auctionETH = 1e18;
+		uint256 lotPrice = auctioneer.getAuction(lot).bidData.bid;
+
+		_expectTokenTransfer(WETH, address(auctioneer), user2, (auctionETH * 1e18) / 1e18);
+		_expectTokenTransfer(USD, user2, address(auctioneer), (lotPrice * 1e18) / 1e18);
+
+		vm.prank(user2);
+		auctioneer.claimAuctionLot(lot, ClaimLotOptions({ paymentType: LotPaymentType.WALLET, unwrapETH: false }));
+	}
+
+	function test_runes_win_Expect_2RunesUserShareSplit() public {
+		uint256 lot = _createDailyAuctionWithRunes(2, true);
+
+		uint256 user1Bids = 86;
+		uint256 user2Bids = 6;
+		uint256 user3Bids = 37;
+		uint256 user4Bids = 123;
+		uint256 rune1Bids = user1Bids + user2Bids;
+		uint256 rune2Bids = user3Bids + user4Bids;
+
+		_multibidWithRune(user1, lot, user1Bids, 1);
+		_multibidWithRune(user2, lot, user2Bids, 1);
+		_multibidWithRune(user3, lot, user3Bids, 2);
+		_multibidWithRune(user4, lot, user4Bids, 2);
+
+		vm.warp(block.timestamp + 1 days);
+
+		uint256 auctionETH = 1e18;
+		uint256 lotPrice = auctioneer.getAuction(lot).bidData.bid;
+
+		// Finalize auction
+		auctioneer.finalizeAuction(lot);
+
+		// USER 3
+		uint256 user3Share = (user3Bids * 1e18) / rune2Bids;
+
+		// WETH lot winnings to user3
+		_expectTokenTransfer(WETH, address(auctioneer), user3, (auctionETH * user3Share) / 1e18);
+		// USD payment to auctioneer
+		_expectTokenTransfer(USD, user3, address(auctioneer), (lotPrice * user3Share) / 1e18);
+		// USD profit to treasury
+		_expectTokenTransfer(USD, address(auctioneer), treasury, (lotPrice * user3Share) / 1e18);
+
+		vm.prank(user3);
+		auctioneer.claimAuctionLot(lot, ClaimLotOptions({ paymentType: LotPaymentType.WALLET, unwrapETH: false }));
+
+		// USER 4
+		uint256 user4Share = (user4Bids * 1e18) / rune2Bids;
+
+		// WETH lot winnings to user4
+		_expectTokenTransfer(WETH, address(auctioneer), user4, (auctionETH * user4Share) / 1e18);
+		// USD payment to auctioneer
+		_expectTokenTransfer(USD, user4, address(auctioneer), (lotPrice * user4Share) / 1e18);
+		// USD profit to treasury
+		_expectTokenTransfer(USD, address(auctioneer), treasury, (lotPrice * user4Share) / 1e18);
+
+		vm.prank(user4);
+		auctioneer.claimAuctionLot(lot, ClaimLotOptions({ paymentType: LotPaymentType.WALLET, unwrapETH: false }));
+
+		// Totals
+		assertEq(user3Share + user4Share, 1e18, "Shares should add up to 100%");
 		assertEq(
-			updatedVoucherPerShareInit,
-			updatedVoucherPerShareFinal,
-			"Updated VOUCHER reward per share remains the same"
+			((auctionETH * user3Share) / 1e18) + ((auctionETH * user4Share) / 1e18),
+			auctionETH,
+			"Lot winnings should sum to total lot winnings"
 		);
+		assertEq(
+			((lotPrice * user3Share) / 1e18) + ((lotPrice * user4Share) / 1e18),
+			lotPrice,
+			"Lot winnings should sum to total lot winnings"
+		);
+	}
 
-		// Pending doesn't increase
-		vm.warp(block.timestamp + 1 hours);
-		user1PendingVoucher = farm.pending(goPid, user1).voucher;
-		assertEq(user1PendingVoucher, 0, "No more VOUCHER emissions, forever");
+	function test_runes_view_getUserLotInfo_bidCounts_AuctionWithRunes() public {
+		uint256 lot = _createDailyAuctionWithRunes(2, true);
+
+		uint256 user1Bids = 86;
+		uint256 user2Bids = 6;
+		uint256 user3Bids = 37;
+		uint256 user4Bids = 123;
+		uint256 rune1Bids = user1Bids + user2Bids;
+		uint256 rune2Bids = user3Bids + user4Bids;
+		uint256 auctionBids = rune1Bids + rune2Bids;
+
+		_multibidWithRune(user1, lot, user1Bids, 1);
+		_multibidWithRune(user2, lot, user2Bids, 1);
+		_multibidWithRune(user3, lot, user3Bids, 2);
+		_multibidWithRune(user4, lot, user4Bids, 2);
+
+		assertEq(auctioneer.getUserLotInfo(lot, user1).bidCounts.user, user1Bids, "User1 bids should match");
+		assertEq(auctioneer.getUserLotInfo(lot, user1).bidCounts.rune, rune1Bids, "Rune1 bids should match (user1)");
+		assertEq(auctioneer.getUserLotInfo(lot, user1).bidCounts.auction, auctionBids, "Auction bids should match (user1)");
+
+		assertEq(auctioneer.getUserLotInfo(lot, user2).bidCounts.user, user2Bids, "User2 bids should match");
+		assertEq(auctioneer.getUserLotInfo(lot, user2).bidCounts.rune, rune1Bids, "Rune1 bids should match (user2)");
+		assertEq(auctioneer.getUserLotInfo(lot, user2).bidCounts.auction, auctionBids, "Auction bids should match (user2)");
+
+		assertEq(auctioneer.getUserLotInfo(lot, user3).bidCounts.user, user3Bids, "User3 bids should match");
+		assertEq(auctioneer.getUserLotInfo(lot, user3).bidCounts.rune, rune2Bids, "Rune2 bids should match (user3)");
+		assertEq(auctioneer.getUserLotInfo(lot, user3).bidCounts.auction, auctionBids, "Auction bids should match (user3)");
+
+		assertEq(auctioneer.getUserLotInfo(lot, user4).bidCounts.user, user4Bids, "User4 bids should match");
+		assertEq(auctioneer.getUserLotInfo(lot, user4).bidCounts.rune, rune2Bids, "Rune2 bids should match (user4)");
+		assertEq(auctioneer.getUserLotInfo(lot, user4).bidCounts.auction, auctionBids, "Auction bids should match (user4)");
 	}
 }

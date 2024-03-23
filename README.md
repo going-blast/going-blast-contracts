@@ -42,6 +42,45 @@ Tests to run (remaining)
   [x] 0% tax after unlocked
   [x] List of farms that can be harvested
   [x] Farm harvest data & unlocks
+  [x] Auction not added to claimable lots if no emissions from the auction
+  [x] user / rune / auction bids correct
+
+[x] Auctioneer - Voucher
+  [x] Vouchers can be used to pay for bids
+  [x] Insufficient balance
+  [x] Multibid
+  [x] Insufficient allowance
+
+[ ] Auctioneer - 6 decimal USD (to do later)
+
+[x] Auctioneer - Runes
+  [x] Create
+      [x] validate number of runes = 0 | 2-5
+      [x] validate no duplicate runeSymbols
+      [x] Auction cannot have both runes and nfts
+      [x] Rune symbol cannot be 0 (empty rune symbol)
+      [x] runes added correctly to auction data from params
+          [x] 0 runes added correctly
+          [x] multiple runes added correctly
+          [x] rune symbols added correctly
+          [x] user count and bid count initialized to 0
+      [x] Auction.hasRunes is correct
+  [x] Bid
+      [x] Users bid options rune must be from 0 - runes length - 1, 0 if no runes
+      [x] User can't switch rune
+      [x] User count of selected rune increased when user places first bid, does not increase on subsequent bids
+      [x] Bids are added to rune bid counter
+      [x] Users rune is set correctly
+      [x] Auction bidding data, bidRune set
+  [x] Claim
+      [x] User is winner: if auction has rune, winning rune matches user's rune, else winning user matches msg.sender
+      [x] User cannot claim winnings multiple times, both with and without runes
+      [x] userShareOfLot: 100% (1e18) if winner without runes, user.bids / rune.bids if with runes
+      [x] Multiple users can each claim their share of the lot
+      [x] Receives userShareOfLot % of lot
+      [x] Pays userShareOfLot % of lot price
+      [x] Distribute userShareOfLot % of lot price as profit
+      [x] Proof of bid works with rune auction
 
 
 
@@ -106,5 +145,7 @@ Tests to run (remaining)
 [x] Auctioneer / Farm interaction
   [x] Private lot bidding unlocking on enough GO owned
   [x] Lot profit sent to farm increases usdRewardPerShare
+
+
 
 ```

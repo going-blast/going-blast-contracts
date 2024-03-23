@@ -39,4 +39,8 @@ contract AuctioneerHarness is Auctioneer {
 	function exposed_getEpochDataAtTimestamp(uint256 _timestamp) public view returns (EpochData memory epochData) {
 		return _getEpochDataAtTimestamp(_timestamp);
 	}
+
+	function exposed_auction_hasRunes(uint256 _lot) public view validAuctionLot(_lot) returns (bool) {
+		return auctions[_lot].hasRunes();
+	}
 }

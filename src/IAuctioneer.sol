@@ -110,8 +110,10 @@ struct Auction {
 struct AuctionUser {
 	uint256 bids;
 	uint8 rune; // indexed starting at 1 to check if rune has been set (defaults to 0)
-	bool emissionsClaimed;
 	bool lotClaimed;
+	bool emissionsHarvested;
+	uint256 harvestedEmissions;
+	uint256 burnedEmissions;
 }
 
 // Returns
@@ -123,16 +125,26 @@ struct EpochData {
 	uint256 emissionsRemaining;
 	uint256 dailyEmission;
 }
-struct ClaimableLotData {
-	uint256 lot;
-	uint256 emissions;
-	uint256 day;
-	uint256 timeUntilMature;
-}
-struct AuctionUserBidsCount {
+struct BidCounts {
 	uint256 user;
 	uint256 rune;
 	uint256 auction;
+}
+struct UserLotInfo {
+	uint256 lot;
+	uint8 rune;
+	// Bids
+	BidCounts bidCounts;
+	// Emissions
+	uint256 matureTimestamp;
+	uint256 timeUntilMature;
+	uint256 emissionsEarned;
+	bool emissionsHarvested;
+	uint256 harvestedEmissions;
+	uint256 burnedEmissions;
+	// Winning bid
+	bool isWinner;
+	bool lotClaimed;
 }
 
 error GONotYetReceived();
@@ -193,7 +205,7 @@ interface AuctioneerEvents {
 		TokenData[] _tokens,
 		NftData[] _nfts
 	);
-	event UserClaimedLotEmissions(uint256 _lot, address indexed _user, uint256 _userEmissions, uint256 _burnEmissions);
+	event UserHarvestedLotEmissions(uint256 _lot, address indexed _user, uint256 _userEmissions, uint256 _burnEmissions);
 	event AuctionCancelled(uint256 indexed _lot, address indexed _owner);
 	event UpdatedTreasury(address indexed _treasury);
 	event UpdatedFarm(address indexed _farm);

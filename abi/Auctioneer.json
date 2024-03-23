@@ -486,7 +486,7 @@
 	},
 	{
 		"type": "function",
-		"name": "claimAuctionEmissions",
+		"name": "harvestAuctionEmissions",
 		"inputs": [
 			{
 				"name": "_lots",
@@ -1128,7 +1128,7 @@
 	},
 	{
 		"type": "function",
-		"name": "getUserClaimableLots",
+		"name": "getUserInteractedLots",
 		"inputs": [
 			{
 				"name": "_user",
@@ -1147,7 +1147,7 @@
 	},
 	{
 		"type": "function",
-		"name": "getUserClaimableLotsData",
+		"name": "getUserInteractedLotsData",
 		"inputs": [
 			{
 				"name": "_user",
@@ -1924,7 +1924,7 @@
 	},
 	{
 		"type": "event",
-		"name": "UserClaimedLotEmissions",
+		"name": "UserHarvestedLotEmissions",
 		"inputs": [
 			{
 				"name": "_lot",
