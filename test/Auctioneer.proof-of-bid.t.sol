@@ -6,9 +6,10 @@ import "../src/IAuctioneer.sol";
 import { AuctioneerHelper } from "./Auctioneer.base.t.sol";
 import { AuctioneerFarm } from "../src/AuctioneerFarm.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { AuctionViewUtils } from "../src/AuctionUtils.sol";
+import { GBMath, AuctionViewUtils } from "../src/AuctionUtils.sol";
 
 contract AuctioneerProofOfBidTest is AuctioneerHelper {
+	using GBMath for uint256;
 	using SafeERC20 for IERC20;
 	using AuctionViewUtils for Auction;
 
@@ -157,7 +158,7 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 		// Day 3 expected daily emission
 		EpochData memory epochData = auctioneer.exposed_getEpochDataAtTimestamp(day2Timestamp);
 		uint256 day2ExpectedDailyEmission = epochData.dailyEmission;
-		uint256 day3ExpectedDailyEmission = (epochData.emissionsRemaining - ((epochData.dailyEmission * 5000) / 10000)) /
+		uint256 day3ExpectedDailyEmission = (epochData.emissionsRemaining - epochData.dailyEmission.scaleByBP(5000)) /
 			(epochData.daysRemaining - 1);
 
 		// Create auction
@@ -175,7 +176,7 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 		uint256 day3ActualDailyEmission = epochData.dailyEmission;
 
 		assertApproxEqAbs(
-			(day2ExpectedDailyEmission * 5000) / 10000,
+			day2ExpectedDailyEmission.scaleByBP(5000),
 			day2ActualEmission,
 			10,
 			"Day 2 emissions should be halved (BP = 5000)"

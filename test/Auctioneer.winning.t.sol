@@ -6,9 +6,10 @@ import "../src/IAuctioneer.sol";
 import { AuctioneerHelper } from "./Auctioneer.base.t.sol";
 import { AuctioneerFarm } from "../src/AuctioneerFarm.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { AuctionViewUtils } from "../src/AuctionUtils.sol";
+import { GBMath, AuctionViewUtils } from "../src/AuctionUtils.sol";
 
 contract AuctioneerWinningTest is AuctioneerHelper {
+	using GBMath for uint256;
 	using SafeERC20 for IERC20;
 	using AuctionViewUtils for Auction;
 
@@ -237,8 +238,8 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 		uint256 treasuryUSDInit = USD.balanceOf(treasury);
 		uint256 farmUSDInit = USD.balanceOf(address(farm));
 		uint256 treasurySplit = auctioneer.treasurySplit();
-		uint256 treasuryCut = (lotPrice * treasurySplit) / 10000;
-		uint256 farmCut = (lotPrice * (10000 - treasurySplit)) / 10000;
+		uint256 treasuryCut = lotPrice.scaleByBP(treasurySplit);
+		uint256 farmCut = lotPrice.scaleByBP(10000 - treasurySplit);
 
 		uint256 usdPerShareInit = farm.getPool(goPid).accUsdPerShare;
 		assertEq(usdPerShareInit, 0, "USD rew per share should start at 0");

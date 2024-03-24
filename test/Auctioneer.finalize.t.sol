@@ -233,13 +233,13 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 
 		uint256 revenue = auctioneer.getAuction(0).bidData.revenue;
 		uint256 lotValue = auctioneer.getAuction(0).rewards.estimatedValue.transformDec(18, usdDecimals);
-		uint256 lotValue110Perc = (lotValue * 110) / 100;
+		uint256 lotValue110Perc = lotValue.scaleByBP(11000);
 		assertGt(revenue, lotValue110Perc, "Validate revenue > 110% lotValue");
 
 		uint256 treasurySplit = auctioneer.treasurySplit();
 		uint256 profit = revenue - lotValue110Perc;
-		uint256 treasuryExpectedDisbursement = lotValue110Perc + ((profit * treasurySplit) / 10000);
-		uint256 farmExpectedDisbursement = (profit * (10000 - treasurySplit)) / 10000;
+		uint256 treasuryExpectedDisbursement = lotValue110Perc + profit.scaleByBP(treasurySplit);
+		uint256 farmExpectedDisbursement = profit.scaleByBP(10000 - treasurySplit);
 
 		uint256 treasuryUSDInit = USD.balanceOf(treasury);
 		uint256 farmUSDInit = USD.balanceOf(address(farm));
