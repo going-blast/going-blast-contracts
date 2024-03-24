@@ -82,7 +82,7 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	function setUp() public virtual {
 		setLabels();
 
-		usdDecimals = 6;
+		usdDecimals = 18;
 		USD = new BasicERC20WithDecimals("USD", "USD", usdDecimals);
 		WETH = IWETH(address(new WETH9()));
 		GO = new GoToken();
@@ -150,6 +150,10 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 
 	function _giveVoucher(address user, uint256 amount) public {
 		VOUCHER.mint(user, amount);
+	}
+	function _approveVoucher(address user, address receiver, uint256 amount) public {
+		vm.prank(user);
+		VOUCHER.approve(receiver, amount);
 	}
 
 	// UTILS

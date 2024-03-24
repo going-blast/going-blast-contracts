@@ -199,7 +199,7 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 		// Claimable after next bid by
 		vm.warp(auctioneer.getAuction(0).bidData.nextBidBy + 1);
 
-		uint256 revenue = auctioneer.getAuction(0).bidData.sum;
+		uint256 revenue = auctioneer.getAuction(0).bidData.revenue;
 		uint256 lotValue = auctioneer.getAuction(0).rewards.estimatedValue;
 		assertLt(revenue, lotValue, "Validate revenue < lotValue");
 
@@ -230,7 +230,7 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 		// Claimable after next bid by
 		vm.warp(auctioneer.getAuction(0).bidData.nextBidBy + 1);
 
-		uint256 revenue = auctioneer.getAuction(0).bidData.sum;
+		uint256 revenue = auctioneer.getAuction(0).bidData.revenue;
 		uint256 lotValue = auctioneer.getAuction(0).rewards.estimatedValue.transformDec(18, usdDecimals);
 		assertGt(revenue, lotValue, "Validate revenue > lotValue");
 		assertLt(revenue, (lotValue * 110) / 100, "Validate revenue < 110% lotValue");
@@ -274,7 +274,7 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 		// Claimable after next bid by
 		vm.warp(auctioneer.getAuction(0).bidData.nextBidBy + 1);
 
-		uint256 revenue = auctioneer.getAuction(0).bidData.sum;
+		uint256 revenue = auctioneer.getAuction(0).bidData.revenue;
 		uint256 lotValue = auctioneer.getAuction(0).rewards.estimatedValue.transformDec(18, usdDecimals);
 		uint256 lotValue110Perc = (lotValue * 110) / 100;
 		assertGt(revenue, lotValue110Perc, "Validate revenue > 110% lotValue");

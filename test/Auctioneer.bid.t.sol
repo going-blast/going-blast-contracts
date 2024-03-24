@@ -150,9 +150,41 @@ contract AuctioneerBidTest is AuctioneerHelper {
 
 		assertEq(auction.bidData.bidUser, user1, "User is marked as the bidder");
 		assertEq(auction.bidData.bidTimestamp, block.timestamp, "Bid timestamp is set correctly");
-		assertEq(auction.bidData.sum, auctionInit.bidData.sum + bidCost, "Bid cost is added to sum");
+		assertEq(auction.bidData.revenue, auctionInit.bidData.revenue + bidCost, "Bid cost is added to revenue");
 		assertEq(auction.bidData.bid, auctionInit.bidData.bid + bidIncrement, "Bid is incremented by bidIncrement");
 		assertEq(auction.bidData.bids, auctionInit.bidData.bids + 1, "Bid is added to auction bid counter");
+
+		AuctionUser memory auctionUser = auctioneer.getAuctionUser(0, user1);
+
+		assertEq(auctionUser.bids, 1, "Bid is added to user bid counter");
+	}
+
+	function test_bid_voucher_Should_UpdateAuctionCorrectly() public {
+		_giveVoucher(user1, 10e18);
+		_approveVoucher(user1, address(auctioneer), 10e18);
+
+		_warpToUnlockTimestamp(0);
+		Auction memory auctionInit = auctioneer.getAuction(0);
+
+		vm.prank(user1);
+		BidOptions memory options = BidOptions({
+			paymentType: BidPaymentType.VOUCHER,
+			multibid: 1,
+			message: "Hello World",
+			rune: 0
+		});
+		auctioneer.bid(0, options);
+
+		uint256 bidIncrement = auctioneer.bidIncrement();
+		Auction memory auction = auctioneer.getAuction(0);
+
+		assertEq(auction.bidData.bidUser, user1, "User is marked as the bidder");
+		assertEq(auction.bidData.bidTimestamp, block.timestamp, "Bid timestamp is set correctly");
+		assertEq(auction.bidData.bid, auctionInit.bidData.bid + bidIncrement, "Bid is incremented by bidIncrement");
+		assertEq(auction.bidData.bids, auctionInit.bidData.bids + 1, "Bid is added to auction bid counter");
+
+		// Meaningful assertion
+		assertEq(auction.bidData.revenue, auctionInit.bidData.revenue, "Revenue should not change");
 
 		AuctionUser memory auctionUser = auctioneer.getAuctionUser(0, user1);
 

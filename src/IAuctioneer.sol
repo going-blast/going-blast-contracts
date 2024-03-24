@@ -83,7 +83,7 @@ struct AuctionEmissions {
 	uint256 treasuryEmission; // token to be distributed to treasury at end of auction (10% of total emission)
 }
 struct AuctionBidData {
-	uint256 sum;
+	uint256 revenue;
 	uint256 bid;
 	uint256 bidTimestamp;
 	uint256 nextBidBy;

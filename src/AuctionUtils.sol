@@ -234,15 +234,13 @@ library AuctionUtils {
 		uint256 treasurySplit
 	) internal {
 		uint256 lotValue = auction.rewards.estimatedValue.transformDec(18, auction.bidData.usdDecimals);
-		// TODO: this isn't right, need to account for vouchers
-		uint256 revenue = auction.bidData.bidCost * auction.bidData.bids;
-		uint256 reimbursement = revenue;
+		uint256 reimbursement = auction.bidData.revenue;
 		uint256 profit = 0;
 
 		// Reduce treasury amount received if revenue outstripped lot value
-		if (revenue > (lotValue * 11000) / 10000) {
+		if (auction.bidData.revenue > (lotValue * 11000) / 10000) {
 			reimbursement = (lotValue * 11000) / 10000;
-			profit = revenue - reimbursement;
+			profit = auction.bidData.revenue - reimbursement;
 		}
 
 		USD.safeTransfer(treasury, reimbursement);

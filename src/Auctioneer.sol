@@ -359,7 +359,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		}
 
 		// Initial bidding data
-		auction.bidData.sum = 0;
+		auction.bidData.revenue = 0;
 		auction.bidData.bids = 0;
 		auction.bidData.bid = startingBid;
 		auction.bidData.bidTimestamp = _params.unlockTimestamp;
@@ -434,7 +434,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		auction.bidData.bidUser = msg.sender;
 		auction.bidData.bidTimestamp = block.timestamp;
 		if (_options.paymentType != BidPaymentType.VOUCHER) {
-			auction.bidData.sum += auction.bidData.bidCost * _options.multibid;
+			auction.bidData.revenue += auction.bidData.bidCost * _options.multibid;
 		}
 		auction.bidData.bids += _options.multibid;
 		auction.bidData.nextBidBy = auction.getNextBidBy();

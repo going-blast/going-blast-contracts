@@ -370,7 +370,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		}
 		assertEq(auction.unlockTimestamp, params[0].unlockTimestamp, "Unlock timestamp set correctly");
 		assertEq(auction.bidData.bids, 0, "Bids should be 0");
-		assertEq(auction.bidData.sum, 0, "Sum should be 0");
+		assertEq(auction.bidData.revenue, 0, "Revenue should be 0");
 		assertEq(auction.bidData.bid, auctioneer.startingBid(), "Initial bid amount should be starting bid");
 		assertEq(auction.bidData.bidTimestamp, params[0].unlockTimestamp, "Last bid timestamp should be unlock timestamp");
 		assertEq(auction.bidData.bidUser, sender, "First bid should be counted as auction creator");
