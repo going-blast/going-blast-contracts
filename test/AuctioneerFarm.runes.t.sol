@@ -384,7 +384,7 @@ contract AuctioneerFarmRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		uint256 user2Bids = 6;
 		uint256 user3Bids = 37;
 		uint256 user4Bids = 123;
-		uint256 rune1Bids = user1Bids + user2Bids;
+		// uint256 rune1Bids = user1Bids + user2Bids;
 		uint256 rune2Bids = user3Bids + user4Bids;
 
 		_multibidWithRune(user1, lot, user1Bids, 1);

@@ -13,9 +13,9 @@ contract AuctioneerAdminTest is AuctioneerHelper {
 	function test_initialConditions() public {
 		assertEq(address(USD), address(auctioneer.USD()));
 		assertEq(address(GO), address(auctioneer.GO()));
-		assertEq(auctioneer.bidCost(), 1e18);
-		assertEq(auctioneer.bidIncrement(), 1e16);
-		assertEq(auctioneer.startingBid(), 1e18);
+		assertEq(auctioneer.bidCost(), usdDecOffset(1e18));
+		assertEq(auctioneer.bidIncrement(), usdDecOffset(1e16));
+		assertEq(auctioneer.startingBid(), usdDecOffset(1e18));
 		assertEq(auctioneer.privateAuctionRequirement(), 20e18);
 	}
 
@@ -94,50 +94,50 @@ contract AuctioneerAdminTest is AuctioneerHelper {
 
 	// SET STARTING BID
 	function test_updateStartingBid() public {
-		auctioneer.updateStartingBid(2e18);
-		assertEq(2e18, auctioneer.startingBid());
+		auctioneer.updateStartingBid(usdDecOffset(2e18));
+		assertEq(usdDecOffset(2e18), auctioneer.startingBid());
 	}
 	function test_updateStartingBid_ExpectEmit_UpdatedStartingBid() public {
 		vm.expectEmit(true, true, true, true);
-		emit UpdatedStartingBid(2e18);
-		auctioneer.updateStartingBid(2e18);
+		emit UpdatedStartingBid(usdDecOffset(2e18));
+		auctioneer.updateStartingBid(usdDecOffset(2e18));
 	}
 	function test_updateStartingBid_RevertWhen_CallerIsNotOwner() public {
 		vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, address(0)));
 		vm.prank(address(0));
-		auctioneer.updateStartingBid(2e18);
+		auctioneer.updateStartingBid(usdDecOffset(2e18));
 	}
 	function test_updateStartingBid_RevertWhen_Invalid_TooLow() public {
 		vm.expectRevert(Invalid.selector);
-		auctioneer.updateStartingBid(4e17);
+		auctioneer.updateStartingBid(usdDecOffset(0.49e18));
 	}
 	function test_updateStartingBid_RevertWhen_Invalid_TooHigh() public {
 		vm.expectRevert(Invalid.selector);
-		auctioneer.updateStartingBid(21e17);
+		auctioneer.updateStartingBid(usdDecOffset(2.01e18));
 	}
 
 	// SET BID COST
 	function test_updateBidCost() public {
-		auctioneer.updateBidCost(5e17);
-		assertEq(5e17, auctioneer.bidCost());
+		auctioneer.updateBidCost(usdDecOffset(0.5e18));
+		assertEq(usdDecOffset(0.5e18), auctioneer.bidCost());
 	}
 	function test_updateBidCost_ExpectEmit_UpdatedBidCost() public {
 		vm.expectEmit(true, true, true, true);
-		emit UpdatedBidCost(5e17);
-		auctioneer.updateBidCost(5e17);
+		emit UpdatedBidCost(usdDecOffset(0.5e18));
+		auctioneer.updateBidCost(usdDecOffset(0.5e18));
 	}
 	function test_updateBidCost_RevertWhen_CallerIsNotOwner() public {
 		vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, address(0)));
 		vm.prank(address(0));
-		auctioneer.updateBidCost(5e17);
+		auctioneer.updateBidCost(usdDecOffset(0.5e18));
 	}
 	function test_updateBidCost_RevertWhen_Invalid_TooLow() public {
 		vm.expectRevert(Invalid.selector);
-		auctioneer.updateBidCost(4e17);
+		auctioneer.updateBidCost(usdDecOffset(0.49e18));
 	}
 	function test_updateBidCost_RevertWhen_Invalid_TooHigh() public {
 		vm.expectRevert(Invalid.selector);
-		auctioneer.updateBidCost(21e17);
+		auctioneer.updateBidCost(usdDecOffset(2.01e18));
 	}
 
 	// SET EARLY HARVEST TAX

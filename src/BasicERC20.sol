@@ -26,3 +26,30 @@ contract BasicERC20 is ERC20, ERC20Burnable, ERC20Pausable, Ownable {
 		super._update(from, to, value);
 	}
 }
+
+contract BasicERC20WithDecimals is ERC20, ERC20Burnable, ERC20Pausable, Ownable {
+	uint8 dec = 18;
+	constructor(string memory name, string memory symbol, uint8 _decimals) ERC20(name, symbol) Ownable(msg.sender) {
+		dec = _decimals;
+	}
+
+	function decimals() public view override returns (uint8) {
+		return dec;
+	}
+
+	function pause() external onlyOwner {
+		_pause();
+	}
+
+	function unpause() external onlyOwner {
+		_unpause();
+	}
+
+	function mint(address to, uint256 amount) external onlyOwner {
+		_mint(to, amount);
+	}
+
+	function _update(address from, address to, uint256 value) internal override(ERC20, ERC20Pausable) {
+		super._update(from, to, value);
+	}
+}

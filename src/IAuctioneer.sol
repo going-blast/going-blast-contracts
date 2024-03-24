@@ -91,6 +91,7 @@ struct AuctionBidData {
 	uint8 bidRune;
 	uint256 bids; // number of bids during auction
 	uint256 bidCost; // Frozen value to prevent updating bidCost from messing with revenue calculations
+	uint8 usdDecimals;
 }
 
 struct Auction {

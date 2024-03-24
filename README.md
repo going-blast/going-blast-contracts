@@ -50,6 +50,7 @@ Tests to run (remaining)
   [x] Insufficient balance
   [x] Multibid
   [x] Insufficient allowance
+  [ ] Add revenue field to auction bid data, only increment by bidCost when bidding not using voucher
 
 [ ] Auctioneer - 6 decimal USD (to do later)
 

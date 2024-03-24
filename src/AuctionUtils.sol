@@ -7,7 +7,14 @@ import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { IWETH } from "./WETH9.sol";
 import { IAuctioneerFarm } from "./IAuctioneerFarm.sol";
 
+library DecUtils {
+	function transformDec(uint256 amount, uint8 from, uint8 to) internal pure returns (uint256) {
+		return (amount * 10 ** to) / 10 ** from;
+	}
+}
+
 library AuctionUtils {
+	using DecUtils for uint256;
 	using SafeERC20 for IERC20;
 
 	function min(uint256 a, uint256 b) internal pure returns (uint256) {
@@ -226,13 +233,15 @@ library AuctionUtils {
 		address farm,
 		uint256 treasurySplit
 	) internal {
+		uint256 lotValue = auction.rewards.estimatedValue.transformDec(18, auction.bidData.usdDecimals);
+		// TODO: this isn't right, need to account for vouchers
 		uint256 revenue = auction.bidData.bidCost * auction.bidData.bids;
 		uint256 reimbursement = revenue;
 		uint256 profit = 0;
 
 		// Reduce treasury amount received if revenue outstripped lot value
-		if (revenue > (auction.rewards.estimatedValue * 11000) / 10000) {
-			reimbursement = (auction.rewards.estimatedValue * 11000) / 10000;
+		if (revenue > (lotValue * 11000) / 10000) {
+			reimbursement = (lotValue * 11000) / 10000;
 			profit = revenue - reimbursement;
 		}
 

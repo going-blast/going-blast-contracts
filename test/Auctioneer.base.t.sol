@@ -7,7 +7,7 @@ import { GoToken } from "../src/GoToken.sol";
 import { VoucherToken } from "../src/VoucherToken.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { AuctioneerFarm } from "../src/AuctioneerFarm.sol";
-import { BasicERC20 } from "../src/BasicERC20.sol";
+import { BasicERC20, BasicERC20WithDecimals } from "../src/BasicERC20.sol";
 import { BasicERC721 } from "../src/BasicERC721.sol";
 import { IWETH, WETH9 } from "../src/WETH9.sol";
 import { AuctioneerHarness } from "./AuctioneerHarness.sol";
@@ -33,7 +33,8 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 
 	AuctioneerHarness public auctioneer;
 	AuctioneerFarm public farm;
-	BasicERC20 public USD;
+	uint8 usdDecimals;
+	BasicERC20WithDecimals public USD;
 	IWETH public WETH;
 	address public ETH_ADDR = address(0);
 	BasicERC20 public XXToken;
@@ -81,7 +82,8 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	function setUp() public virtual {
 		setLabels();
 
-		USD = new BasicERC20("USD", "USD");
+		usdDecimals = 6;
+		USD = new BasicERC20WithDecimals("USD", "USD", usdDecimals);
 		WETH = IWETH(address(new WETH9()));
 		GO = new GoToken();
 		GO_LP = new BasicERC20("UniswapV2Pair", "GO_LP");
@@ -89,7 +91,16 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		XXToken = new BasicERC20("XX", "XX");
 		YYToken = new BasicERC20("YY", "YY");
 
-		auctioneer = new AuctioneerHarness(USD, GO, VOUCHER, WETH, 1e18, 1e16, 1e18, 20e18);
+		auctioneer = new AuctioneerHarness(
+			USD,
+			GO,
+			VOUCHER,
+			WETH,
+			usdDecOffset(1e18),
+			usdDecOffset(0.01e18),
+			usdDecOffset(1e18),
+			20e18
+		);
 		farm = new AuctioneerFarm(USD, GO, VOUCHER);
 
 		// Create NFTs
@@ -142,6 +153,12 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	}
 
 	// UTILS
+	function usdDecOffset(uint256 val) public view returns (uint256) {
+		return (val * 10 ** usdDecimals) / 1e18;
+	}
+	function e(uint256 coefficient, uint256 exponent) public pure returns (uint256) {
+		return coefficient * 10 ** exponent;
+	}
 
 	function _warpToUnlockTimestamp(uint256 lot) public {
 		vm.warp(auctioneer.getAuction(lot).unlockTimestamp);

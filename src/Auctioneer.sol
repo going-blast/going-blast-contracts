@@ -12,9 +12,10 @@ import { IWETH } from "./WETH9.sol";
 import { IAuctioneerFarm } from "./IAuctioneerFarm.sol";
 import "./IAuctioneer.sol";
 import { BlastYield } from "./BlastYield.sol";
-import { AuctionUtils, AuctionParamsUtils } from "./AuctionUtils.sol";
+import { DecUtils, AuctionUtils, AuctionParamsUtils } from "./AuctionUtils.sol";
 
 contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiver, BlastYield {
+	using DecUtils for uint256;
 	using SafeERC20 for IERC20;
 	using EnumerableSet for EnumerableSet.UintSet;
 	using AuctionUtils for Auction;
@@ -51,7 +52,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 
 	// BID PARAMS
 	IERC20 public USD;
-	uint256 public usdDecimals;
+	uint8 public usdDecimals;
 	uint256 public bidIncrement;
 	uint256 public startingBid;
 	uint256 public privateAuctionRequirement;
@@ -98,12 +99,6 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 
 	function onERC721Received(address, address, uint256, bytes calldata) external pure override returns (bytes4) {
 		return this.onERC721Received.selector;
-	}
-
-	// UTILS
-
-	function e(uint256 coefficient, uint256 exponent) internal pure returns (uint256) {
-		return coefficient * 10 ** exponent;
 	}
 
 	// MODIFIERS
@@ -153,7 +148,10 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 
 	function updateStartingBid(uint256 _startingBid) public onlyOwner {
 		// Must be between 0.5 and 2 usd
-		if (_startingBid < e(5, usdDecimals - 1) || _startingBid > e(2, usdDecimals)) revert Invalid();
+		if (
+			_startingBid < uint256(0.5e18).transformDec(18, usdDecimals) ||
+			_startingBid > uint256(2e18).transformDec(18, usdDecimals)
+		) revert Invalid();
 		startingBid = _startingBid;
 		emit UpdatedStartingBid(_startingBid);
 	}
@@ -161,7 +159,9 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 	// Will not update the bid cost of any already created auctions
 	function updateBidCost(uint256 _bidCost) public onlyOwner {
 		// Must be between 0.5 and 2 usd
-		if (_bidCost < e(5, usdDecimals - 1) || _bidCost > e(2, usdDecimals)) revert Invalid();
+		if (
+			_bidCost < uint256(0.5e18).transformDec(18, usdDecimals) || _bidCost > uint256(2e18).transformDec(18, usdDecimals)
+		) revert Invalid();
 		bidCost = _bidCost;
 		emit UpdatedBidCost(_bidCost);
 	}
@@ -365,6 +365,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		auction.bidData.bidTimestamp = _params.unlockTimestamp;
 		auction.bidData.bidUser = msg.sender;
 		auction.bidData.nextBidBy = auction.getNextBidBy();
+		auction.bidData.usdDecimals = usdDecimals;
 
 		// Runes
 		auction.addRunes(_params);

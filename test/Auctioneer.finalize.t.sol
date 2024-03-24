@@ -6,9 +6,10 @@ import "../src/IAuctioneer.sol";
 import { AuctioneerHelper } from "./Auctioneer.base.t.sol";
 import { AuctioneerFarm } from "../src/AuctioneerFarm.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { AuctionUtils } from "../src/AuctionUtils.sol";
+import { AuctionUtils, DecUtils } from "../src/AuctionUtils.sol";
 
 contract AuctioneerFinalizeTest is AuctioneerHelper {
+	using DecUtils for uint256;
 	using SafeERC20 for IERC20;
 	using AuctionUtils for Auction;
 
@@ -230,7 +231,7 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 		vm.warp(auctioneer.getAuction(0).bidData.nextBidBy + 1);
 
 		uint256 revenue = auctioneer.getAuction(0).bidData.sum;
-		uint256 lotValue = auctioneer.getAuction(0).rewards.estimatedValue;
+		uint256 lotValue = auctioneer.getAuction(0).rewards.estimatedValue.transformDec(18, usdDecimals);
 		assertGt(revenue, lotValue, "Validate revenue > lotValue");
 		assertLt(revenue, (lotValue * 110) / 100, "Validate revenue < 110% lotValue");
 
@@ -274,7 +275,7 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 		vm.warp(auctioneer.getAuction(0).bidData.nextBidBy + 1);
 
 		uint256 revenue = auctioneer.getAuction(0).bidData.sum;
-		uint256 lotValue = auctioneer.getAuction(0).rewards.estimatedValue;
+		uint256 lotValue = auctioneer.getAuction(0).rewards.estimatedValue.transformDec(18, usdDecimals);
 		uint256 lotValue110Perc = (lotValue * 110) / 100;
 		assertGt(revenue, lotValue110Perc, "Validate revenue > 110% lotValue");
 
@@ -292,7 +293,13 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 		uint256 treasuryUSDFinal = USD.balanceOf(treasury);
 		uint256 farmUSDFinal = USD.balanceOf(address(farm));
 
-		assertEq(treasuryUSDFinal - treasuryUSDInit, treasuryExpectedDisbursement, "Treasury should receive share");
-		assertEq(farmUSDFinal - farmUSDInit, farmExpectedDisbursement, "Farm should receive share");
+		uint256 treasuryUsdDelta = treasuryUSDFinal - treasuryUSDInit;
+		uint256 farmUsdDelta = farmUSDFinal - farmUSDInit;
+
+		assertEq(treasuryUsdDelta, treasuryExpectedDisbursement, "Treasury should receive share");
+		assertEq(farmUsdDelta, farmExpectedDisbursement, "Farm should receive share");
+
+		// Full revenue distributed
+		assertEq(treasuryUsdDelta + farmUsdDelta, revenue, "Distributions should sum to revenue");
 	}
 }
