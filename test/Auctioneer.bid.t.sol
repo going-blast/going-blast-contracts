@@ -14,16 +14,16 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		super.setUp();
 
 		_distributeGO();
-		_initializeAuctioneer();
+		_initializeAuctioneerEmissions();
 		_setupAuctioneerTreasury();
 		_giveUsersTokensAndApprove();
-		_auctioneerSetFarm();
+		_auctioneerUpdateFarm();
 		_initializeFarmEmissions();
 		_createDefaultDay1Auction();
 
 		// For GAS test deposit funds into contract
 		vm.prank(user2);
-		auctioneer.addFunds(10e18);
+		auctioneerUser.addFunds(10e18);
 	}
 
 	function test_bid_RevertWhen_InvalidAuctionLot() public {
@@ -72,8 +72,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		uint256 expectedBid = auctioneer.startingBid() + auctioneer.bidIncrement();
 
 		// Set user alias
-		vm.prank(user1);
-		auctioneer.setAlias("XXXX");
+		_setUserAlias(user1, "XXXX");
 
 		vm.expectEmit(true, true, true, true);
 		BidOptions memory options = BidOptions({
@@ -112,7 +111,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		assertEq(auction.bidData.bid, auctionInit.bidData.bid + bidIncrement, "Bid is incremented by bidIncrement");
 		assertEq(auction.bidData.bids, auctionInit.bidData.bids + 1, "Bid is added to auction bid counter");
 
-		AuctionUser memory auctionUser = auctioneer.getAuctionUser(0, user1);
+		AuctionUser memory auctionUser = auctioneerUser.getAuctionUser(0, user1);
 
 		assertEq(auctionUser.bids, 1, "Bid is added to user bid counter");
 	}
@@ -144,7 +143,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		// Meaningful assertion
 		assertEq(auction.bidData.revenue, auctionInit.bidData.revenue, "Revenue should not change");
 
-		AuctionUser memory auctionUser = auctioneer.getAuctionUser(0, user1);
+		AuctionUser memory auctionUser = auctioneerUser.getAuctionUser(0, user1);
 
 		assertEq(auctionUser.bids, 1, "Bid is added to user bid counter");
 	}
@@ -176,10 +175,10 @@ contract AuctioneerBidTest is AuctioneerHelper {
 
 		// Deposit it wallet (This is tested more fully in Auctioneer.balance.t.sol)
 		vm.prank(user1);
-		auctioneer.addFunds(10e18);
+		auctioneerUser.addFunds(10e18);
 		uint256 user1UsdBalInit = USD.balanceOf(user1);
 		uint256 auctioneerUsdBalInit = USD.balanceOf(address(auctioneer));
-		uint256 user1Funds = auctioneer.userFunds(user1);
+		uint256 user1Funds = auctioneerUser.userFunds(user1);
 
 		vm.prank(user1);
 		BidOptions memory options = BidOptions({
@@ -191,7 +190,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		auctioneer.bid(0, options);
 
 		assertEq(USD.balanceOf(user1), user1UsdBalInit, "Should not remove funds from users wallet");
-		assertEq(auctioneer.userFunds(user1), user1Funds - bidCost, "Should remove funds from users balance");
+		assertEq(auctioneerUser.userFunds(user1), user1Funds - bidCost, "Should remove funds from users balance");
 		assertEq(
 			USD.balanceOf(address(auctioneer)),
 			auctioneerUsdBalInit,
@@ -237,7 +236,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		params[0] = _getBaseSingleAuctionParams();
 		params[0].unlockTimestamp = _getDayInFuture2PMTimestamp(2);
 		params[0].isPrivate = true;
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 
 		// Warp to private auction unlock
 		vm.warp(params[0].unlockTimestamp + 1 hours);

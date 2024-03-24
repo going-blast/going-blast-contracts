@@ -19,11 +19,11 @@ contract AuctioneerAliasTest is AuctioneerHelper {
 	function test_setAlias_RevertWhen_InvalidAlias() public {
 		// Length < 3
 		vm.expectRevert(InvalidAlias.selector);
-		auctioneer.setAlias("AA");
+		auctioneerUser.setAlias("AA");
 
 		// Length > 9
 		vm.expectRevert(InvalidAlias.selector);
-		auctioneer.setAlias("AAAAAAAAAA");
+		auctioneerUser.setAlias("AAAAAAAAAA");
 	}
 
 	function test_setAlias_ExpectEmit_UpdatedAlias() public {
@@ -34,7 +34,7 @@ contract AuctioneerAliasTest is AuctioneerHelper {
 	}
 
 	function test_setAlias_RevertWhen_AliasTaken() public {
-		auctioneer.setAlias("XXXX");
+		auctioneerUser.setAlias("XXXX");
 
 		vm.expectRevert(AliasTaken.selector);
 		_setUserAlias(user1, "XXXX");
@@ -46,13 +46,13 @@ contract AuctioneerAliasTest is AuctioneerHelper {
 		vm.expectRevert(AliasTaken.selector);
 		_setUserAlias(user2, "XXXX");
 
-		assertEq(auctioneer.aliasUser("XXXX"), user1, "Alias should point to correct user");
-		assertEq(auctioneer.userAlias(user1), "XXXX", "User should point to correct alias");
+		assertEq(auctioneerUser.aliasUser("XXXX"), user1, "Alias should point to correct user");
+		assertEq(auctioneerUser.userAlias(user1), "XXXX", "User should point to correct alias");
 
 		_setUserAlias(user1, "YYYY");
 
-		assertEq(auctioneer.aliasUser("XXXX"), address(0), "Alias should point to address(0)");
-		assertEq(auctioneer.userAlias(user1), "YYYY", "User should point to new alias");
+		assertEq(auctioneerUser.aliasUser("XXXX"), address(0), "Alias should point to address(0)");
+		assertEq(auctioneerUser.userAlias(user1), "YYYY", "User should point to new alias");
 
 		vm.expectEmit(true, true, true, true);
 		emit UpdatedAlias(user2, "XXXX");

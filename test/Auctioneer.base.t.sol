@@ -11,7 +11,10 @@ import { BasicERC20, BasicERC20WithDecimals } from "../src/BasicERC20.sol";
 import { BasicERC721 } from "../src/BasicERC721.sol";
 import { IWETH, WETH9 } from "../src/WETH9.sol";
 import { AuctioneerHarness } from "./AuctioneerHarness.sol";
+import { Auctioneer } from "../src/Auctioneer.sol";
 import { GBMath } from "../src/AuctionUtils.sol";
+import { AuctioneerUser } from "../src/AuctioneerUser.sol";
+import { AuctioneerEmissions } from "../src/AuctioneerEmissions.sol";
 
 abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	using GBMath for uint256;
@@ -37,6 +40,8 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	address[4] public users = [user1, user2, user3, user4];
 
 	AuctioneerHarness public auctioneer;
+	AuctioneerUser public auctioneerUser;
+	AuctioneerEmissions public auctioneerEmissions;
 	AuctioneerFarm public farm;
 	uint8 usdDecimals;
 	BasicERC20WithDecimals public USD;
@@ -71,6 +76,8 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		vm.label(user3, "user3");
 		vm.label(user4, "user4");
 		vm.label(address(auctioneer), "auctioneer");
+		vm.label(address(auctioneerUser), "auctioneerUser");
+		vm.label(address(auctioneerEmissions), "auctioneerEmissions");
 		vm.label(address(farm), "farm");
 		vm.label(address(USD), "USD");
 		vm.label(address(WETH), "WETH");
@@ -96,25 +103,34 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		XXToken = new BasicERC20("XX", "XX");
 		YYToken = new BasicERC20("YY", "YY");
 
-		auctioneer = new AuctioneerHarness(
-			USD,
-			GO,
-			VOUCHER,
-			WETH,
-			usdDecOffset(1e18),
-			usdDecOffset(0.01e18),
-			usdDecOffset(1e18),
-			20e18
-		);
-		farm = new AuctioneerFarm(USD, GO, VOUCHER);
+		_createAndLinkAuctioneers();
 
 		_createAndMintNFTs();
 	}
 
 	// SETUP UTILS
 
+	function _createAndLinkAuctioneers() public {
+		auctioneer = new AuctioneerHarness(
+			GO,
+			VOUCHER,
+			USD,
+			WETH,
+			usdDecOffset(1e18),
+			usdDecOffset(0.01e18),
+			usdDecOffset(1e18),
+			20e18
+		);
+		auctioneerUser = new AuctioneerUser(USD);
+		auctioneerEmissions = new AuctioneerEmissions(GO);
+
+		// LINK
+		auctioneer.link(address(auctioneerUser), address(auctioneerEmissions));
+		farm = new AuctioneerFarm(USD, GO, VOUCHER);
+	}
+
 	function _setupAuctioneerTreasury() public {
-		auctioneer.setTreasury(treasury);
+		auctioneer.updateTreasury(treasury);
 		_giveETH(treasury, 5e18);
 		_giveWETH(treasury, 5e18);
 		_approveWeth(treasury, address(auctioneer), UINT256_MAX);
@@ -122,19 +138,19 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	}
 
 	function _distributeGO() public {
-		GO.safeTransfer(address(auctioneer), GO.totalSupply().scaleByBP(6000));
+		GO.safeTransfer(address(auctioneerEmissions), GO.totalSupply().scaleByBP(6000));
 		GO.safeTransfer(presale, GO.totalSupply().scaleByBP(2000));
 		GO.safeTransfer(treasury, GO.totalSupply().scaleByBP(1000));
 		GO.safeTransfer(liquidity, GO.totalSupply().scaleByBP(500));
 		GO.safeTransfer(address(farm), GO.totalSupply().scaleByBP(500));
 	}
 
-	function _initializeAuctioneer() public {
-		auctioneer.initialize(_getNextDay2PMTimestamp());
+	function _initializeAuctioneerEmissions() public {
+		auctioneerEmissions.initializeEmissions(_getNextDay2PMTimestamp());
 	}
 
-	function _auctioneerSetFarm() public {
-		auctioneer.setFarm(address(farm));
+	function _auctioneerUpdateFarm() public {
+		auctioneer.updateFarm(address(farm));
 	}
 
 	function _initializeFarmEmissions() public {
@@ -163,6 +179,7 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 			// Approve
 			vm.startPrank(users[i]);
 			USD.approve(address(auctioneer), 10000e18);
+			USD.approve(address(auctioneerUser), 10000e18);
 			GO.approve(address(farm), 10000e18);
 			GO_LP.approve(address(farm), 10000e18);
 			XXToken.approve(address(farm), 10000e18);
@@ -174,7 +191,7 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	function _createDefaultDay1Auction() public {
 		AuctionParams[] memory params = new AuctionParams[](1);
 		params[0] = _getBaseSingleAuctionParams();
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 	}
 
 	// TOKEN UTILS
@@ -267,6 +284,9 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	function _warpToUnlockTimestamp(uint256 lot) public {
 		vm.warp(auctioneer.getAuction(lot).unlockTimestamp);
 	}
+	function _warpToAuctionEndTimestamp(uint256 lot) public {
+		vm.warp(auctioneer.getAuction(lot).bidData.nextBidBy + 1);
+	}
 
 	function _getNextDay2PMTimestamp() public view returns (uint256) {
 		return (block.timestamp / 1 days) * 1 days + 14 hours;
@@ -358,14 +378,14 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		params[0].unlockTimestamp = unlockTimestamp;
 
 		// Create single token + nfts auction
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 	}
 
 	function _createDailyAuctionWithRunes(uint8 numRunes, bool warp) internal returns (uint256 lot) {
 		AuctionParams[] memory params = new AuctionParams[](1);
 		params[0] = _getRunesAuctionParams(numRunes);
 		params[0].emissionBP = 2000;
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 		lot = auctioneer.lotCount() - 1;
 
 		if (warp) {
@@ -466,6 +486,6 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	// Alias helpers
 	function _setUserAlias(address user, string memory userAlias) public {
 		vm.prank(user);
-		auctioneer.setAlias(userAlias);
+		auctioneerUser.setAlias(userAlias);
 	}
 }

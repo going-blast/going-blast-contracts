@@ -14,10 +14,10 @@ contract AuctioneerFundsTest is AuctioneerHelper {
 		super.setUp();
 
 		_distributeGO();
-		_initializeAuctioneer();
+		_initializeAuctioneerEmissions();
 		_setupAuctioneerTreasury();
 		_giveUsersTokensAndApprove();
-		_auctioneerSetFarm();
+		_auctioneerUpdateFarm();
 		_initializeFarmEmissions();
 		_createDefaultDay1Auction();
 	}
@@ -26,17 +26,17 @@ contract AuctioneerFundsTest is AuctioneerHelper {
 		vm.expectRevert(BadDeposit.selector);
 
 		vm.prank(user1);
-		auctioneer.addFunds(100000e18);
+		auctioneerUser.addFunds(100000e18);
 	}
 
 	function test_addFunds_RevertWhen_InsufficientAllowance() public {
 		vm.prank(user1);
-		IERC20(USD).approve(address(auctioneer), 0);
+		IERC20(USD).approve(address(auctioneerUser), 0);
 
-		vm.expectRevert(abi.encodeWithSelector(ERC20InsufficientAllowance.selector, address(auctioneer), 0, 10e18));
+		vm.expectRevert(abi.encodeWithSelector(ERC20InsufficientAllowance.selector, address(auctioneerUser), 0, 10e18));
 
 		vm.prank(user1);
-		auctioneer.addFunds(10e18);
+		auctioneerUser.addFunds(10e18);
 	}
 
 	function test_addFunds_ExpectEmit_AddedFunds() public {
@@ -44,17 +44,17 @@ contract AuctioneerFundsTest is AuctioneerHelper {
 		emit AddedFunds(user1, 10e18);
 
 		vm.prank(user1);
-		auctioneer.addFunds(10e18);
+		auctioneerUser.addFunds(10e18);
 	}
 
 	function test_addFunds_Success() public {
 		uint256 userUSDInit = USD.balanceOf(user1);
 
 		vm.prank(user1);
-		auctioneer.addFunds(10e18);
+		auctioneerUser.addFunds(10e18);
 
-		assertEq(auctioneer.userFunds(user1), 10e18, "User added funds marked in auctioneer");
-		assertEq(USD.balanceOf(address(auctioneer)), 10e18, "Auctioneer received USD");
+		assertEq(auctioneerUser.userFunds(user1), 10e18, "User added funds marked in auctioneer");
+		assertEq(USD.balanceOf(address(auctioneer)), 10e18, "AuctionManager received USD");
 		assertEq(USD.balanceOf(user1), userUSDInit - 10e18, "User sent USD");
 	}
 
@@ -62,32 +62,32 @@ contract AuctioneerFundsTest is AuctioneerHelper {
 		vm.expectRevert(BadWithdrawal.selector);
 
 		vm.prank(user1);
-		auctioneer.withdrawFunds(100000e18);
+		auctioneerUser.withdrawFunds(100000e18);
 	}
 
 	function test_withdrawFunds_ExpectEmit_WithdrewFunds() public {
 		vm.prank(user1);
-		auctioneer.addFunds(20e18);
+		auctioneerUser.addFunds(20e18);
 
 		vm.expectEmit(true, true, true, true);
 		emit WithdrewFunds(user1, 10e18);
 
 		vm.prank(user1);
-		auctioneer.withdrawFunds(10e18);
+		auctioneerUser.withdrawFunds(10e18);
 	}
 
 	function test_withdrawFunds_Success() public {
 		vm.prank(user1);
-		auctioneer.addFunds(15e18);
+		auctioneerUser.addFunds(15e18);
 
 		uint256 auctioneerUSDInit = USD.balanceOf(address(auctioneer));
 		uint256 userUSDInit = USD.balanceOf(user1);
 
 		vm.prank(user1);
-		auctioneer.withdrawFunds(10e18);
+		auctioneerUser.withdrawFunds(10e18);
 
-		assertEq(auctioneer.userFunds(user1), 15e18 - 10e18, "User withdrawn funds marked in auctioneer");
-		assertEq(USD.balanceOf(address(auctioneer)), auctioneerUSDInit - 10e18, "Auctioneer sent USD");
+		assertEq(auctioneerUser.userFunds(user1), 15e18 - 10e18, "User withdrawn funds marked in auctioneer");
+		assertEq(USD.balanceOf(address(auctioneer)), auctioneerUSDInit - 10e18, "AuctionManager sent USD");
 		assertEq(USD.balanceOf(user1), userUSDInit + 10e18, "User received USD");
 	}
 }

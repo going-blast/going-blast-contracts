@@ -31,7 +31,7 @@ contract GBDeploy is GBScriptUtils {
 		VOUCHER = new VoucherToken();
 		writeAddress(contractPath("VOUCHER"), address(VOUCHER));
 
-		auctioneer = new Auctioneer(USD, GO, VOUCHER, WETH, bidCost, bidIncrement, startingBid, privateAuctionRequirement);
+		auctioneer = new Auctioneer(GO, VOUCHER, USD, WETH, bidCost, bidIncrement, startingBid, privateAuctionRequirement);
 		writeAddress(contractPath("auctioneer"), address(auctioneer));
 
 		auctioneerFarm = new AuctioneerFarm(USD, GO, VOUCHER);
@@ -44,29 +44,29 @@ contract GBDeploy is GBScriptUtils {
 	}
 }
 
-contract GBSetTreasuryFromMnemonic is GBScriptUtils {
+contract GBUpdateTreasuryFromMnemonic is GBScriptUtils {
 	function run() external loadChain {
 		string memory mnemonic = vm.envString("MNEMONIC");
 		(treasury, ) = deriveRememberKey(mnemonic, 0);
 
-		auctioneer.setTreasury(treasury);
+		auctioneer.updateTreasury(treasury);
 		writeAddress(auctioneerConfigPath("treasury"), treasury);
 	}
 }
 
-contract GBInitializeAuctioneer is GBScriptUtils {
+contract GBInitializeAuctioneerEmissions is GBScriptUtils {
 	using SafeERC20 for IERC20;
 	using GBMath for uint256;
 	error AlreadyInitialized();
 
 	function run() external startBroadcast loadChain loadContracts {
-		if (auctioneer.initialized()) revert AlreadyInitialized();
+		if (auctioneerEmissions.emissionsInitialized()) revert AlreadyInitialized();
 
 		uint256 proofOfBidEmissions = uint256(10000000e18).scaleByBP(6000);
-		IERC20(GO).safeTransfer(address(auctioneer), proofOfBidEmissions);
+		IERC20(GO).safeTransfer(address(auctioneerEmissions), proofOfBidEmissions);
 
 		uint256 unlockTimestamp = block.timestamp; // TODO this needs to be updated to a correct value
-		auctioneer.initialize(unlockTimestamp);
+		auctioneerEmissions.initializeEmissions(unlockTimestamp);
 	}
 }
 
@@ -97,20 +97,20 @@ contract GBSyncConfigValues is GBScriptUtils {
 			auctioneer.updatePrivateAuctionRequirement(privateAuctionRequirement);
 		}
 
-		if (earlyHarvestTax != auctioneer.earlyHarvestTax()) {
-			auctioneer.updateEarlyHarvestTax(earlyHarvestTax);
+		if (earlyHarvestTax != auctioneerEmissions.earlyHarvestTax()) {
+			auctioneerEmissions.updateEarlyHarvestTax(earlyHarvestTax);
 		}
 
-		if (emissionTaxDuration != auctioneer.emissionTaxDuration()) {
-			auctioneer.updateEmissionTaxDuration(emissionTaxDuration);
+		if (emissionTaxDuration != auctioneerEmissions.emissionTaxDuration()) {
+			auctioneerEmissions.updateEmissionTaxDuration(emissionTaxDuration);
 		}
 
 		if (treasurySplit != auctioneer.treasurySplit()) {
-			auctioneer.setTreasurySplit(treasurySplit);
+			auctioneer.updateTreasurySplit(treasurySplit);
 		}
 
 		if (treasury != auctioneer.treasury()) {
-			auctioneer.setTreasury(treasury);
+			auctioneer.updateTreasury(treasury);
 		}
 	}
 }
@@ -120,8 +120,13 @@ contract GBClaimYieldAll is GBScriptUtils {
 
 	function run(address _recipient) external startBroadcast loadChain loadContracts loadConfigValues {
 		if (!isBlast) revert NotBlastChain();
+
 		uint256 amountWETH = IERC20Rebasing(address(WETH)).getClaimableAmount(address(auctioneer));
 		uint256 amountUSDB = IERC20Rebasing(address(USD)).getClaimableAmount(address(auctioneer));
 		auctioneer.claimYieldAll(_recipient, amountWETH, amountUSDB, 0);
+
+		amountWETH = IERC20Rebasing(address(WETH)).getClaimableAmount(address(auctioneerFarm));
+		amountUSDB = IERC20Rebasing(address(USD)).getClaimableAmount(address(auctioneerFarm));
+		auctioneerFarm.claimYieldAll(_recipient, amountWETH, amountUSDB, 0);
 	}
 }

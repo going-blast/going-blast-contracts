@@ -15,10 +15,10 @@ contract AuctioneerFarmHarvestTest is AuctioneerHelper, AuctioneerFarmEvents {
 		super.setUp();
 
 		_distributeGO();
-		_initializeAuctioneer();
+		_initializeAuctioneerEmissions();
 		_setupAuctioneerTreasury();
 		_giveUsersTokensAndApprove();
-		_auctioneerSetFarm();
+		_auctioneerUpdateFarm();
 		_initializeFarmEmissions();
 		_initializeFarmVoucherEmissions();
 		_createDefaultDay1Auction();

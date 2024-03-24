@@ -21,59 +21,59 @@ contract AuctioneerAdminTest is AuctioneerHelper {
 
 	// SET TREASURY
 
-	function test_setTreasury() public {
-		auctioneer.setTreasury(treasury2);
+	function test_updateTreasury() public {
+		auctioneer.updateTreasury(treasury2);
 		assertEq((treasury2), auctioneer.treasury());
 	}
-	function test_setTreasury_ExpectEmit_UpdatedTreasury() public {
+	function test_updateTreasury_ExpectEmit_UpdatedTreasury() public {
 		vm.expectEmit(true, true, true, true);
 		emit UpdatedTreasury(treasury2);
-		auctioneer.setTreasury(treasury2);
+		auctioneer.updateTreasury(treasury2);
 	}
-	function test_setTreasury_RevertWhen_TreasuryIsZeroAddress() public {
+	function test_updateTreasury_RevertWhen_TreasuryIsZeroAddress() public {
 		vm.expectRevert(ZeroAddress.selector);
-		auctioneer.setTreasury((address(0)));
+		auctioneer.updateTreasury((address(0)));
 	}
-	function test_setTreasury_RevertWhen_CallerIsNotOwner() public {
+	function test_updateTreasury_RevertWhen_CallerIsNotOwner() public {
 		vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, address(0)));
 		vm.prank(address(0));
-		auctioneer.setTreasury(treasury2);
+		auctioneer.updateTreasury(treasury2);
 	}
 
 	// SET FARM
-	function test_setFarm() public {
-		auctioneer.setFarm(address(farm));
+	function test_updateFarm() public {
+		auctioneer.updateFarm(address(farm));
 		assertEq(address(farm), auctioneer.farm());
 	}
-	function test_setFarm_ExpectEmit_UpdatedFarm() public {
+	function test_updateFarm_ExpectEmit_UpdatedFarm() public {
 		vm.expectEmit(true, true, true, true);
 		emit UpdatedFarm(address(farm));
-		auctioneer.setFarm(address(farm));
+		auctioneer.updateFarm(address(farm));
 	}
-	function test_setFarm_RevertWhen_CallerIsNotOwner() public {
+	function test_updateFarm_RevertWhen_CallerIsNotOwner() public {
 		vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, address(0)));
 		vm.prank(address(0));
-		auctioneer.setFarm(address(farm));
+		auctioneer.updateFarm(address(farm));
 	}
 
 	// SET TREASURY SPLIT
-	function test_setTreasurySplit() public {
-		auctioneer.setTreasurySplit(5000);
+	function test_updateTreasurySplit() public {
+		auctioneer.updateTreasurySplit(5000);
 		assertEq(auctioneer.treasurySplit(), 5000);
 	}
-	function test_setTreasurySplit_ExpectEmit_UpdatedTreasurySplit() public {
+	function test_updateTreasurySplit_ExpectEmit_UpdatedTreasurySplit() public {
 		vm.expectEmit(true, true, true, true);
 		emit UpdatedTreasurySplit(4000);
-		auctioneer.setTreasurySplit(4000);
+		auctioneer.updateTreasurySplit(4000);
 	}
-	function test_setTreasurySplit_RevertWhen_CallerIsNotOwner() public {
+	function test_updateTreasurySplit_RevertWhen_CallerIsNotOwner() public {
 		vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, address(0)));
 		vm.prank(address(0));
-		auctioneer.setTreasurySplit(4000);
+		auctioneer.updateTreasurySplit(4000);
 	}
-	function test_setTreasurySplit_RevertWhen_CutIsTooSteep() public {
+	function test_updateTreasurySplit_RevertWhen_CutIsTooSteep() public {
 		vm.expectRevert(TooSteep.selector);
-		auctioneer.setTreasurySplit(5001);
+		auctioneer.updateTreasurySplit(5001);
 	}
 
 	// SET FARM
@@ -142,41 +142,41 @@ contract AuctioneerAdminTest is AuctioneerHelper {
 
 	// SET EARLY HARVEST TAX
 	function test_updateEarlyHarvestTax() public {
-		auctioneer.updateEarlyHarvestTax(7000);
-		assertEq(7000, auctioneer.earlyHarvestTax());
+		auctioneerEmissions.updateEarlyHarvestTax(7000);
+		assertEq(7000, auctioneerEmissions.earlyHarvestTax());
 	}
 	function test_updateEarlyHarvestTax_ExpectEmit_UpdatedEarlyHarvestTax() public {
 		vm.expectEmit(true, true, true, true);
 		emit UpdatedEarlyHarvestTax(7000);
-		auctioneer.updateEarlyHarvestTax(7000);
+		auctioneerEmissions.updateEarlyHarvestTax(7000);
 	}
 	function test_updateEarlyHarvestTax_RevertWhen_CallerIsNotOwner() public {
 		vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, address(0)));
 		vm.prank(address(0));
-		auctioneer.updateEarlyHarvestTax(7000);
+		auctioneerEmissions.updateEarlyHarvestTax(7000);
 	}
 	function test_updateEarlyHarvestTax_RevertWhen_Invalid_TooHigh() public {
 		vm.expectRevert(Invalid.selector);
-		auctioneer.updateEarlyHarvestTax(8001);
+		auctioneerEmissions.updateEarlyHarvestTax(8001);
 	}
 
 	// SET EMISSION TAX DURATION
 	function test_updateEmissionTaxDuration() public {
-		auctioneer.updateEmissionTaxDuration(45);
-		assertEq(45, auctioneer.emissionTaxDuration());
+		auctioneerEmissions.updateEmissionTaxDuration(45);
+		assertEq(45, auctioneerEmissions.emissionTaxDuration());
 	}
 	function test_updateEmissionTaxDuration_ExpectEmit_UpdatedEmissionTaxDuration() public {
 		vm.expectEmit(true, true, true, true);
 		emit UpdatedEmissionTaxDuration(45);
-		auctioneer.updateEmissionTaxDuration(45);
+		auctioneerEmissions.updateEmissionTaxDuration(45);
 	}
 	function test_updateEmissionTaxDuration_RevertWhen_CallerIsNotOwner() public {
 		vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, address(0)));
 		vm.prank(address(0));
-		auctioneer.updateEmissionTaxDuration(45);
+		auctioneerEmissions.updateEmissionTaxDuration(45);
 	}
 	function test_updateEmissionTaxDuration_RevertWhen_Invalid_TooHigh() public {
 		vm.expectRevert(Invalid.selector);
-		auctioneer.updateEmissionTaxDuration(60 days + 1);
+		auctioneerEmissions.updateEmissionTaxDuration(60 days + 1);
 	}
 }

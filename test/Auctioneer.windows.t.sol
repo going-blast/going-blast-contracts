@@ -16,7 +16,7 @@ contract AuctioneerWindowsTest is AuctioneerHelper {
 		super.setUp();
 
 		_distributeGO();
-		_initializeAuctioneer();
+		_initializeAuctioneerEmissions();
 		_setupAuctioneerTreasury();
 		_giveUsersTokensAndApprove();
 		_createDefaultDay1Auction();

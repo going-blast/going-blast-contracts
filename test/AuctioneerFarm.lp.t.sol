@@ -11,15 +11,14 @@ import "../src/IAuctioneerFarm.sol";
 contract AuctioneerFarmLpTest is AuctioneerHelper, AuctioneerFarmEvents {
 	using SafeERC20 for IERC20;
 
-
 	function setUp() public override {
 		super.setUp();
 
 		_distributeGO();
-		_initializeAuctioneer();
+		_initializeAuctioneerEmissions();
 		_setupAuctioneerTreasury();
 		_giveUsersTokensAndApprove();
-		_auctioneerSetFarm();
+		_auctioneerUpdateFarm();
 		_initializeFarmEmissions();
 		_initializeFarmVoucherEmissions();
 		_createDefaultDay1Auction();

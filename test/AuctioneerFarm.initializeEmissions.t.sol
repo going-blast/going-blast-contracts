@@ -15,10 +15,10 @@ contract AuctioneerFarmInitializeEmissionsTest is AuctioneerHelper, AuctioneerFa
 		super.setUp();
 
 		_distributeGO();
-		_initializeAuctioneer();
+		_initializeAuctioneerEmissions();
 		_setupAuctioneerTreasury();
 		_giveUsersTokensAndApprove();
-		_auctioneerSetFarm();
+		_auctioneerUpdateFarm();
 		_createDefaultDay1Auction();
 	}
 

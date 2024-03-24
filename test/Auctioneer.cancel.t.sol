@@ -14,17 +14,17 @@ contract AuctioneerCancelTest is AuctioneerHelper {
 		super.setUp();
 
 		_distributeGO();
-		_initializeAuctioneer();
+		_initializeAuctioneerEmissions();
 		_setupAuctioneerTreasury();
 		_giveUsersTokensAndApprove();
-		_auctioneerSetFarm();
+		_auctioneerUpdateFarm();
 		_initializeFarmEmissions();
 	}
 
 	function test_cancelAuction_RevertWhen_CallerIsNotOwner() public {
 		AuctionParams[] memory params = new AuctionParams[](1);
 		params[0] = _getBaseSingleAuctionParams();
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 
 		vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, address(0)));
 
@@ -35,7 +35,7 @@ contract AuctioneerCancelTest is AuctioneerHelper {
 	function test_cancelAuction_RevertWhen_InvalidAuctionLot() public {
 		AuctionParams[] memory params = new AuctionParams[](1);
 		params[0] = _getBaseSingleAuctionParams();
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 
 		vm.expectRevert(InvalidAuctionLot.selector);
 		auctioneer.cancelAuction(1, true);
@@ -44,7 +44,7 @@ contract AuctioneerCancelTest is AuctioneerHelper {
 	function test_cancelAuction_RevertWhen_NotCancellable() public {
 		AuctionParams[] memory params = new AuctionParams[](1);
 		params[0] = _getBaseSingleAuctionParams();
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 
 		// User bids
 		vm.warp(params[0].unlockTimestamp);
@@ -58,11 +58,11 @@ contract AuctioneerCancelTest is AuctioneerHelper {
 	function test_cancelAuction_ExpectEmit_AuctionCancelled() public {
 		AuctionParams[] memory params = new AuctionParams[](1);
 		params[0] = _getBaseSingleAuctionParams();
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 
 		// Event
 		vm.expectEmit(true, true, true, true);
-		emit AuctionCancelled(0, sender);
+		emit AuctionCancelled(0);
 
 		auctioneer.cancelAuction(0, true);
 	}
@@ -70,7 +70,7 @@ contract AuctioneerCancelTest is AuctioneerHelper {
 	function test_cancelAuction_Should_ReturnLotToTreasury() public {
 		AuctionParams[] memory params = new AuctionParams[](1);
 		params[0] = _getBaseSingleAuctionParams();
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 
 		uint256 treasuryETH = treasury.balance;
 
@@ -86,7 +86,7 @@ contract AuctioneerCancelTest is AuctioneerHelper {
 	function test_cancelAuction_Should_MarkAsFinalized() public {
 		AuctionParams[] memory params = new AuctionParams[](1);
 		params[0] = _getBaseSingleAuctionParams();
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 
 		auctioneer.cancelAuction(0, true);
 
@@ -97,18 +97,18 @@ contract AuctioneerCancelTest is AuctioneerHelper {
 		AuctionParams[] memory params = new AuctionParams[](1);
 		params[0] = _getBaseSingleAuctionParams();
 
-		uint256 epoch0EmissionsBeforeAuction = auctioneer.epochEmissionsRemaining(0);
-		auctioneer.createDailyAuctions(params);
+		uint256 epoch0EmissionsBeforeAuction = auctioneerEmissions.epochEmissionsRemaining(0);
+		auctioneer.createAuctions(params);
 
 		Auction memory auction = auctioneer.getAuction(0);
 		uint256 auctionTotalEmission = auction.emissions.biddersEmission + auction.emissions.treasuryEmission;
-		uint256 epoch0EmissionsRemaining = auctioneer.epochEmissionsRemaining(0);
+		uint256 epoch0EmissionsRemaining = auctioneerEmissions.epochEmissionsRemaining(0);
 
 		auctioneer.cancelAuction(0, true);
-		uint256 epoch0EmissionsAfterCancel = auctioneer.epochEmissionsRemaining(0);
+		uint256 epoch0EmissionsAfterCancel = auctioneerEmissions.epochEmissionsRemaining(0);
 
 		assertEq(
-			auctioneer.epochEmissionsRemaining(0),
+			auctioneerEmissions.epochEmissionsRemaining(0),
 			epoch0EmissionsRemaining + auctionTotalEmission,
 			"Emissions should be freed"
 		);
@@ -129,7 +129,7 @@ contract AuctioneerCancelTest is AuctioneerHelper {
 		uint256 auctionsOnDayInit = auctioneer.auctionsPerDay(day);
 		assertEq(auctionsOnDayInit, 0, "Should start with 0 auctions");
 
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 
 		uint256 auctionsOnDayMid = auctioneer.auctionsPerDay(day);
 		assertEq(auctionsOnDayMid, 1, "Should add 1 auction to day");
@@ -149,7 +149,7 @@ contract AuctioneerCancelTest is AuctioneerHelper {
 		uint256 bpOnDayInit = auctioneer.dailyCumulativeEmissionBP(day);
 		assertEq(bpOnDayInit, 0, "Should start with 0 bp");
 
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 
 		uint256 bpOnDayMid = auctioneer.dailyCumulativeEmissionBP(day);
 		assertEq(bpOnDayMid, 15000, "Should add 15000 bp to day");
@@ -163,7 +163,7 @@ contract AuctioneerCancelTest is AuctioneerHelper {
 	function test_cancelAuction_RevertWhen_BiddingOnCancelledAuction() public {
 		AuctionParams[] memory params = new AuctionParams[](1);
 		params[0] = _getBaseSingleAuctionParams();
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 
 		auctioneer.cancelAuction(0, true);
 
@@ -175,7 +175,7 @@ contract AuctioneerCancelTest is AuctioneerHelper {
 	function test_cancelAuction_RevertWhen_AlreadyCancelledNotCancellable() public {
 		AuctionParams[] memory params = new AuctionParams[](1);
 		params[0] = _getBaseSingleAuctionParams();
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 
 		auctioneer.cancelAuction(0, true);
 

@@ -87,6 +87,11 @@ library AuctionViewUtils {
 	function validateEnded(Auction storage auction) internal view {
 		if (!isEnded(auction)) revert AuctionStillRunning();
 	}
+
+	function validateWinner(Auction storage auction, address _user, uint8 _rune) internal view {
+		if (auction.runes.length > 0 ? auction.bidData.bidRune != _rune : auction.bidData.bidUser != _user)
+			revert NotWinner();
+	}
 }
 
 library AuctionMutateUtils {

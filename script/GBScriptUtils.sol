@@ -7,6 +7,8 @@ import { ChainJsonUtils } from "./ChainJsonUtils.sol";
 import { IWETH } from "../src/WETH9.sol";
 import { Auctioneer } from "../src/Auctioneer.sol";
 import { AuctioneerFarm } from "../src/AuctioneerFarm.sol";
+import { AuctioneerUser } from "../src/AuctioneerUser.sol";
+import { AuctioneerEmissions } from "../src/AuctioneerEmissions.sol";
 import { GoToken } from "../src/GoToken.sol";
 import { VoucherToken } from "../src/VoucherToken.sol";
 
@@ -15,6 +17,8 @@ contract GBScriptUtils is Script, ChainJsonUtils {
 
 	// Ecosystem contracts
 	Auctioneer public auctioneer;
+	AuctioneerUser public auctioneerUser;
+	AuctioneerEmissions public auctioneerEmissions;
 	AuctioneerFarm public auctioneerFarm;
 	GoToken public GO;
 	VoucherToken public VOUCHER;
@@ -48,6 +52,8 @@ contract GBScriptUtils is Script, ChainJsonUtils {
 	modifier loadContracts() {
 		if (bytes(chainName).length == 0) revert ChainNameNotSet();
 		auctioneer = Auctioneer(payable(readAddress(contractPath("auctioneer"))));
+		auctioneerUser = AuctioneerUser(readAddress(contractPath("auctioneerUser")));
+		auctioneerEmissions = AuctioneerEmissions(readAddress(contractPath("auctioneerEmissions")));
 		auctioneerFarm = AuctioneerFarm(readAddress(contractPath("auctioneerFarm")));
 		GO = GoToken(readAddress(contractPath("GO")));
 		VOUCHER = VoucherToken(readAddress(contractPath("VOUCHER")));

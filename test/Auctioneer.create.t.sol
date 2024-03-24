@@ -15,47 +15,56 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		super.setUp();
 
 		_distributeGO();
-		_initializeAuctioneer();
+		_initializeAuctioneerEmissions();
 		_setupAuctioneerTreasury();
 
 		// _giveUsersTokensAndApprove();
-		// _auctioneerSetFarm();
+		// _auctioneerUpdateFarm();
 		// _initializeFarmEmissions();
 		// _createDefaultDay1Auction();
 	}
 
 	// CREATE
-	function test_createDailyAuctions_RevertWhen_CallerIsNotOwner() public {
+	function test_createAuctions_RevertWhen_CallerIsNotOwner() public {
 		vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, address(0)));
 
 		AuctionParams[] memory params = new AuctionParams[](1);
 		params[0] = _getBaseSingleAuctionParams();
 
 		vm.prank(address(0));
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 	}
 
-	function test_createDailyAuctions_RevertWhen_NotInitialized() public {
+	function test_createAuctions_RevertWhen_EmissionsNotInitialized() public {
 		// SETUP
-		auctioneer = new AuctioneerHarness(USD, GO, VOUCHER, WETH, 1e18, 1e16, 1e18, 20e18);
+		_createAndLinkAuctioneers();
 
 		// EXECUTE
-		vm.expectRevert(NotInitialized.selector);
+		vm.expectRevert(EmissionsNotInitialized.selector);
 
 		AuctionParams[] memory params = new AuctionParams[](1);
 		params[0] = _getBaseSingleAuctionParams();
 
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 	}
 
-	function test_createDailyAuctions_RevertWhen_TreasuryNotSet() public {
+	function test_createAuctions_RevertWhen_GONotYetReceived() public {
 		// SETUP
-		auctioneer = new AuctioneerHarness(USD, GO, VOUCHER, WETH, 1e18, 1e16, 1e18, 20e18);
+		_createAndLinkAuctioneers();
+
+		vm.expectRevert(GONotYetReceived.selector);
+
+		auctioneerEmissions.initializeEmissions(_getNextDay2PMTimestamp());
+	}
+
+	function test_createAuctions_RevertWhen_TreasuryNotSet() public {
+		// SETUP
+		_createAndLinkAuctioneers();
 
 		vm.prank(presale);
-		GO.safeTransfer(address(auctioneer), 1e18);
+		GO.safeTransfer(address(auctioneerEmissions), 1e18);
 
-		auctioneer.initialize(_getNextDay2PMTimestamp());
+		auctioneerEmissions.initializeEmissions(_getNextDay2PMTimestamp());
 
 		// EXECUTE
 		vm.expectRevert(TreasuryNotSet.selector);
@@ -63,10 +72,10 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		AuctionParams[] memory params = new AuctionParams[](1);
 		params[0] = _getBaseSingleAuctionParams();
 
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 	}
 
-	function test_createDailyAuctions_createSingleAuction_RevertWhen_TokenNotApproved() public {
+	function test_createAuctions_createSingleAuction_RevertWhen_TokenNotApproved() public {
 		// SETUP
 		vm.prank(treasury);
 		WETH.approve(address(auctioneer), 0);
@@ -78,10 +87,10 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 
 		params[0] = _getBaseSingleAuctionParams();
 
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 	}
 
-	function test_createDailyAuctions_createSingleAuction_RevertWhen_BalanceInsufficient() public {
+	function test_createAuctions_createSingleAuction_RevertWhen_BalanceInsufficient() public {
 		// SETUP
 		uint256 treasuryBalance = WETH.balanceOf(treasury);
 
@@ -95,11 +104,11 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 
 		params[0] = _getBaseSingleAuctionParams();
 
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 	}
 
-	function test_createDailyAuctions_createSingleAuction_RevertWhen_TooManyDailyAuctions() public {
-		vm.expectRevert(abi.encodeWithSelector(TooManyAuctionsPerDay.selector, 4));
+	function test_createAuctions_createSingleAuction_RevertWhen_TooManyDailyAuctions() public {
+		vm.expectRevert(TooManyAuctionsPerDay.selector);
 
 		AuctionParams[] memory params = new AuctionParams[](5);
 
@@ -111,11 +120,11 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		params[3] = singleAuctionParam;
 		params[4] = singleAuctionParam;
 
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 	}
 
-	function test_createDailyAuctions_createSingleAuction_RevertWhen_InvalidDailyEmissionBP() public {
-		vm.expectRevert(abi.encodeWithSelector(InvalidDailyEmissionBP.selector, 10000, 25000, 1));
+	function test_createAuctions_createSingleAuction_RevertWhen_InvalidDailyEmissionBP() public {
+		vm.expectRevert(InvalidDailyEmissionBP.selector);
 
 		AuctionParams[] memory params = new AuctionParams[](2);
 
@@ -125,10 +134,10 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		params[1] = _getBaseSingleAuctionParams();
 		params[1].emissionBP = 25000;
 
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 	}
 
-	function test_createDailyAuctions_validateUnlock_RevertWhen_UnlockAlreadyPassed() public {
+	function test_createAuctions_validateUnlock_RevertWhen_UnlockAlreadyPassed() public {
 		vm.expectRevert(UnlockAlreadyPassed.selector);
 
 		AuctionParams[] memory params = new AuctionParams[](1);
@@ -136,10 +145,10 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 
 		vm.warp(params[0].unlockTimestamp + 1);
 
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 	}
 
-	function test_createDailyAuctions_validateTokens_RevertWhen_TooManyTokens() public {
+	function test_createAuctions_validateTokens_RevertWhen_TooManyTokens() public {
 		vm.expectRevert(TooManyTokens.selector);
 
 		AuctionParams[] memory params = new AuctionParams[](1);
@@ -154,10 +163,10 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 
 		params[0].tokens = tokens;
 
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 	}
 
-	function test_createDailyAuctions_validateTokens_RevertWhen_NoRewards() public {
+	function test_createAuctions_validateTokens_RevertWhen_NoRewards() public {
 		vm.expectRevert(NoRewards.selector);
 
 		AuctionParams[] memory params = new AuctionParams[](1);
@@ -166,10 +175,10 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		TokenData[] memory tokens = new TokenData[](0);
 		params[0].tokens = tokens;
 
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 	}
 
-	function test_createDailyAuctions_validateBidWindows_RevertWhen_InvalidBidWindowCount_0() public {
+	function test_createAuctions_validateBidWindows_RevertWhen_InvalidBidWindowCount_0() public {
 		vm.expectRevert(InvalidBidWindowCount.selector);
 
 		AuctionParams[] memory params = new AuctionParams[](1);
@@ -178,10 +187,10 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		BidWindowParams[] memory windows = new BidWindowParams[](0);
 		params[0].windows = windows;
 
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 	}
 
-	function test_createDailyAuctions_validateBidWindows_RevertWhen_InvalidBidWindowCount_5() public {
+	function test_createAuctions_validateBidWindows_RevertWhen_InvalidBidWindowCount_5() public {
 		vm.expectRevert(InvalidBidWindowCount.selector);
 
 		AuctionParams[] memory params = new AuctionParams[](1);
@@ -197,10 +206,10 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 
 		params[0].windows = windows;
 
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 	}
 
-	function test_createDailyAuctions_validateBidWindows_RevertWhen_InvalidWindowOrder() public {
+	function test_createAuctions_validateBidWindows_RevertWhen_InvalidWindowOrder() public {
 		// OPEN AFTER TIMED
 		vm.expectRevert(InvalidWindowOrder.selector);
 
@@ -211,7 +220,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		params[0].windows[1].windowType = BidWindowType.OPEN;
 		params[0].windows[2].windowType = BidWindowType.TIMED;
 
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 
 		// OPEN AFTER INFINITE
 		vm.expectRevert(InvalidWindowOrder.selector);
@@ -220,7 +229,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		params[0].windows[1].windowType = BidWindowType.OPEN;
 		params[0].windows[2].windowType = BidWindowType.TIMED;
 
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 
 		// TIMED AFTER INFINITE
 		vm.expectRevert(InvalidWindowOrder.selector);
@@ -229,10 +238,10 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		params[0].windows[1].windowType = BidWindowType.INFINITE;
 		params[0].windows[2].windowType = BidWindowType.OPEN;
 
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 	}
 
-	function test_createDailyAuctions_validateBidWindows_RevertWhen_LastWindowNotInfinite() public {
+	function test_createAuctions_validateBidWindows_RevertWhen_LastWindowNotInfinite() public {
 		vm.expectRevert(LastWindowNotInfinite.selector);
 
 		AuctionParams[] memory params = new AuctionParams[](1);
@@ -240,10 +249,10 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 
 		params[0].windows[2].windowType = BidWindowType.TIMED;
 
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 	}
 
-	function test_createDailyAuctions_validateBidWindows_RevertWhen_MultipleInfiniteWindows() public {
+	function test_createAuctions_validateBidWindows_RevertWhen_MultipleInfiniteWindows() public {
 		vm.expectRevert(MultipleInfiniteWindows.selector);
 
 		AuctionParams[] memory params = new AuctionParams[](1);
@@ -252,10 +261,10 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		params[0].windows[1].windowType = BidWindowType.INFINITE;
 		params[0].windows[2].windowType = BidWindowType.INFINITE;
 
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 	}
 
-	function test_createDailyAuctions_validateBidWindows_RevertWhen_OpenWindowTooShort() public {
+	function test_createAuctions_validateBidWindows_RevertWhen_OpenWindowTooShort() public {
 		vm.expectRevert(WindowTooShort.selector);
 
 		AuctionParams[] memory params = new AuctionParams[](1);
@@ -263,10 +272,10 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 
 		params[0].windows[1].duration = (1 hours - 1 seconds);
 
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 	}
 
-	function test_createDailyAuctions_validateBidWindows_RevertWhen_InvalidBidWindowTimer() public {
+	function test_createAuctions_validateBidWindows_RevertWhen_InvalidBidWindowTimer() public {
 		vm.expectRevert(InvalidBidWindowTimer.selector);
 
 		AuctionParams[] memory params = new AuctionParams[](1);
@@ -274,22 +283,22 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 
 		params[0].windows[2].timer = 29 seconds;
 
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 	}
 
 	// SUCCESSES
 
-	function test_createDailyAuctions_createSingleAuction_ExpectEmit_AuctionCreated() public {
+	function test_createAuctions_createSingleAuction_ExpectEmit_AuctionCreated() public {
 		vm.expectEmit(true, false, false, false);
 		emit AuctionCreated(0);
 
 		AuctionParams[] memory params = new AuctionParams[](1);
 		params[0] = _getBaseSingleAuctionParams();
 
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 	}
 
-	function test_createDailyAuctions_createSingleAuction_SuccessfulUpdateOfContractState() public {
+	function test_createAuctions_createSingleAuction_SuccessfulUpdateOfContractState() public {
 		AuctionParams[] memory params = new AuctionParams[](1);
 		AuctionParams memory auction = _getBaseSingleAuctionParams();
 		params[0] = auction;
@@ -303,29 +312,33 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		uint256 treasuryWethBal = WETH.balanceOf(treasury);
 		uint256 auctioneerWethBal = WETH.balanceOf(address(auctioneer));
 
-		uint256 expectedEmission = auctioneer.epochEmissionsRemaining(0) / 90;
-		uint256 emissionsRemaining = auctioneer.epochEmissionsRemaining(0);
+		uint256 expectedEmission = auctioneerEmissions.epochEmissionsRemaining(0) / 90;
+		uint256 emissionsRemaining = auctioneerEmissions.epochEmissionsRemaining(0);
 
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 
-		assertEq(auctioneer.lotCount(), lotCount + 1);
+		assertEq(auctioneer.lotCount(), lotCount + 1, "Lot count matches");
 
-		assertEq(auctioneer.auctionsPerDay(day), auctionsTodayInit + 1);
-		assertEq(auctioneer.dailyCumulativeEmissionBP(day), auctionsTodayEmissionsBP + 10000);
+		assertEq(auctioneer.auctionsPerDay(day), auctionsTodayInit + 1, "Auctions per day matches");
+		assertEq(
+			auctioneer.dailyCumulativeEmissionBP(day),
+			auctionsTodayEmissionsBP + 10000,
+			"Daily cumulative emission bp matches"
+		);
 
-		assertEq(WETH.balanceOf(treasury), treasuryWethBal - 1e18);
-		assertEq(WETH.balanceOf(address(auctioneer)), auctioneerWethBal + 1e18);
+		assertEq(WETH.balanceOf(treasury), treasuryWethBal - 1e18, "Treasury weth balance updated");
+		assertEq(WETH.balanceOf(address(auctioneer)), auctioneerWethBal + 1e18, "AuctionManager weth balance updated");
 
-		assertEq(auctioneer.epochEmissionsRemaining(0), emissionsRemaining - expectedEmission);
+		assertEq(auctioneerEmissions.epochEmissionsRemaining(0), emissionsRemaining - expectedEmission);
 	}
 
-	function test_createDailyAuctions_createSingleAuction_SuccessfulCreationOfAuctionData() public {
+	function test_createAuctions_createSingleAuction_SuccessfulCreationOfAuctionData() public {
 		AuctionParams[] memory params = new AuctionParams[](1);
 		params[0] = _getBaseSingleAuctionParams();
 
-		uint256 expectedEmission = auctioneer.epochEmissionsRemaining(0) / 90;
+		uint256 expectedEmission = auctioneerEmissions.epochEmissionsRemaining(0) / 90;
 
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 
 		Auction memory auction = auctioneer.getAuction(0);
 
@@ -358,7 +371,8 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		assertEq(auction.bidData.revenue, 0, "Revenue should be 0");
 		assertEq(auction.bidData.bid, auctioneer.startingBid(), "Initial bid amount should be starting bid");
 		assertEq(auction.bidData.bidTimestamp, params[0].unlockTimestamp, "Last bid timestamp should be unlock timestamp");
-		assertEq(auction.bidData.bidUser, sender, "First bid should be counted as auction creator");
+		assertEq(auction.bidData.bidUser, address(0), "Bidding user should be empty");
+		assertEq(auction.bidData.bidRune, 0, "Bidding rune should be 0");
 		assertEq(auction.finalized, false, "Not finalized");
 
 		assertEq(auction.windows.length, params[0].windows.length, "Param and Auction window number should match");

@@ -148,12 +148,14 @@ struct UserLotInfo {
 	bool lotClaimed;
 }
 
+error NotAuctioneer();
+error NotAuctioneerUser();
 error GONotYetReceived();
-error NotInitialized();
+error EmissionsNotInitialized();
 error AlreadyInitialized();
 error TreasuryNotSet();
-error TooManyAuctionsPerDay(uint256 auctionParamIndex);
-error InvalidDailyEmissionBP(uint256 dayEmission, uint256 auctionEmissionBP, uint256 auctionParamIndex);
+error TooManyAuctionsPerDay();
+error InvalidDailyEmissionBP();
 error Invalid();
 error InvalidAuctionLot();
 error InvalidWindowOrder();
@@ -171,6 +173,7 @@ error AuctionClosed();
 error NotCancellable();
 error TooSteep();
 error ZeroAddress();
+error AlreadyLinked();
 error PrivateAuction();
 error UnlockAlreadyPassed();
 error BadDeposit();
@@ -190,7 +193,9 @@ error CantSwitchRune();
 error CannotHaveNFTsWithRunes();
 
 interface AuctioneerEvents {
+	event Linked(address indexed _auctioneer, address indexed _auctioneerUser, address indexed _auctioneerEmissions);
 	event Initialized();
+	event InitializedEmissions();
 	event UpdatedStartingBid(uint256 _startingBid);
 	event UpdatedBidCost(uint256 _bidCost);
 	event UpdatedEarlyHarvestTax(uint256 _earlyHarvestTax);
@@ -207,7 +212,7 @@ interface AuctioneerEvents {
 		NftData[] _nfts
 	);
 	event UserHarvestedLotEmissions(uint256 _lot, address indexed _user, uint256 _userEmissions, uint256 _burnEmissions);
-	event AuctionCancelled(uint256 indexed _lot, address indexed _owner);
+	event AuctionCancelled(uint256 indexed _lot);
 	event UpdatedTreasury(address indexed _treasury);
 	event UpdatedFarm(address indexed _farm);
 	event UpdatedTreasurySplit(uint256 _split);
@@ -216,4 +221,9 @@ interface AuctioneerEvents {
 	event AddedFunds(address _user, uint256 _amount);
 	event WithdrewFunds(address _user, uint256 _amount);
 	event UpdatedAlias(address _user, string _alias);
+}
+
+interface IAuctioneer {
+	function getAuction(uint256 _lot) external view returns (Auction memory);
+	function approveWithdrawUserFunds(uint256 _amount) external;
 }

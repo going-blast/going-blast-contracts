@@ -14,10 +14,10 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		super.setUp();
 
 		_distributeGO();
-		_initializeAuctioneer();
+		_initializeAuctioneerEmissions();
 		_setupAuctioneerTreasury();
 		_giveUsersTokensAndApprove();
-		_auctioneerSetFarm();
+		_auctioneerUpdateFarm();
 		_initializeFarmEmissions();
 		_initializeFarmVoucherEmissions();
 		_createDefaultDay1Auction();
@@ -52,12 +52,12 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		// RevertWhen 1 rune
 		params[0] = _getRunesAuctionParams(1);
 		vm.expectRevert(InvalidRunesCount.selector);
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 
 		// RevertWhen 8 rune
 		params[0] = _getRunesAuctionParams(6);
 		vm.expectRevert(InvalidRunesCount.selector);
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 	}
 
 	function test_runes_create_RevertWhen_DuplicateRuneSymbols() public {
@@ -67,7 +67,7 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		params[0].runeSymbols[1] = 2;
 
 		vm.expectRevert(DuplicateRuneSymbols.selector);
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 	}
 
 	function test_runes_create_RevertWhen_RuneSymbol0Used() public {
@@ -76,7 +76,7 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		params[0].runeSymbols[0] = 0;
 
 		vm.expectRevert(InvalidRuneSymbol.selector);
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 	}
 
 	function test_runes_create_RevertWhen_NFTsWithRunes() public {
@@ -96,13 +96,13 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		}
 
 		vm.expectRevert(CannotHaveNFTsWithRunes.selector);
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 	}
 
 	function test_runes_create_0RunesParams_NoRunesAddedToAuction() public {
 		AuctionParams[] memory params = new AuctionParams[](1);
 		params[0] = _getBaseSingleAuctionParams();
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 
 		uint256 lot = auctioneer.lotCount() - 1;
 
@@ -113,7 +113,7 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 	function test_runes_create_3RunesParams_4RunesInAuction() public {
 		AuctionParams[] memory params = new AuctionParams[](1);
 		params[0] = _getRunesAuctionParams(3);
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 
 		uint256 lot = auctioneer.lotCount() - 1;
 
@@ -124,7 +124,7 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 	function test_runes_create_5RunesParams_6RunesInAuction() public {
 		AuctionParams[] memory params = new AuctionParams[](1);
 		params[0] = _getRunesAuctionParams(5);
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 
 		uint256 lot = auctioneer.lotCount() - 1;
 
@@ -142,7 +142,7 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		params[0].runeSymbols[2] = 3;
 		params[0].runeSymbols[3] = 10;
 		params[0].runeSymbols[4] = 7;
-		auctioneer.createDailyAuctions(params);
+		auctioneer.createAuctions(params);
 
 		uint256 lot = auctioneer.lotCount() - 1;
 
@@ -205,7 +205,7 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		uint256 lot = _createDailyAuctionWithRunes(2, true);
 
 		_bidWithRune(user1, lot, 1);
-		assertEq(auctioneer.getAuctionUser(lot, user1).rune, 1, "Users rune should be set to 1");
+		assertEq(auctioneerUser.getAuctionUser(lot, user1).rune, 1, "Users rune should be set to 1");
 
 		vm.expectRevert(CantSwitchRune.selector);
 		_bidWithRune(user1, lot, 2);
@@ -259,7 +259,7 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		vm.expectRevert(NotWinner.selector);
 
 		vm.prank(user1);
-		auctioneer.claimAuctionLot(lot, ClaimLotOptions({ paymentType: LotPaymentType.WALLET, unwrapETH: false }));
+		auctioneer.claimLot(lot, ClaimLotOptions({ paymentType: LotPaymentType.WALLET, unwrapETH: false }));
 
 		vm.expectEmit(true, true, true, true);
 		TokenData[] memory tokens = new TokenData[](1);
@@ -268,7 +268,7 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		emit UserClaimedLot(lot, user2, 2, 1e18, tokens, nfts);
 
 		vm.prank(user2);
-		auctioneer.claimAuctionLot(lot, ClaimLotOptions({ paymentType: LotPaymentType.WALLET, unwrapETH: false }));
+		auctioneer.claimLot(lot, ClaimLotOptions({ paymentType: LotPaymentType.WALLET, unwrapETH: false }));
 	}
 
 	function test_runes_win_Expect_lotClaimedSetToTrue() public {
@@ -280,9 +280,9 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		vm.warp(block.timestamp + 1 days);
 
 		vm.prank(user2);
-		auctioneer.claimAuctionLot(lot, ClaimLotOptions({ paymentType: LotPaymentType.WALLET, unwrapETH: false }));
+		auctioneer.claimLot(lot, ClaimLotOptions({ paymentType: LotPaymentType.WALLET, unwrapETH: false }));
 
-		assertEq(auctioneer.getAuctionUser(lot, user2).lotClaimed, true, "User has claimed lot");
+		assertEq(auctioneerUser.getAuctionUser(lot, user2).lotClaimed, true, "User has claimed lot");
 	}
 	function test_runes_win_RevertWhen_AlreadyClaimed() public {
 		uint256 lot = _createDailyAuctionWithRunes(2, true);
@@ -293,14 +293,14 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		vm.warp(block.timestamp + 1 days);
 
 		vm.prank(user2);
-		auctioneer.claimAuctionLot(lot, ClaimLotOptions({ paymentType: LotPaymentType.WALLET, unwrapETH: false }));
+		auctioneer.claimLot(lot, ClaimLotOptions({ paymentType: LotPaymentType.WALLET, unwrapETH: false }));
 
-		assertEq(auctioneer.getAuctionUser(lot, user2).lotClaimed, true, "User has claimed lot");
+		assertEq(auctioneerUser.getAuctionUser(lot, user2).lotClaimed, true, "User has claimed lot");
 
 		vm.expectRevert(UserAlreadyClaimedLot.selector);
 
 		vm.prank(user2);
-		auctioneer.claimAuctionLot(lot, ClaimLotOptions({ paymentType: LotPaymentType.WALLET, unwrapETH: false }));
+		auctioneer.claimLot(lot, ClaimLotOptions({ paymentType: LotPaymentType.WALLET, unwrapETH: false }));
 	}
 
 	function test_runes_win_Expect_0RunesUserShare100Perc() public {
@@ -318,7 +318,7 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		_expectTokenTransfer(USD, user2, address(auctioneer), (lotPrice * 1e18) / 1e18);
 
 		vm.prank(user2);
-		auctioneer.claimAuctionLot(lot, ClaimLotOptions({ paymentType: LotPaymentType.WALLET, unwrapETH: false }));
+		auctioneer.claimLot(lot, ClaimLotOptions({ paymentType: LotPaymentType.WALLET, unwrapETH: false }));
 	}
 
 	function test_runes_win_Expect_2RunesUserShareSplit() public {
@@ -355,7 +355,7 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		_expectTokenTransfer(USD, address(auctioneer), treasury, (lotPrice * user3Share) / 1e18);
 
 		vm.prank(user3);
-		auctioneer.claimAuctionLot(lot, ClaimLotOptions({ paymentType: LotPaymentType.WALLET, unwrapETH: false }));
+		auctioneer.claimLot(lot, ClaimLotOptions({ paymentType: LotPaymentType.WALLET, unwrapETH: false }));
 
 		// USER 4
 		uint256 user4Share = (user4Bids * 1e18) / rune2Bids;
@@ -368,7 +368,7 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		_expectTokenTransfer(USD, address(auctioneer), treasury, (lotPrice * user4Share) / 1e18);
 
 		vm.prank(user4);
-		auctioneer.claimAuctionLot(lot, ClaimLotOptions({ paymentType: LotPaymentType.WALLET, unwrapETH: false }));
+		auctioneer.claimLot(lot, ClaimLotOptions({ paymentType: LotPaymentType.WALLET, unwrapETH: false }));
 
 		// Totals
 		assertEq(user3Share + user4Share, 1e18, "Shares should add up to 100%");
@@ -400,20 +400,36 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		_multibidWithRune(user3, lot, user3Bids, 2);
 		_multibidWithRune(user4, lot, user4Bids, 2);
 
-		assertEq(auctioneer.getUserLotInfo(lot, user1).bidCounts.user, user1Bids, "User1 bids should match");
-		assertEq(auctioneer.getUserLotInfo(lot, user1).bidCounts.rune, rune1Bids, "Rune1 bids should match (user1)");
-		assertEq(auctioneer.getUserLotInfo(lot, user1).bidCounts.auction, auctionBids, "Auction bids should match (user1)");
+		assertEq(auctioneerUser.getUserLotInfo(lot, user1).bidCounts.user, user1Bids, "User1 bids should match");
+		assertEq(auctioneerUser.getUserLotInfo(lot, user1).bidCounts.rune, rune1Bids, "Rune1 bids should match (user1)");
+		assertEq(
+			auctioneerUser.getUserLotInfo(lot, user1).bidCounts.auction,
+			auctionBids,
+			"Auction bids should match (user1)"
+		);
 
-		assertEq(auctioneer.getUserLotInfo(lot, user2).bidCounts.user, user2Bids, "User2 bids should match");
-		assertEq(auctioneer.getUserLotInfo(lot, user2).bidCounts.rune, rune1Bids, "Rune1 bids should match (user2)");
-		assertEq(auctioneer.getUserLotInfo(lot, user2).bidCounts.auction, auctionBids, "Auction bids should match (user2)");
+		assertEq(auctioneerUser.getUserLotInfo(lot, user2).bidCounts.user, user2Bids, "User2 bids should match");
+		assertEq(auctioneerUser.getUserLotInfo(lot, user2).bidCounts.rune, rune1Bids, "Rune1 bids should match (user2)");
+		assertEq(
+			auctioneerUser.getUserLotInfo(lot, user2).bidCounts.auction,
+			auctionBids,
+			"Auction bids should match (user2)"
+		);
 
-		assertEq(auctioneer.getUserLotInfo(lot, user3).bidCounts.user, user3Bids, "User3 bids should match");
-		assertEq(auctioneer.getUserLotInfo(lot, user3).bidCounts.rune, rune2Bids, "Rune2 bids should match (user3)");
-		assertEq(auctioneer.getUserLotInfo(lot, user3).bidCounts.auction, auctionBids, "Auction bids should match (user3)");
+		assertEq(auctioneerUser.getUserLotInfo(lot, user3).bidCounts.user, user3Bids, "User3 bids should match");
+		assertEq(auctioneerUser.getUserLotInfo(lot, user3).bidCounts.rune, rune2Bids, "Rune2 bids should match (user3)");
+		assertEq(
+			auctioneerUser.getUserLotInfo(lot, user3).bidCounts.auction,
+			auctionBids,
+			"Auction bids should match (user3)"
+		);
 
-		assertEq(auctioneer.getUserLotInfo(lot, user4).bidCounts.user, user4Bids, "User4 bids should match");
-		assertEq(auctioneer.getUserLotInfo(lot, user4).bidCounts.rune, rune2Bids, "Rune2 bids should match (user4)");
-		assertEq(auctioneer.getUserLotInfo(lot, user4).bidCounts.auction, auctionBids, "Auction bids should match (user4)");
+		assertEq(auctioneerUser.getUserLotInfo(lot, user4).bidCounts.user, user4Bids, "User4 bids should match");
+		assertEq(auctioneerUser.getUserLotInfo(lot, user4).bidCounts.rune, rune2Bids, "Rune2 bids should match (user4)");
+		assertEq(
+			auctioneerUser.getUserLotInfo(lot, user4).bidCounts.auction,
+			auctionBids,
+			"Auction bids should match (user4)"
+		);
 	}
 }

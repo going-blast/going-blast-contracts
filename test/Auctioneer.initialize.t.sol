@@ -17,9 +17,9 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		_distributeGO();
 		_setupAuctioneerTreasury();
 
-		// _initializeAuctioneer();
+		// _initializeAuctioneerEmissions();
 		// _giveUsersTokensAndApprove();
-		// _auctioneerSetFarm();
+		// _auctioneerUpdateFarm();
 		// _initializeFarmEmissions();
 		// _createDefaultDay1Auction();
 	}
@@ -27,40 +27,68 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 	// INITIALIZE
 
 	function test_initialize_RevertWhen_GONotYetReceived() public {
-		auctioneer = new AuctioneerHarness(USD, GO, VOUCHER, WETH, 1e18, 1e16, 1e18, 20e18);
+		_createAndLinkAuctioneers();
 
 		vm.expectRevert(GONotYetReceived.selector);
 
-		auctioneer.initialize(_getNextDay2PMTimestamp());
+		auctioneerEmissions.initializeEmissions(_getNextDay2PMTimestamp());
 	}
 	function test_initialize_RevertWhen_AlreadyInitialized() public {
-		auctioneer.initialize(_getNextDay2PMTimestamp());
+		auctioneerEmissions.initializeEmissions(_getNextDay2PMTimestamp());
 
 		vm.expectRevert(AlreadyInitialized.selector);
 
-		auctioneer.initialize(_getNextDay2PMTimestamp());
+		auctioneerEmissions.initializeEmissions(_getNextDay2PMTimestamp());
 	}
 
-	function test_initialize_ExpectEmit_Initialized() public {
+	function test_initialize_ExpectEmit_InitializedEmissions() public {
 		vm.expectEmit(false, false, false, false);
-		emit Initialized();
+		emit InitializedEmissions();
 
-		auctioneer.initialize(_getNextDay2PMTimestamp());
+		auctioneerEmissions.initializeEmissions(_getNextDay2PMTimestamp());
 	}
 
 	function test_initialize_EmissionsSetCorrectly() public {
 		uint256 startTimestamp = _getNextDay2PMTimestamp();
-		auctioneer.initialize(startTimestamp);
+		auctioneerEmissions.initializeEmissions(startTimestamp);
 
-		assertEq(auctioneer.startTimestamp(), startTimestamp);
+		assertEq(auctioneerEmissions.startTimestamp(), startTimestamp);
 
-		assertGt(auctioneer.epochEmissionsRemaining(0), 0);
-		assertApproxEqAbs(auctioneer.epochEmissionsRemaining(0), auctioneer.epochEmissionsRemaining(1) * 2, 10);
-		assertApproxEqAbs(auctioneer.epochEmissionsRemaining(1), auctioneer.epochEmissionsRemaining(2) * 2, 10);
-		assertApproxEqAbs(auctioneer.epochEmissionsRemaining(2), auctioneer.epochEmissionsRemaining(3) * 2, 10);
-		assertApproxEqAbs(auctioneer.epochEmissionsRemaining(3), auctioneer.epochEmissionsRemaining(4) * 2, 10);
-		assertApproxEqAbs(auctioneer.epochEmissionsRemaining(4), auctioneer.epochEmissionsRemaining(5) * 2, 10);
-		assertApproxEqAbs(auctioneer.epochEmissionsRemaining(5), auctioneer.epochEmissionsRemaining(6) * 2, 10);
-		assertApproxEqAbs(auctioneer.epochEmissionsRemaining(6), auctioneer.epochEmissionsRemaining(7) * 2, 10);
+		assertGt(auctioneerEmissions.epochEmissionsRemaining(0), 0);
+		assertApproxEqAbs(
+			auctioneerEmissions.epochEmissionsRemaining(0),
+			auctioneerEmissions.epochEmissionsRemaining(1) * 2,
+			10
+		);
+		assertApproxEqAbs(
+			auctioneerEmissions.epochEmissionsRemaining(1),
+			auctioneerEmissions.epochEmissionsRemaining(2) * 2,
+			10
+		);
+		assertApproxEqAbs(
+			auctioneerEmissions.epochEmissionsRemaining(2),
+			auctioneerEmissions.epochEmissionsRemaining(3) * 2,
+			10
+		);
+		assertApproxEqAbs(
+			auctioneerEmissions.epochEmissionsRemaining(3),
+			auctioneerEmissions.epochEmissionsRemaining(4) * 2,
+			10
+		);
+		assertApproxEqAbs(
+			auctioneerEmissions.epochEmissionsRemaining(4),
+			auctioneerEmissions.epochEmissionsRemaining(5) * 2,
+			10
+		);
+		assertApproxEqAbs(
+			auctioneerEmissions.epochEmissionsRemaining(5),
+			auctioneerEmissions.epochEmissionsRemaining(6) * 2,
+			10
+		);
+		assertApproxEqAbs(
+			auctioneerEmissions.epochEmissionsRemaining(6),
+			auctioneerEmissions.epochEmissionsRemaining(7) * 2,
+			10
+		);
 	}
 }

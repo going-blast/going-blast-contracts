@@ -5,6 +5,8 @@
 		"GO": "",
 		"VOUCHER": "",
 		"auctioneer": "",
+		"auctioneerUser": "",
+		"auctioneerEmissions": "",
 		"auctioneerFarm": ""
 	},
 	"config": {
