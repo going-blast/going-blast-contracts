@@ -299,10 +299,11 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		}
 	}
 
-	function _validateAuctionDay(AuctionParams memory _params, uint256 _paramIndex) internal view {
+	function _createSingleAuction(AuctionParams memory _params, uint256 _paramIndex) internal {
+		_params.validate();
 		uint256 day = _getDayOfTimestamp(_params.unlockTimestamp);
 
-		// Check that no more than 4 auctions take place per day
+		// Validate that day has room for auction
 		if ((auctionsPerDay[day] + 1) > 4) revert TooManyAuctionsPerDay(_paramIndex);
 
 		// Check that days emission doesn't exceed allowable bonus (30000)
@@ -312,15 +313,9 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		// This will never overflow the emissions though, because the emission amount is calculated from remaining emissions
 		if ((dailyCumulativeEmissionBP[day] + _params.emissionBP) > 30000)
 			revert InvalidDailyEmissionBP(dailyCumulativeEmissionBP[day], _params.emissionBP, _paramIndex);
-	}
-
-	function _createSingleAuction(AuctionParams memory _params, uint256 _paramIndex) internal {
-		_params.validate();
-		_validateAuctionDay(_params, _paramIndex);
 
 		// Update daily attributes
 		uint256 lot = lotCount;
-		uint256 day = _getDayOfTimestamp(_params.unlockTimestamp);
 		auctionsPerDay[day] += 1;
 		dailyCumulativeEmissionBP[day] += _params.emissionBP;
 

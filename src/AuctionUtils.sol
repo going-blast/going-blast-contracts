@@ -25,11 +25,11 @@ library GBMath {
 }
 
 library AuctionViewUtils {
-	function hasRunes(Auction storage auction) public view returns (bool) {
+	function hasRunes(Auction storage auction) internal view returns (bool) {
 		return auction.runes.length > 0;
 	}
 
-	function activeWindow(Auction storage auction) public view returns (uint256) {
+	function activeWindow(Auction storage auction) internal view returns (uint256) {
 		// Before auction opens, active window is 0
 		// This case gets caught by first window
 
@@ -45,7 +45,7 @@ library AuctionViewUtils {
 	// Recursive fetcher of next bid cutoff timestamp
 	// Open window or negative window will look to next window
 	// Timed or infinite window will give timestamp to exit
-	function getWindowNextBidBy(Auction storage auction, uint256 window) public view returns (uint256) {
+	function getWindowNextBidBy(Auction storage auction, uint256 window) internal view returns (uint256) {
 		if (auction.windows[window].windowType == BidWindowType.OPEN) return getWindowNextBidBy(auction, window + 1);
 
 		// Timed or infinite window
@@ -56,11 +56,11 @@ library AuctionViewUtils {
 			auction.windows[window].timer;
 	}
 
-	function getNextBidBy(Auction storage auction) public view returns (uint256) {
+	function getNextBidBy(Auction storage auction) internal view returns (uint256) {
 		return getWindowNextBidBy(auction, activeWindow(auction));
 	}
 
-	function isBiddingOpen(Auction storage auction) public view returns (bool) {
+	function isBiddingOpen(Auction storage auction) internal view returns (bool) {
 		// Early escape if the auction has been finalized
 		if (auction.finalized) return false;
 
@@ -70,11 +70,11 @@ library AuctionViewUtils {
 		// Closed if nextBidBy is in future
 		return block.timestamp <= auction.bidData.nextBidBy;
 	}
-	function validateBiddingOpen(Auction storage auction) public view {
+	function validateBiddingOpen(Auction storage auction) internal view {
 		if (!isBiddingOpen(auction)) revert BiddingClosed();
 	}
 
-	function isEnded(Auction storage auction) public view returns (bool) {
+	function isEnded(Auction storage auction) internal view returns (bool) {
 		// Early escape if the auction has been finalized
 		if (auction.finalized) return true;
 
@@ -84,7 +84,7 @@ library AuctionViewUtils {
 		// Closed if nextBidBy is in past
 		return block.timestamp > auction.bidData.nextBidBy;
 	}
-	function validateEnded(Auction storage auction) public view {
+	function validateEnded(Auction storage auction) internal view {
 		if (!isEnded(auction)) revert AuctionStillRunning();
 	}
 }
@@ -251,26 +251,26 @@ library AuctionMutateUtils {
 }
 
 library AuctionParamsUtils {
-	function validateUnlock(AuctionParams memory _params) public view {
+	function validateUnlock(AuctionParams memory _params) internal view {
 		if (_params.unlockTimestamp < block.timestamp) revert UnlockAlreadyPassed();
 	}
 
-	function validateTokens(AuctionParams memory _params) public pure {
+	function validateTokens(AuctionParams memory _params) internal pure {
 		if (_params.tokens.length > 4) revert TooManyTokens();
 	}
 
-	function validateNFTs(AuctionParams memory _params) public pure {
+	function validateNFTs(AuctionParams memory _params) internal pure {
 		if (_params.nfts.length > 4) revert TooManyNFTs();
 		if (_params.nfts.length > 0 && _params.runeSymbols.length > 0) revert CannotHaveNFTsWithRunes();
 	}
 
-	function validateAnyReward(AuctionParams memory _params) public pure {
+	function validateAnyReward(AuctionParams memory _params) internal pure {
 		if (_params.nfts.length == 0 && _params.tokens.length == 0) revert NoRewards();
 	}
 
 	// YES I KNOW that this is inefficient, this is an owner facing function.
 	// Legibility and clarity > once daily gas price.
-	function validateBidWindows(AuctionParams memory _params) public pure {
+	function validateBidWindows(AuctionParams memory _params) internal pure {
 		// VALIDATE: Acceptable number of bidding windows
 		if (_params.windows.length == 0 || _params.windows.length > 4) revert InvalidBidWindowCount();
 
@@ -310,7 +310,7 @@ library AuctionParamsUtils {
 		}
 	}
 
-	function validateRunes(AuctionParams memory _params) public pure {
+	function validateRunes(AuctionParams memory _params) internal pure {
 		// Early escape if no runes
 		if (_params.runeSymbols.length == 0) return;
 
@@ -338,7 +338,7 @@ library AuctionParamsUtils {
 	}
 
 	// Wholistic validation
-	function validate(AuctionParams memory _params) public view {
+	function validate(AuctionParams memory _params) internal view {
 		validateUnlock(_params);
 		validateTokens(_params);
 		validateNFTs(_params);
