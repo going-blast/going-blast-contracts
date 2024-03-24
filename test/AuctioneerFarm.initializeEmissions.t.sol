@@ -11,84 +11,51 @@ import "../src/IAuctioneerFarm.sol";
 contract AuctioneerFarmInitializeEmissionsTest is AuctioneerHelper, AuctioneerFarmEvents {
 	using SafeERC20 for IERC20;
 
-	uint256 public farmGO;
-
 	function setUp() public override {
 		super.setUp();
 
-		farm = new AuctioneerFarm(USD, GO, VOUCHER);
-		auctioneer.setTreasury(treasury);
-
-		// Distribute GO
-		GO.safeTransfer(address(auctioneer), (GO.totalSupply() * 6000) / 10000);
-		GO.safeTransfer(presale, (GO.totalSupply() * 2000) / 10000);
-		GO.safeTransfer(treasury, (GO.totalSupply() * 1000) / 10000);
-		GO.safeTransfer(liquidity, (GO.totalSupply() * 500) / 10000);
-		farmGO = (GO.totalSupply() * 500) / 10000;
-		GO.safeTransfer(address(farm), farmGO);
-
-		// Initialize after receiving GO token
-		auctioneer.initialize(_getNextDay2PMTimestamp());
-
-		// Give WETH to treasury
-		vm.deal(treasury, 10e18);
-
-		// Treasury deposit for WETH
-		vm.prank(treasury);
-		WETH.deposit{ value: 5e18 }();
-
-		// Approve WETH for auctioneer
-		vm.prank(treasury);
-		IERC20(address(WETH)).approve(address(auctioneer), type(uint256).max);
-
-		// Give usd to users
-		USD.mint(user1, 1000e18);
-		USD.mint(user2, 1000e18);
-		USD.mint(user3, 1000e18);
-		USD.mint(user4, 1000e18);
-
-		// Users approve auctioneer
-		vm.prank(user1);
-		USD.approve(address(auctioneer), 1000e18);
-		vm.prank(user2);
-		USD.approve(address(auctioneer), 1000e18);
-		vm.prank(user3);
-		USD.approve(address(auctioneer), 1000e18);
-		vm.prank(user4);
-		USD.approve(address(auctioneer), 1000e18);
-
-		// Create auction
-		AuctionParams[] memory params = new AuctionParams[](1);
-		params[0] = _getBaseSingleAuctionParams();
-		auctioneer.createDailyAuctions(params);
+		_distributeGO();
+		_initializeAuctioneer();
+		_setupAuctioneerTreasury();
+		_giveUsersTokensAndApprove();
+		_auctioneerSetFarm();
+		_createDefaultDay1Auction();
 	}
 
 	function test_initializeEmissions_RevertWhen_NotEnoughEmissionToken() public {
+		uint256 farmGO = GO.balanceOf(address(farm));
+
 		vm.expectRevert(IAuctioneerFarm.NotEnoughEmissionToken.selector);
 		farm.initializeEmissions(farmGO + 1e18, 180 days);
 	}
 
-	function test_initializeEmissions_ExpectEmit_InitializedGOEmission_AddedStakingToken() public {
+	function test_initializeEmissions_ExpectEmit_InitializedGOEmission_SetEmission() public {
+		uint256 farmGO = GO.balanceOf(address(farm));
 		uint256 expectedGoEmission = farmGO / 180 days;
 
 		vm.expectEmit(true, true, true, true);
 		emit SetEmission(address(GO), expectedGoEmission, 180 days);
 
-		farm.initializeEmissions(farmGO, 180 days);
+		_initializeFarmEmissions();
 	}
 
 	function test_initializeEmissions_RevertWhen_AlreadyInitializedEmissions() public {
-		farm.initializeEmissions(farmGO, 180 days);
+		uint256 farmGO = GO.balanceOf(address(farm));
+		_initializeFarmEmissions(farmGO);
+
+		assertEq(farm.initializedEmissions(), true, "Emissions initialized");
 
 		vm.expectRevert(IAuctioneerFarm.AlreadyInitializedEmissions.selector);
-		farm.initializeEmissions(farmGO, 180 days);
+		_initializeFarmEmissions(farmGO);
 	}
 
 	function test_initializeEmissions_RevertWhen_CallerIsNotOwner() public {
+		uint256 farmGO = GO.balanceOf(address(farm));
+
 		vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, address(0)));
 
 		vm.prank(address(0));
-		farm.initializeEmissions(farmGO, 180 days);
+		_initializeFarmEmissions(farmGO);
 	}
 
 	function test_constructor_goPoolAdded() public {

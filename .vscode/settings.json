@@ -10,7 +10,8 @@
 		"mixedcase",
 		"multibid",
 		"solhint",
-		"USDB"
+		"USDB",
+		"YY"
 	],
 	"editor.defaultFormatter": "esbenp.prettier-vscode",
 	"editor.formatOnSave": true,
@@ -18,5 +19,6 @@
 	"solidity.packageDefaultDependenciesContractsDirectory": "src",
 	"solidity.packageDefaultDependenciesDirectory": "lib",
 	"solidity.compileUsingRemoteVersion": "v0.8.20",
-	"solidity-va.hover": true
+	"solidity-va.hover": true,
+	"solidity.compilerOptimization": 0
 }

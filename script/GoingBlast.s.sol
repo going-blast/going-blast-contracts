@@ -11,6 +11,7 @@ import { AuctioneerFarm } from "../src/AuctioneerFarm.sol";
 import { GoToken } from "../src/GoToken.sol";
 import { VoucherToken } from "../src/VoucherToken.sol";
 import { IERC20Rebasing } from "../src/BlastYield.sol";
+import { GBMath } from "../src/AuctionUtils.sol";
 
 contract GBDeploy is GBScriptUtils {
 	function run() external startBroadcast loadChain loadConfigValues {
@@ -55,12 +56,13 @@ contract GBSetTreasuryFromMnemonic is GBScriptUtils {
 
 contract GBInitializeAuctioneer is GBScriptUtils {
 	using SafeERC20 for IERC20;
+	using GBMath for uint256;
 	error AlreadyInitialized();
 
 	function run() external startBroadcast loadChain loadContracts {
 		if (auctioneer.initialized()) revert AlreadyInitialized();
 
-		uint256 proofOfBidEmissions = (10000000e18 * 6000) / 10000;
+		uint256 proofOfBidEmissions = uint256(10000000e18).scaleByBP(6000);
 		IERC20(GO).safeTransfer(address(auctioneer), proofOfBidEmissions);
 
 		uint256 unlockTimestamp = block.timestamp; // TODO this needs to be updated to a correct value

@@ -2,10 +2,10 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
-import { DecUtils } from "../src/AuctionUtils.sol";
+import { GBMath } from "../src/AuctionUtils.sol";
 
 contract TransformDecTest is Test {
-	using DecUtils for uint256;
+	using GBMath for uint256;
 
 	function setUp() public {}
 

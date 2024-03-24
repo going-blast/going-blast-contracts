@@ -7,32 +7,29 @@ import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { IWETH } from "./WETH9.sol";
 import { IAuctioneerFarm } from "./IAuctioneerFarm.sol";
 
-library DecUtils {
+// Dont need everything from most math libs, and nearing contract size limit
+library GBMath {
 	function transformDec(uint256 amount, uint8 from, uint8 to) internal pure returns (uint256) {
 		return (amount * 10 ** to) / 10 ** from;
 	}
-}
-
-library AuctionUtils {
-	using DecUtils for uint256;
-	using SafeERC20 for IERC20;
-
 	function min(uint256 a, uint256 b) internal pure returns (uint256) {
 		return a < b ? a : b;
 	}
 	function max(uint256 a, uint256 b) internal pure returns (uint256) {
 		return a > b ? a : b;
 	}
+	function scaleByBP(uint256 amount, uint256 bp) internal pure returns (uint256) {
+		if (bp == 10000) return amount;
+		return (amount * bp) / 10000;
+	}
+}
 
-	function hasRunes(Auction storage auction) internal view returns (bool) {
+library AuctionViewUtils {
+	function hasRunes(Auction storage auction) public view returns (bool) {
 		return auction.runes.length > 0;
 	}
 
-	function finalize(Auction storage auction) internal {
-		auction.finalized = true;
-	}
-
-	function activeWindow(Auction storage auction) internal view returns (uint256) {
+	function activeWindow(Auction storage auction) public view returns (uint256) {
 		// Before auction opens, active window is 0
 		// This case gets caught by first window
 
@@ -48,21 +45,22 @@ library AuctionUtils {
 	// Recursive fetcher of next bid cutoff timestamp
 	// Open window or negative window will look to next window
 	// Timed or infinite window will give timestamp to exit
-	function getWindowNextBidBy(Auction storage auction, uint256 window) internal view returns (uint256) {
+	function getWindowNextBidBy(Auction storage auction, uint256 window) public view returns (uint256) {
 		if (auction.windows[window].windowType == BidWindowType.OPEN) return getWindowNextBidBy(auction, window + 1);
 
 		// Timed or infinite window
 		// max(last bid timestamp, window open timestamp) + window timer
 		// A bid 5 seconds before window closes will be given the timer of the current window, even if it overflows into next window
 		return
-			max(auction.bidData.bidTimestamp, auction.windows[window].windowOpenTimestamp) + auction.windows[window].timer;
+			GBMath.max(auction.bidData.bidTimestamp, auction.windows[window].windowOpenTimestamp) +
+			auction.windows[window].timer;
 	}
 
-	function getNextBidBy(Auction storage auction) internal view returns (uint256) {
+	function getNextBidBy(Auction storage auction) public view returns (uint256) {
 		return getWindowNextBidBy(auction, activeWindow(auction));
 	}
 
-	function isBiddingOpen(Auction storage auction) internal view returns (bool) {
+	function isBiddingOpen(Auction storage auction) public view returns (bool) {
 		// Early escape if the auction has been finalized
 		if (auction.finalized) return false;
 
@@ -72,11 +70,11 @@ library AuctionUtils {
 		// Closed if nextBidBy is in future
 		return block.timestamp <= auction.bidData.nextBidBy;
 	}
-	function validateBiddingOpen(Auction storage auction) internal view {
+	function validateBiddingOpen(Auction storage auction) public view {
 		if (!isBiddingOpen(auction)) revert BiddingClosed();
 	}
 
-	function isEnded(Auction storage auction) internal view returns (bool) {
+	function isEnded(Auction storage auction) public view returns (bool) {
 		// Early escape if the auction has been finalized
 		if (auction.finalized) return true;
 
@@ -86,9 +84,14 @@ library AuctionUtils {
 		// Closed if nextBidBy is in past
 		return block.timestamp > auction.bidData.nextBidBy;
 	}
-	function validateEnded(Auction storage auction) internal view {
+	function validateEnded(Auction storage auction) public view {
 		if (!isEnded(auction)) revert AuctionStillRunning();
 	}
+}
+
+library AuctionMutateUtils {
+	using GBMath for uint256;
+	using SafeERC20 for IERC20;
 
 	function addBidWindows(Auction storage auction, AuctionParams memory _params, uint256 _bonusTime) internal {
 		uint256 openTimestamp = _params.unlockTimestamp;
@@ -109,8 +112,6 @@ library AuctionUtils {
 			openTimestamp += _params.windows[i].duration;
 		}
 	}
-
-	// LOT
 
 	function addRewards(Auction storage auction, AuctionParams memory params) internal {
 		auction.rewards.estimatedValue = params.lotValue;
@@ -189,8 +190,6 @@ library AuctionUtils {
 		}
 	}
 
-	// REVENUE
-
 	function distributeLotProfit(
 		Auction storage,
 		IERC20 USD,
@@ -200,7 +199,7 @@ library AuctionUtils {
 		uint256 treasurySplit
 	) internal returns (uint256 farmDistribution) {
 		// Calculate distributions
-		uint256 treasuryDistribution = (amount * treasurySplit) / 10000;
+		uint256 treasuryDistribution = amount.scaleByBP(treasurySplit);
 		farmDistribution = amount - treasuryDistribution;
 
 		// Add unused farm distribution to treasury (if no farm set, send all funds to treasury)
@@ -238,8 +237,8 @@ library AuctionUtils {
 		uint256 profit = 0;
 
 		// Reduce treasury amount received if revenue outstripped lot value
-		if (auction.bidData.revenue > (lotValue * 11000) / 10000) {
-			reimbursement = (lotValue * 11000) / 10000;
+		if (auction.bidData.revenue > lotValue.scaleByBP(11000)) {
+			reimbursement = lotValue.scaleByBP(11000);
 			profit = auction.bidData.revenue - reimbursement;
 		}
 
@@ -252,26 +251,26 @@ library AuctionUtils {
 }
 
 library AuctionParamsUtils {
-	function validateUnlock(AuctionParams memory _params) internal view {
+	function validateUnlock(AuctionParams memory _params) public view {
 		if (_params.unlockTimestamp < block.timestamp) revert UnlockAlreadyPassed();
 	}
 
-	function validateTokens(AuctionParams memory _params) internal pure {
+	function validateTokens(AuctionParams memory _params) public pure {
 		if (_params.tokens.length > 4) revert TooManyTokens();
 	}
 
-	function validateNFTs(AuctionParams memory _params) internal pure {
+	function validateNFTs(AuctionParams memory _params) public pure {
 		if (_params.nfts.length > 4) revert TooManyNFTs();
 		if (_params.nfts.length > 0 && _params.runeSymbols.length > 0) revert CannotHaveNFTsWithRunes();
 	}
 
-	function validateAnyReward(AuctionParams memory _params) internal pure {
+	function validateAnyReward(AuctionParams memory _params) public pure {
 		if (_params.nfts.length == 0 && _params.tokens.length == 0) revert NoRewards();
 	}
 
 	// YES I KNOW that this is inefficient, this is an owner facing function.
 	// Legibility and clarity > once daily gas price.
-	function validateBidWindows(AuctionParams memory _params) internal pure {
+	function validateBidWindows(AuctionParams memory _params) public pure {
 		// VALIDATE: Acceptable number of bidding windows
 		if (_params.windows.length == 0 || _params.windows.length > 4) revert InvalidBidWindowCount();
 
@@ -311,7 +310,7 @@ library AuctionParamsUtils {
 		}
 	}
 
-	function validateRunes(AuctionParams memory _params) internal pure {
+	function validateRunes(AuctionParams memory _params) public pure {
 		// Early escape if no runes
 		if (_params.runeSymbols.length == 0) return;
 
@@ -336,5 +335,15 @@ library AuctionParamsUtils {
 				if (_params.runeSymbols[i] == _params.runeSymbols[j]) revert DuplicateRuneSymbols();
 			}
 		}
+	}
+
+	// Wholistic validation
+	function validate(AuctionParams memory _params) public view {
+		validateUnlock(_params);
+		validateTokens(_params);
+		validateNFTs(_params);
+		validateAnyReward(_params);
+		validateBidWindows(_params);
+		validateRunes(_params);
 	}
 }

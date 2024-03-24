@@ -13,59 +13,17 @@ contract AuctioneerBidTest is AuctioneerHelper {
 	function setUp() public override {
 		super.setUp();
 
-		farm = new AuctioneerFarm(USD, GO, VOUCHER);
-		auctioneer.setTreasury(treasury);
-
-		// Distribute GO
-		GO.safeTransfer(address(auctioneer), (GO.totalSupply() * 6000) / 10000);
-		GO.safeTransfer(presale, (GO.totalSupply() * 2000) / 10000);
-		GO.safeTransfer(treasury, (GO.totalSupply() * 1000) / 10000);
-		GO.safeTransfer(liquidity, (GO.totalSupply() * 500) / 10000);
-		uint256 farmGO = (GO.totalSupply() * 500) / 10000;
-		GO.safeTransfer(address(farm), farmGO);
-
-		// Initialize after receiving GO token
-		auctioneer.initialize(_getNextDay2PMTimestamp());
-
-		// Give WETH to treasury
-		vm.deal(treasury, 10e18);
-
-		// Treasury deposit for WETH
-		vm.prank(treasury);
-		WETH.deposit{ value: 5e18 }();
-
-		// Approve WETH for auctioneer
-		vm.prank(treasury);
-		IERC20(address(WETH)).approve(address(auctioneer), type(uint256).max);
-
-		// Give usd to users
-		USD.mint(user1, 1000e18);
-		USD.mint(user2, 1000e18);
-		USD.mint(user3, 1000e18);
-		USD.mint(user4, 1000e18);
-
-		// Users approve auctioneer
-		vm.prank(user1);
-		USD.approve(address(auctioneer), 1000e18);
-		vm.prank(user2);
-		USD.approve(address(auctioneer), 1000e18);
-		vm.prank(user3);
-		USD.approve(address(auctioneer), 1000e18);
-		vm.prank(user4);
-		USD.approve(address(auctioneer), 1000e18);
-
-		// Create auction
-		AuctionParams[] memory params = new AuctionParams[](1);
-		params[0] = _getBaseSingleAuctionParams();
-		auctioneer.createDailyAuctions(params);
+		_distributeGO();
+		_initializeAuctioneer();
+		_setupAuctioneerTreasury();
+		_giveUsersTokensAndApprove();
+		_auctioneerSetFarm();
+		_initializeFarmEmissions();
+		_createDefaultDay1Auction();
 
 		// For GAS test deposit funds into contract
 		vm.prank(user2);
 		auctioneer.addFunds(10e18);
-
-		// Initialize farm emissions
-		auctioneer.setFarm(address(farm));
-		farm.initializeEmissions(farmGO, 180 days);
 	}
 
 	function test_bid_RevertWhen_InvalidAuctionLot() public {
@@ -265,11 +223,6 @@ contract AuctioneerBidTest is AuctioneerHelper {
 	}
 
 	// PRIVATE AUCTION
-
-	function _giveGO(address user, uint256 amount) public {
-		vm.prank(presale);
-		GO.transfer(user, amount);
-	}
 	function _farmDeposit(address user, uint256 amount) public {
 		_giveGO(user, amount);
 		vm.prank(user);
@@ -310,6 +263,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 
 		// user 2 10 GO staked
 		_farmDeposit(user2, 10e18);
+		_burnAllGO(user2);
 		uint256 user2Staked = farm.getEqualizedUserStaked(user2);
 		assertLt(user2Staked, auctioneer.privateAuctionRequirement(), "User 2 does not satisfy private auction req");
 		assertEq(auctioneer.getUserPrivateAuctionsPermitted(user2), false, "User 2 not permitted");
@@ -341,6 +295,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		// USER 4
 
 		// user 4 10 GO held
+		_burnAllGO(user4);
 		_giveGO(user4, 10e18);
 		uint256 user4Held = GO.balanceOf(user4);
 		assertLt(user4Held, auctioneer.privateAuctionRequirement(), "User 4 does not satisfy private auction req");

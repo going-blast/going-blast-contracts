@@ -27,3 +27,5 @@ out/
 out.json
 coverage/
 broadcast/
+.gas-*
+lcov.info

@@ -23,9 +23,8 @@ contract BasicERC721 is ERC721, ERC721Enumerable, ERC721Pausable, Ownable, ERC72
 		string memory name,
 		string memory symbol,
 		string memory tokenBaseURI,
-		string memory contractURI_,
-		address initialOwner
-	) ERC721(name, symbol) Ownable(initialOwner) {
+		string memory contractURI_
+	) ERC721(name, symbol) Ownable(msg.sender) {
 		_tokenBaseURI = tokenBaseURI;
 		_contractURI = contractURI_;
 	}

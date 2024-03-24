@@ -14,26 +14,14 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 	function setUp() public override {
 		super.setUp();
 
-		farm = new AuctioneerFarm(USD, GO, VOUCHER);
-		auctioneer.setTreasury(treasury);
+		_distributeGO();
+		_setupAuctioneerTreasury();
 
-		// Distribute GO
-		GO.safeTransfer(address(auctioneer), (GO.totalSupply() * 6000) / 10000);
-		GO.safeTransfer(presale, (GO.totalSupply() * 2000) / 10000);
-		GO.safeTransfer(treasury, (GO.totalSupply() * 1000) / 10000);
-		GO.safeTransfer(liquidity, (GO.totalSupply() * 500) / 10000);
-		GO.safeTransfer(address(farm), (GO.totalSupply() * 500) / 10000);
-
-		// Give WETH to treasury
-		vm.deal(treasury, 10e18);
-
-		// Treasury deposit for WETH
-		vm.prank(treasury);
-		WETH.deposit{ value: 5e18 }();
-
-		// Approve WETH for auctioneer
-		vm.prank(treasury);
-		IERC20(address(WETH)).approve(address(auctioneer), type(uint256).max);
+		// _initializeAuctioneer();
+		// _giveUsersTokensAndApprove();
+		// _auctioneerSetFarm();
+		// _initializeFarmEmissions();
+		// _createDefaultDay1Auction();
 	}
 
 	// INITIALIZE

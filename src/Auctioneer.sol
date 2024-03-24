@@ -12,13 +12,14 @@ import { IWETH } from "./WETH9.sol";
 import { IAuctioneerFarm } from "./IAuctioneerFarm.sol";
 import "./IAuctioneer.sol";
 import { BlastYield } from "./BlastYield.sol";
-import { DecUtils, AuctionUtils, AuctionParamsUtils } from "./AuctionUtils.sol";
+import { GBMath, AuctionViewUtils, AuctionMutateUtils, AuctionParamsUtils } from "./AuctionUtils.sol";
 
 contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiver, BlastYield {
-	using DecUtils for uint256;
+	using GBMath for uint256;
 	using SafeERC20 for IERC20;
 	using EnumerableSet for EnumerableSet.UintSet;
-	using AuctionUtils for Auction;
+	using AuctionViewUtils for Auction;
+	using AuctionMutateUtils for Auction;
 	using AuctionParamsUtils for AuctionParams;
 
 	// ADMIN
@@ -148,10 +149,9 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 
 	function updateStartingBid(uint256 _startingBid) public onlyOwner {
 		// Must be between 0.5 and 2 usd
-		if (
-			_startingBid < uint256(0.5e18).transformDec(18, usdDecimals) ||
-			_startingBid > uint256(2e18).transformDec(18, usdDecimals)
-		) revert Invalid();
+		if (_startingBid < uint256(0.5e18).transformDec(18, usdDecimals)) revert Invalid();
+		if (_startingBid > uint256(2e18).transformDec(18, usdDecimals)) revert Invalid();
+
 		startingBid = _startingBid;
 		emit UpdatedStartingBid(_startingBid);
 	}
@@ -159,21 +159,23 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 	// Will not update the bid cost of any already created auctions
 	function updateBidCost(uint256 _bidCost) public onlyOwner {
 		// Must be between 0.5 and 2 usd
-		if (
-			_bidCost < uint256(0.5e18).transformDec(18, usdDecimals) || _bidCost > uint256(2e18).transformDec(18, usdDecimals)
-		) revert Invalid();
+		if (_bidCost < uint256(0.5e18).transformDec(18, usdDecimals)) revert Invalid();
+		if (_bidCost > uint256(2e18).transformDec(18, usdDecimals)) revert Invalid();
+
 		bidCost = _bidCost;
 		emit UpdatedBidCost(_bidCost);
 	}
 
 	function updateEarlyHarvestTax(uint256 _earlyHarvestTax) public onlyOwner {
 		if (_earlyHarvestTax > 8000) revert Invalid();
+
 		earlyHarvestTax = _earlyHarvestTax;
 		emit UpdatedEarlyHarvestTax(_earlyHarvestTax);
 	}
 
 	function updateEmissionTaxDuration(uint256 _emissionTaxDuration) public onlyOwner {
 		if (_emissionTaxDuration > 60 days) revert Invalid();
+
 		emissionTaxDuration = _emissionTaxDuration;
 		emit UpdatedEmissionTaxDuration(_emissionTaxDuration);
 	}
@@ -260,7 +262,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		if (epochData.dailyEmission == 0) return 0;
 
 		// Modulate with auction _bp (percent of daily emission)
-		epochData.dailyEmission = (epochData.dailyEmission * _bp) / 10000;
+		epochData.dailyEmission = epochData.dailyEmission.scaleByBP(_bp);
 
 		// Check to prevent stealing emissions from next epoch
 		//  (would only happen if it's the last day of the epoch and _bp > 10000)
@@ -297,15 +299,6 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		}
 	}
 
-	function _validateAuctionParams(AuctionParams memory _params) internal view {
-		_params.validateUnlock();
-		_params.validateTokens();
-		_params.validateNFTs();
-		_params.validateAnyReward();
-		_params.validateBidWindows();
-		_params.validateRunes();
-	}
-
 	function _validateAuctionDay(AuctionParams memory _params, uint256 _paramIndex) internal view {
 		uint256 day = _getDayOfTimestamp(_params.unlockTimestamp);
 
@@ -322,7 +315,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 	}
 
 	function _createSingleAuction(AuctionParams memory _params, uint256 _paramIndex) internal {
-		_validateAuctionParams(_params);
+		_params.validate();
 		_validateAuctionDay(_params, _paramIndex);
 
 		// Update daily attributes
@@ -491,30 +484,17 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 		_finalizeAuction(auction);
 	}
 
-	function _validateUserIsWinner(Auction storage auction) internal view returns (bool) {
-		if (auction.hasRunes()) {
-			return auctionUsers[auction.lot][msg.sender].rune == auction.bidData.bidRune;
-		}
-		return msg.sender == auction.bidData.bidUser;
-	}
-
-	function _getUserShareOfLot(Auction storage auction, AuctionUser storage user) internal view returns (uint256) {
-		if (auction.hasRunes()) {
-			return (user.bids * 1e18) / auction.runes[user.rune].bids;
-		}
-		return 1e18;
-	}
-
 	function _claimLotWinnings(Auction storage auction, ClaimLotOptions memory _options) internal {
-		// User is not winner
-		if (!_validateUserIsWinner(auction)) revert NotWinner();
-
 		AuctionUser storage user = auctionUsers[auction.lot][msg.sender];
+
+		// Ensure user is winner
+		if (auction.hasRunes() ? auction.bidData.bidRune != user.rune : auction.bidData.bidUser != msg.sender)
+			revert NotWinner();
 
 		// Winner has already paid for and claimed the lot (or their share of it)
 		if (user.lotClaimed) revert UserAlreadyClaimedLot();
 
-		uint256 userShareOfLot = _getUserShareOfLot(auction, user);
+		uint256 userShareOfLot = auction.hasRunes() ? (user.bids * 1e18) / auction.runes[user.rune].bids : 1e18;
 		uint256 userShareOfPayment = (auction.bidData.bid * userShareOfLot) / 1e18;
 
 		// Transfer lot to last bidder (this comes first so it shows up first in explorer)
@@ -598,7 +578,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, IERC721Receiv
 
 		// Calculate emission amounts
 		uint256 emissions = (auction.emissions.biddersEmission * user.bids) / auction.bidData.bids;
-		user.harvestedEmissions = (emissions * (incursTax ? (10000 - earlyHarvestTax) : 10000)) / 10000;
+		user.harvestedEmissions = emissions.scaleByBP(incursTax ? (10000 - earlyHarvestTax) : 10000);
 		user.burnedEmissions = emissions - user.harvestedEmissions;
 
 		// Transfer emissions

@@ -4,7 +4,7 @@ Contracts / tests / deployments
 
 ```
 
-Tests to run (remaining)
+Tests:
 
 [x] Auctioneer - NFTs
   [x] NFTs are pulled from wallet into contract
@@ -50,9 +50,13 @@ Tests to run (remaining)
   [x] Insufficient balance
   [x] Multibid
   [x] Insufficient allowance
-  [ ] Add revenue field to auction bid data, only increment by bidCost when bidding not using voucher
+  [x] Add revenue field to auction bid data, only increment by bidCost when bidding not using voucher
 
-[ ] Auctioneer - 6 decimal USD (to do later)
+[x] Auctioneer - USD decimals
+  [x] Distributed revenue correct independent of USD decimals
+  [x] updateBidCost always expects e18, transforms to eUSDDecimals
+  [x] updateStartingBid always expects e18, transforms to eUSDDecimals
+  [x] transformDec working
 
 [x] Auctioneer - Runes
   [x] Create

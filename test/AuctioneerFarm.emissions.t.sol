@@ -10,73 +10,17 @@ import "../src/IAuctioneerFarm.sol";
 contract AuctioneerFarmEmissionsTest is AuctioneerHelper, AuctioneerFarmEvents {
 	using SafeERC20 for IERC20;
 
-	uint256 public farmGO;
-
 	function setUp() public override {
 		super.setUp();
 
-		auctioneer.setTreasury(treasury);
-
-		// Distribute GO
-		GO.safeTransfer(address(auctioneer), (GO.totalSupply() * 6000) / 10000);
-		GO.safeTransfer(presale, (GO.totalSupply() * 2000) / 10000);
-		GO.safeTransfer(treasury, (GO.totalSupply() * 1000) / 10000);
-		GO.safeTransfer(liquidity, (GO.totalSupply() * 500) / 10000);
-		farmGO = (GO.totalSupply() * 500) / 10000;
-		GO.safeTransfer(address(farm), farmGO);
-
-		// Initialize after receiving GO token
-		auctioneer.initialize(_getNextDay2PMTimestamp());
-
-		// Give WETH to treasury
-		vm.deal(treasury, 10e18);
-
-		// Treasury deposit for WETH
-		vm.prank(treasury);
-		WETH.deposit{ value: 5e18 }();
-
-		// Approve WETH for auctioneer
-		vm.prank(treasury);
-		IERC20(address(WETH)).approve(address(auctioneer), type(uint256).max);
-
-		for (uint8 i = 0; i < 4; i++) {
-			address user = i == 0
-				? user1
-				: i == 1
-					? user2
-					: i == 2
-						? user3
-						: user4;
-
-			// Give tokens
-			vm.prank(presale);
-			GO.transfer(user, 50e18);
-			USD.mint(user, 1000e18);
-			GO_LP.mint(user, 50e18);
-			XXToken.mint(user, 50e18);
-			YYToken.mint(user, 50e18);
-
-			// Approve
-			vm.startPrank(user);
-			USD.approve(address(auctioneer), 1000e18);
-			GO.approve(address(farm), 1000e18);
-			GO_LP.approve(address(farm), 1000e18);
-			XXToken.approve(address(farm), 1000e18);
-			YYToken.approve(address(farm), 1000e18);
-			vm.stopPrank();
-		}
-
-		// Create auction
-		AuctionParams[] memory params = new AuctionParams[](1);
-		params[0] = _getBaseSingleAuctionParams();
-		auctioneer.createDailyAuctions(params);
-
-		// Initialize farm emissions
-		farm.initializeEmissions(farmGO, 180 days);
-
-		// Initialize farm voucher emission
-		VOUCHER.mint(address(farm), 100e18 * 180 days);
-		farm.setVoucherEmissions(100e18 * 180 days, 180 days);
+		_distributeGO();
+		_initializeAuctioneer();
+		_setupAuctioneerTreasury();
+		_giveUsersTokensAndApprove();
+		_auctioneerSetFarm();
+		_initializeFarmEmissions();
+		_initializeFarmVoucherEmissions();
+		_createDefaultDay1Auction();
 	}
 
 	function _farmDeposit(address user, uint256 pid, uint256 amount) public {

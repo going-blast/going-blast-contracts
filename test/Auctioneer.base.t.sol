@@ -5,18 +5,22 @@ import "forge-std/Test.sol";
 import "../src/IAuctioneer.sol";
 import { GoToken } from "../src/GoToken.sol";
 import { VoucherToken } from "../src/VoucherToken.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { AuctioneerFarm } from "../src/AuctioneerFarm.sol";
 import { BasicERC20, BasicERC20WithDecimals } from "../src/BasicERC20.sol";
 import { BasicERC721 } from "../src/BasicERC721.sol";
 import { IWETH, WETH9 } from "../src/WETH9.sol";
 import { AuctioneerHarness } from "./AuctioneerHarness.sol";
+import { GBMath } from "../src/AuctionUtils.sol";
 
 abstract contract AuctioneerHelper is AuctioneerEvents, Test {
+	using GBMath for uint256;
+	using SafeERC20 for IERC20;
+
 	// DATA
 
 	address public deployer = 0xb4c79daB8f259C7Aee6E5b2Aa729821864227e84;
-	address public sender = 0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496;
+	address public sender = 0x90193C961A926261B756D1E5bb255e67ff9498A1;
 	address public dead = 0x000000000000000000000000000000000000dEaD;
 
 	address public presale = address(30);
@@ -30,6 +34,7 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	address public user2 = address(101);
 	address public user3 = address(102);
 	address public user4 = address(103);
+	address[4] public users = [user1, user2, user3, user4];
 
 	AuctioneerHarness public auctioneer;
 	AuctioneerFarm public farm;
@@ -103,9 +108,118 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		);
 		farm = new AuctioneerFarm(USD, GO, VOUCHER);
 
+		_createAndMintNFTs();
+	}
+
+	// SETUP UTILS
+
+	function _setupAuctioneerTreasury() public {
+		auctioneer.setTreasury(treasury);
+		_giveETH(treasury, 5e18);
+		_giveWETH(treasury, 5e18);
+		_approveWeth(treasury, address(auctioneer), UINT256_MAX);
+		_treasuryApproveNFTs();
+	}
+
+	function _distributeGO() public {
+		GO.safeTransfer(address(auctioneer), GO.totalSupply().scaleByBP(6000));
+		GO.safeTransfer(presale, GO.totalSupply().scaleByBP(2000));
+		GO.safeTransfer(treasury, GO.totalSupply().scaleByBP(1000));
+		GO.safeTransfer(liquidity, GO.totalSupply().scaleByBP(500));
+		GO.safeTransfer(address(farm), GO.totalSupply().scaleByBP(500));
+	}
+
+	function _initializeAuctioneer() public {
+		auctioneer.initialize(_getNextDay2PMTimestamp());
+	}
+
+	function _auctioneerSetFarm() public {
+		auctioneer.setFarm(address(farm));
+	}
+
+	function _initializeFarmEmissions() public {
+		uint256 farmGO = GO.balanceOf(address(farm));
+		farm.initializeEmissions(farmGO, 180 days);
+	}
+	function _initializeFarmEmissions(uint256 farmGO) public {
+		farm.initializeEmissions(farmGO, 180 days);
+	}
+
+	function _initializeFarmVoucherEmissions() public {
+		VOUCHER.mint(address(farm), 100e18 * 180 days);
+		farm.setVoucherEmissions(100e18 * 180 days, 180 days);
+	}
+
+	function _giveUsersTokensAndApprove() public {
+		for (uint8 i = 0; i < 4; i++) {
+			// Give tokens
+			vm.prank(presale);
+			GO.transfer(users[i], 50e18);
+			USD.mint(users[i], 10000e18);
+			GO_LP.mint(users[i], 50e18);
+			XXToken.mint(users[i], 50e18);
+			YYToken.mint(users[i], 50e18);
+
+			// Approve
+			vm.startPrank(users[i]);
+			USD.approve(address(auctioneer), 10000e18);
+			GO.approve(address(farm), 10000e18);
+			GO_LP.approve(address(farm), 10000e18);
+			XXToken.approve(address(farm), 10000e18);
+			YYToken.approve(address(farm), 10000e18);
+			vm.stopPrank();
+		}
+	}
+
+	function _createDefaultDay1Auction() public {
+		AuctionParams[] memory params = new AuctionParams[](1);
+		params[0] = _getBaseSingleAuctionParams();
+		auctioneer.createDailyAuctions(params);
+	}
+
+	// TOKEN UTILS
+
+	function _giveETH(address user, uint256 amount) public {
+		vm.deal(user, amount);
+	}
+	function _giveWETH(address user, uint256 amount) public {
+		_giveETH(user, amount);
+		vm.prank(user);
+		WETH.deposit{ value: amount }();
+	}
+
+	function _approveWeth(address user, address recipient, uint256 amount) public {
+		vm.prank(user);
+		IERC20(address(WETH)).approve(recipient, amount);
+	}
+
+	function _giveVoucher(address user, uint256 amount) public {
+		VOUCHER.mint(user, amount);
+	}
+	function _approveVoucher(address user, address receiver, uint256 amount) public {
+		vm.prank(user);
+		VOUCHER.approve(receiver, amount);
+	}
+
+	function _giveGO(address user, uint256 amount) public {
+		vm.prank(presale);
+		GO.transfer(user, amount);
+	}
+
+	function _burnGO(address user, uint256 amount) public {
+		vm.prank(user);
+		GO.safeTransfer(dead, amount);
+	}
+	function _burnAllGO(address user) public {
+		_burnGO(user, GO.balanceOf(user));
+	}
+
+	// NFT utils
+
+	function _createAndMintNFTs() public {
 		// Create NFTs
-		mockNFT1 = new BasicERC721("MOCK_NFT_1", "MOCK_NFT_1", "https://tokenBaseURI", "https://contractURI", sender);
-		mockNFT2 = new BasicERC721("MOCK_NFT_2", "MOCK_NFT_2", "https://tokenBaseURI", "https://contractURI", sender);
+		mockNFT1 = new BasicERC721("MOCK_NFT_1", "MOCK_NFT_1", "https://tokenBaseURI", "https://contractURI");
+		mockNFT2 = new BasicERC721("MOCK_NFT_2", "MOCK_NFT_2", "https://tokenBaseURI", "https://contractURI");
 
 		// Mint nft1
 		mockNFT1.safeMint(treasury);
@@ -118,13 +232,9 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		mockNFT2.safeMint(treasury);
 		mockNFT2.safeMint(treasury);
 		mockNFT2.safeMint(treasury);
+	}
 
-		// Mint GO_LP
-		GO_LP.mint(user1, 20e18);
-		GO_LP.mint(user2, 20e18);
-		GO_LP.mint(user3, 20e18);
-		GO_LP.mint(user4, 20e18);
-
+	function _treasuryApproveNFTs() public {
 		// Approve nft1
 		vm.prank(treasury);
 		mockNFT1.approve(address(auctioneer), 1);
@@ -144,16 +254,6 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		mockNFT2.approve(address(auctioneer), 3);
 		vm.prank(treasury);
 		mockNFT2.approve(address(auctioneer), 4);
-	}
-
-	// TOKEN UTILS
-
-	function _giveVoucher(address user, uint256 amount) public {
-		VOUCHER.mint(user, amount);
-	}
-	function _approveVoucher(address user, address receiver, uint256 amount) public {
-		vm.prank(user);
-		VOUCHER.approve(receiver, amount);
 	}
 
 	// UTILS
@@ -214,6 +314,15 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		for (uint8 i = 0; i < numberOfRunes; i++) {
 			params.runeSymbols[i] = i + 1;
 		}
+	}
+
+	function _giveTreasuryXXandYYandApprove() public {
+		XXToken.mint(treasury, 1000e18);
+		YYToken.mint(treasury, 1000e18);
+		vm.startPrank(treasury);
+		XXToken.approve(address(auctioneer), 1000e18);
+		YYToken.approve(address(auctioneer), 1000e18);
+		vm.stopPrank();
 	}
 
 	function _getMultiTokenSingleAuctionParams() public view returns (AuctionParams memory params) {
@@ -279,6 +388,15 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 
 	// BIDS
 
+	function _createDefaultBidOptions() public pure returns (BidOptions memory options) {
+		options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "Hello World", rune: 0 });
+	}
+
+	function _createBidOptions_PaymentType(BidPaymentType paymentType) public pure returns (BidOptions memory options) {
+		options = _createDefaultBidOptions();
+		options.paymentType = paymentType;
+	}
+
 	function _bidShouldRevert(address user) public {
 		vm.expectRevert(BiddingClosed.selector);
 		_bid(user);
@@ -343,5 +461,11 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	// Farm helpers
 	function _farm_goPerSecond(uint256 pid) public view returns (uint256) {
 		return (farm.getEmission(address(GO)).perSecond * farm.getPool(pid).allocPoint) / farm.totalAllocPoint();
+	}
+
+	// Alias helpers
+	function _setUserAlias(address user, string memory userAlias) public {
+		vm.prank(user);
+		auctioneer.setAlias(userAlias);
 	}
 }

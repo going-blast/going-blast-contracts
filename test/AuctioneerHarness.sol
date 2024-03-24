@@ -4,11 +4,12 @@ pragma solidity >=0.8.4;
 import { Auctioneer } from "../src/Auctioneer.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IWETH } from "../src/WETH9.sol";
-import { AuctionUtils } from "../src/AuctionUtils.sol";
+import { AuctionViewUtils, AuctionMutateUtils } from "../src/AuctionUtils.sol";
 import "../src/IAuctioneer.sol";
 
 contract AuctioneerHarness is Auctioneer {
-	using AuctionUtils for Auction;
+	using AuctionViewUtils for Auction;
+	using AuctionMutateUtils for Auction;
 
 	constructor(
 		IERC20 _usd,

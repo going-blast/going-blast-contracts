@@ -128,6 +128,8 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 	}
 
 	function _updateEmissions(PoolInfo storage pool) internal {
+		// Todo maybe something to look at here?
+		// Todo maybe add a test on that something?
 		if (block.timestamp > pool.lastRewardTimestamp) {
 			// GO
 			if (pool.supply > 0 && totalAllocPoint > 0 && block.timestamp <= goEmission.endTimestamp) {
