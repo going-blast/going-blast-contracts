@@ -15,6 +15,8 @@ contract ChainJsonUtils is Script {
 
 	error ChainNameNotSet();
 	error MissingPath();
+	error MissingContractName();
+	error DeployedContractWhileFrozen();
 
 	modifier loadChain() {
 		chainName = vm.envString("CHAIN_NAME");
@@ -24,6 +26,18 @@ contract ChainJsonUtils is Script {
 		auctionsPath = string.concat(root, "/data/", chainName, "/auctions.json");
 		auctionsJson = vm.readFile(auctionsPath);
 		_;
+	}
+
+	// Paths
+
+	function contractPath(string memory item) internal pure returns (string memory) {
+		return string.concat(".contracts.", item);
+	}
+	function configPath(string memory item) internal pure returns (string memory) {
+		return string.concat(".config.", item);
+	}
+	function auctioneerConfigPath(string memory item) internal pure returns (string memory) {
+		return string.concat(".auctioneerConfig.", item);
 	}
 
 	// Primitives
@@ -56,14 +70,17 @@ contract ChainJsonUtils is Script {
 		vm.writeJson(vm.toString(value), deploymentPath, path);
 	}
 
-	function contractPath(string memory item) internal pure returns (string memory) {
-		return string.concat(".contracts.", item);
+	// Contract freezing
+	function readContractsFrozen() internal returns (bool) {
+		return readBool(configPath(".contractsFrozen"));
 	}
-	function configPath(string memory item) internal pure returns (string memory) {
-		return string.concat(".config.", item);
+	function writeContractAddress(string memory contractName, address contractAddress) internal {
+		if (bytes(contractName).length == 0) revert MissingPath();
+		if (readContractsFrozen()) revert DeployedContractWhileFrozen();
+		writeAddress(contractPath(contractName), contractAddress);
 	}
-	function auctioneerConfigPath(string memory item) internal pure returns (string memory) {
-		return string.concat(".auctioneerConfig.", item);
+	function writeFreezeContracts() internal {
+		writeBool(configPath(".contractsFrozen"), true);
 	}
 
 	// Auctions

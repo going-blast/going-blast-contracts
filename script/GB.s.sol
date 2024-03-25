@@ -29,6 +29,7 @@ contract GBScripts is GBScriptUtils {
 		_deployCore();
 		_updateTreasury();
 		_initializeAuctioneerEmissions();
+		_freezeContracts();
 	}
 
 	function deployCore() public broadcast loadChain loadConfigValues {
@@ -45,34 +46,39 @@ contract GBScripts is GBScriptUtils {
 
 	function _deployCore() internal {
 		if (isAnvil) {
+			// Anvil resets contracts frozen
+			writeBool(configPath(".contractsFrozen"), true);
+
 			USD = IERC20(address(new BasicERC20("USD", "USD")));
-			writeAddress(contractPath("USD"), address(USD));
+			writeContractAddress("USD", address(USD));
 			WETH = IWETH(address(new WETH9()));
-			writeAddress(contractPath("WETH"), address(WETH));
+			writeContractAddress("WETH", address(WETH));
 		} else {
 			USD = IERC20(readAddress(contractPath("USD")));
 			WETH = IWETH(readAddress(contractPath("WETH")));
 		}
 
+		// TODO: check if deployed bytecode matches potentially deploying bytecode?
+
 		GO = new GoToken();
-		writeAddress(contractPath("GO"), address(GO));
+		writeContractAddress("GO", address(GO));
 
 		VOUCHER = new VoucherToken();
-		writeAddress(contractPath("VOUCHER"), address(VOUCHER));
+		writeContractAddress("VOUCHER", address(VOUCHER));
 
 		auctioneer = new Auctioneer(GO, VOUCHER, USD, WETH, bidCost, bidIncrement, startingBid, privateAuctionRequirement);
-		writeAddress(contractPath("auctioneer"), address(auctioneer));
+		writeContractAddress("auctioneer", address(auctioneer));
 
 		auctioneerUser = new AuctioneerUser(USD);
-		writeAddress(contractPath("auctioneerUser"), address(auctioneerUser));
+		writeContractAddress("auctioneerUser", address(auctioneerUser));
 
 		auctioneerEmissions = new AuctioneerEmissions(GO);
-		writeAddress(contractPath("auctioneerEmissions"), address(auctioneerEmissions));
+		writeContractAddress("auctioneerEmissions", address(auctioneerEmissions));
 
 		auctioneer.link(address(auctioneerUser), address(auctioneerEmissions));
 
 		auctioneerFarm = new AuctioneerFarm(USD, GO, VOUCHER);
-		writeAddress(contractPath("auctioneerFarm"), address(auctioneerFarm));
+		writeContractAddress("auctioneerFarm", address(auctioneerFarm));
 
 		auctioneer.updateFarm(address(auctioneerFarm));
 
@@ -98,6 +104,11 @@ contract GBScripts is GBScriptUtils {
 
 		uint256 unlockTimestamp = block.timestamp; // TODO: Maybe consider changing this, not really that important though
 		auctioneerEmissions.initializeEmissions(unlockTimestamp);
+	}
+
+	function _freezeContracts() internal {
+		// This must be manually undone, will prevent contracts being overwritten
+		writeFreezeContracts();
 	}
 
 	function treasuryApproveAuctioneer() public broadcastTreasury loadChain loadContracts {
