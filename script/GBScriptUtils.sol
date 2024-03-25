@@ -48,9 +48,17 @@ contract GBScriptUtils is Script, ChainJsonUtils {
 		_;
 		vm.stopBroadcast();
 	}
+	modifier broadcastTreasury() {
+		string memory mnemonic = vm.envString("MNEMONIC");
+		(address _treasury, ) = deriveRememberKey(mnemonic, 1);
+		vm.startBroadcast(_treasury);
+		_;
+		vm.stopBroadcast();
+	}
 
 	modifier loadContracts() {
 		if (bytes(chainName).length == 0) revert ChainNameNotSet();
+
 		auctioneer = Auctioneer(payable(readAddress(contractPath("auctioneer"))));
 		auctioneerUser = AuctioneerUser(readAddress(contractPath("auctioneerUser")));
 		auctioneerEmissions = AuctioneerEmissions(readAddress(contractPath("auctioneerEmissions")));

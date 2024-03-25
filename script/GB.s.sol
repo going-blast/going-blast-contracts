@@ -15,11 +15,13 @@ import { AuctioneerFarm } from "../src/AuctioneerFarm.sol";
 import { GoToken } from "../src/GoToken.sol";
 import { VoucherToken } from "../src/VoucherToken.sol";
 import { IERC20Rebasing } from "../src/BlastYield.sol";
-import { GBMath } from "../src/AuctionUtils.sol";
+import { GBMath, AuctionParamsUtils } from "../src/AuctionUtils.sol";
+import { AuctionParams } from "../src/IAuctioneer.sol";
 
 contract GBScripts is GBScriptUtils {
 	using SafeERC20 for IERC20;
 	using GBMath for uint256;
+	using AuctionParamsUtils for AuctionParams;
 	error AlreadyInitialized();
 	error NotBlastChain();
 
@@ -98,7 +100,44 @@ contract GBScripts is GBScriptUtils {
 		auctioneerEmissions.initializeEmissions(unlockTimestamp);
 	}
 
-	function createDailyAuctions(uint256 day) public broadcast loadChain loadContracts {
+	function treasuryApproveAuctioneer() public broadcastTreasury loadChain loadContracts {
+		WETH.approve(address(auctioneer), UINT256_MAX);
+	}
+	function ANVIL_treasuryWrapETH() public broadcastTreasury loadChain loadContracts {
+		WETH.deposit{ value: 5e18 }();
+	}
+
+	function createAuctions() public broadcast loadChain loadContracts loadConfigValues {
+		uint256 lotCount = auctioneer.lotCount();
+		uint256 jsonAuctionCount = readAuctionCount();
+
+		console.log("Auction readiness checks:");
+		console.log("    AuctioneerEmissions initialized", auctioneerEmissions.emissionsInitialized());
+		console.log("    Auctioneer treasury:", auctioneer.treasury(), treasury);
+		console.log("    WETH address", address(WETH));
+		console.log("    Treasury ETH balance:", treasury.balance);
+		console.log("    Treasury WETH balance:", WETH.balanceOf(treasury));
+		console.log("    Treasury WETH allowance:", WETH.allowance(treasury, address(auctioneer)));
+
+		AuctionParams[] memory params = new AuctionParams[](1);
+		console.log("Number of auctions to add: %s", jsonAuctionCount - lotCount);
+
+		for (uint256 i = lotCount; i < jsonAuctionCount; i++) {
+			params[0] = readAuction(i);
+			console.log("    Deploying auction: LOT # %s", params[0].name);
+			console.log("    Lot checks");
+			console.log("        Unlock in future", block.timestamp < params[0].unlockTimestamp);
+			console.log(
+				"        WETH less than treasury allowance",
+				params[0].tokens[0].amount < WETH.allowance(treasury, address(auctioneer))
+			);
+			console.log("        WETH less than treasury balance", params[0].tokens[0].amount < WETH.balanceOf(treasury));
+
+			params[0].validate();
+
+			auctioneer.createAuctions(params);
+		}
+
 		// TODO: read daily auctions from JSON, create them
 		// TODO: mark the daily auctions as created in the JSON file
 	}

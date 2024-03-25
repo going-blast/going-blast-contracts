@@ -35,32 +35,36 @@ struct ClaimLotOptions {
 	bool unwrapETH;
 }
 
+// Alphabetical field ordering for json parsing
 struct BidWindowParams {
-	BidWindowType windowType;
 	uint256 duration;
 	uint256 timer;
+	BidWindowType windowType;
 }
 
+// Alphabetical field ordering for json parsing
 struct TokenData {
-	address token;
 	uint256 amount;
+	address token;
 }
 
+// Alphabetical field ordering for json parsing
 struct NftData {
-	address nft;
 	uint256 id;
+	address nft;
 }
 
+// Alphabetical field ordering for json parsing
 struct AuctionParams {
-	bool isPrivate;
 	uint256 emissionBP; // Emission of this auction of the day's emission (usually 100%)
+	bool isPrivate;
+	uint256 lotValue;
 	string name;
+	NftData[] nfts;
 	uint8[] runeSymbols;
 	TokenData[] tokens;
-	NftData[] nfts;
-	BidWindowParams[] windows;
 	uint256 unlockTimestamp;
-	uint256 lotValue;
+	BidWindowParams[] windows;
 }
 
 // Storage

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
+import { AuctionParams } from "../src/IAuctioneer.sol";
 
 contract ChainJsonUtils is Script {
 	using stdJson for string;
@@ -24,6 +25,8 @@ contract ChainJsonUtils is Script {
 		auctionsJson = vm.readFile(auctionsPath);
 		_;
 	}
+
+	// Primitives
 
 	function readAddress(string memory path) internal view returns (address) {
 		if (bytes(path).length == 0) revert MissingPath();
@@ -61,5 +64,16 @@ contract ChainJsonUtils is Script {
 	}
 	function auctioneerConfigPath(string memory item) internal pure returns (string memory) {
 		return string.concat(".auctioneerConfig.", item);
+	}
+
+	// Auctions
+
+	function readAuctionCount() internal view returns (uint256) {
+		return vm.parseJsonKeys(auctionsJson, "$").length;
+	}
+
+	function readAuction(uint256 lot) internal view returns (AuctionParams memory params) {
+		bytes memory paramsRaw = auctionsJson.parseRaw(string.concat(".", vm.toString(lot)));
+		return abi.decode(paramsRaw, (AuctionParams));
 	}
 }
