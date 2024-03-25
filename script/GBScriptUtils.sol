@@ -41,7 +41,7 @@ contract GBScriptUtils is Script, ChainJsonUtils {
 	address public treasury;
 	uint256 public treasurySplit = 2000;
 
-	modifier startBroadcast() {
+	modifier broadcast() {
 		string memory mnemonic = vm.envString("MNEMONIC");
 		(address deployer, ) = deriveRememberKey(mnemonic, 0);
 		vm.startBroadcast(deployer);

@@ -123,10 +123,10 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		);
 		auctioneerUser = new AuctioneerUser(USD);
 		auctioneerEmissions = new AuctioneerEmissions(GO);
+		farm = new AuctioneerFarm(USD, GO, VOUCHER);
 
 		// LINK
 		auctioneer.link(address(auctioneerUser), address(auctioneerEmissions));
-		farm = new AuctioneerFarm(USD, GO, VOUCHER);
 	}
 
 	function _setupAuctioneerTreasury() public {
