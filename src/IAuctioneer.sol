@@ -151,6 +151,22 @@ struct UserLotInfo {
 	bool isWinner;
 	bool lotClaimed;
 }
+struct AuctionExt {
+	uint256 lot;
+	uint256 blockTimestamp;
+	bool isBiddingOpen;
+	bool isEnded;
+	uint256 activeWindow;
+}
+
+struct AuctionMinimalData {
+	uint256 lot;
+	bool fastPolling;
+}
+struct DailyAuctionsMinimalData {
+	uint256 day;
+	AuctionMinimalData[] auctions;
+}
 
 error NotAuctioneer();
 error NotAuctioneerUser();

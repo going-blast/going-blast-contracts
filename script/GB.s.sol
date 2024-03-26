@@ -47,7 +47,7 @@ contract GBScripts is GBScriptUtils {
 	function _deployCore() internal {
 		if (isAnvil) {
 			// Anvil resets contracts frozen
-			writeBool(configPath(".contractsFrozen"), true);
+			writeBool(configPath("contractsFrozen"), false);
 
 			USD = IERC20(address(new BasicERC20("USD", "USD")));
 			writeContractAddress("USD", address(USD));
@@ -137,7 +137,12 @@ contract GBScripts is GBScriptUtils {
 			params[0] = readAuction(i);
 			console.log("    Deploying auction: LOT # %s", params[0].name);
 			console.log("    Lot checks");
-			console.log("        Unlock in future", block.timestamp < params[0].unlockTimestamp);
+			console.log(
+				"        Unlock in future %s, block %s auction %s",
+				block.timestamp < params[0].unlockTimestamp,
+				block.timestamp,
+				params[0].unlockTimestamp
+			);
 			console.log(
 				"        WETH less than treasury allowance",
 				params[0].tokens[0].amount < WETH.allowance(treasury, address(auctioneer))

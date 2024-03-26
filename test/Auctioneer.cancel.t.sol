@@ -126,17 +126,17 @@ contract AuctioneerCancelTest is AuctioneerHelper {
 		params[0] = _getBaseSingleAuctionParams();
 
 		uint256 day = params[0].unlockTimestamp / 1 days;
-		uint256 auctionsOnDayInit = auctioneer.auctionsPerDay(day);
+		uint256 auctionsOnDayInit = auctioneer.getAuctionsPerDay(day);
 		assertEq(auctionsOnDayInit, 0, "Should start with 0 auctions");
 
 		auctioneer.createAuctions(params);
 
-		uint256 auctionsOnDayMid = auctioneer.auctionsPerDay(day);
+		uint256 auctionsOnDayMid = auctioneer.getAuctionsPerDay(day);
 		assertEq(auctionsOnDayMid, 1, "Should add 1 auction to day");
 
 		auctioneer.cancelAuction(0, true);
 
-		uint256 auctionsOnDayFinal = auctioneer.auctionsPerDay(day);
+		uint256 auctionsOnDayFinal = auctioneer.getAuctionsPerDay(day);
 		assertEq(auctionsOnDayFinal, 0, "Should reduce back to 0 after cancel");
 	}
 

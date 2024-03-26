@@ -306,7 +306,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		uint256 lotCount = auctioneer.lotCount();
 
 		uint256 day = auction.unlockTimestamp / 1 days;
-		uint256 auctionsTodayInit = auctioneer.auctionsPerDay(day);
+		uint256 auctionsTodayInit = auctioneer.getAuctionsPerDay(day);
 		uint256 auctionsTodayEmissionsBP = auctioneer.dailyCumulativeEmissionBP(day);
 
 		uint256 treasuryWethBal = WETH.balanceOf(treasury);
@@ -319,7 +319,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 
 		assertEq(auctioneer.lotCount(), lotCount + 1, "Lot count matches");
 
-		assertEq(auctioneer.auctionsPerDay(day), auctionsTodayInit + 1, "Auctions per day matches");
+		assertEq(auctioneer.getAuctionsPerDay(day), auctionsTodayInit + 1, "Auctions per day matches");
 		assertEq(
 			auctioneer.dailyCumulativeEmissionBP(day),
 			auctionsTodayEmissionsBP + 10000,

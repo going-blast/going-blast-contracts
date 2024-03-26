@@ -156,7 +156,7 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 		uint256 auctionTotalEmission = auction.emissions.biddersEmission + auction.emissions.treasuryEmission;
 		uint256 epoch0EmissionsRemaining = auctioneerEmissions.epochEmissionsRemaining(0);
 
-		uint256 auctionsOnDay = auctioneer.auctionsPerDay(auction.day);
+		uint256 auctionsOnDay = auctioneer.getAuctionsPerDay(auction.day);
 		uint256 bpOnDay = auctioneer.dailyCumulativeEmissionBP(auction.day);
 
 		vm.expectEmit(true, true, true, true);
@@ -171,7 +171,7 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 			epoch0EmissionsRemaining + auctionTotalEmission,
 			"Emissions returned to epoch"
 		);
-		assertEq(auctioneer.auctionsPerDay(auction.day), auctionsOnDay - 1, "Auctions per day decremented");
+		assertEq(auctioneer.getAuctionsPerDay(auction.day), auctionsOnDay - 1, "Auctions per day decremented");
 		assertEq(
 			auctioneer.dailyCumulativeEmissionBP(auction.day),
 			bpOnDay - auction.emissions.bp,

@@ -227,14 +227,14 @@
             "internalType": "struct TokenData[]",
             "components": [
               {
-                "name": "token",
-                "type": "address",
-                "internalType": "address"
-              },
-              {
                 "name": "amount",
                 "type": "uint256",
                 "internalType": "uint256"
+              },
+              {
+                "name": "token",
+                "type": "address",
+                "internalType": "address"
               }
             ]
           },
@@ -244,14 +244,14 @@
             "internalType": "struct NftData[]",
             "components": [
               {
-                "name": "nft",
-                "type": "address",
-                "internalType": "address"
-              },
-              {
                 "name": "id",
                 "type": "uint256",
                 "internalType": "uint256"
+              },
+              {
+                "name": "nft",
+                "type": "address",
+                "internalType": "address"
               }
             ]
           }
@@ -313,25 +313,6 @@
         "name": "finalized",
         "type": "bool",
         "internalType": "bool"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "auctionsPerDay",
-    "inputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -488,12 +469,17 @@
         "internalType": "struct AuctionParams[]",
         "components": [
           {
+            "name": "emissionBP",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
             "name": "isPrivate",
             "type": "bool",
             "internalType": "bool"
           },
           {
-            "name": "emissionBP",
+            "name": "lotValue",
             "type": "uint256",
             "internalType": "uint256"
           },
@@ -501,6 +487,23 @@
             "name": "name",
             "type": "string",
             "internalType": "string"
+          },
+          {
+            "name": "nfts",
+            "type": "tuple[]",
+            "internalType": "struct NftData[]",
+            "components": [
+              {
+                "name": "id",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "nft",
+                "type": "address",
+                "internalType": "address"
+              }
+            ]
           },
           {
             "name": "runeSymbols",
@@ -513,53 +516,14 @@
             "internalType": "struct TokenData[]",
             "components": [
               {
-                "name": "token",
-                "type": "address",
-                "internalType": "address"
-              },
-              {
                 "name": "amount",
                 "type": "uint256",
                 "internalType": "uint256"
-              }
-            ]
-          },
-          {
-            "name": "nfts",
-            "type": "tuple[]",
-            "internalType": "struct NftData[]",
-            "components": [
+              },
               {
-                "name": "nft",
+                "name": "token",
                 "type": "address",
                 "internalType": "address"
-              },
-              {
-                "name": "id",
-                "type": "uint256",
-                "internalType": "uint256"
-              }
-            ]
-          },
-          {
-            "name": "windows",
-            "type": "tuple[]",
-            "internalType": "struct BidWindowParams[]",
-            "components": [
-              {
-                "name": "windowType",
-                "type": "uint8",
-                "internalType": "enum BidWindowType"
-              },
-              {
-                "name": "duration",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "timer",
-                "type": "uint256",
-                "internalType": "uint256"
               }
             ]
           },
@@ -569,9 +533,26 @@
             "internalType": "uint256"
           },
           {
-            "name": "lotValue",
-            "type": "uint256",
-            "internalType": "uint256"
+            "name": "windows",
+            "type": "tuple[]",
+            "internalType": "struct BidWindowParams[]",
+            "components": [
+              {
+                "name": "duration",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "timer",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "windowType",
+                "type": "uint8",
+                "internalType": "enum BidWindowType"
+              }
+            ]
           }
         ]
       }
@@ -765,14 +746,14 @@
                 "internalType": "struct TokenData[]",
                 "components": [
                   {
-                    "name": "token",
-                    "type": "address",
-                    "internalType": "address"
-                  },
-                  {
                     "name": "amount",
                     "type": "uint256",
                     "internalType": "uint256"
+                  },
+                  {
+                    "name": "token",
+                    "type": "address",
+                    "internalType": "address"
                   }
                 ]
               },
@@ -782,14 +763,14 @@
                 "internalType": "struct NftData[]",
                 "components": [
                   {
-                    "name": "nft",
-                    "type": "address",
-                    "internalType": "address"
-                  },
-                  {
                     "name": "id",
                     "type": "uint256",
                     "internalType": "uint256"
+                  },
+                  {
+                    "name": "nft",
+                    "type": "address",
+                    "internalType": "address"
                   }
                 ]
               }
@@ -851,6 +832,344 @@
             "name": "finalized",
             "type": "bool",
             "internalType": "bool"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getAuctionExt",
+    "inputs": [
+      {
+        "name": "_lot",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "auction",
+        "type": "tuple",
+        "internalType": "struct Auction",
+        "components": [
+          {
+            "name": "lot",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "day",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "name",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "isPrivate",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "unlockTimestamp",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "runes",
+            "type": "tuple[]",
+            "internalType": "struct BidRune[]",
+            "components": [
+              {
+                "name": "runeSymbol",
+                "type": "uint8",
+                "internalType": "uint8"
+              },
+              {
+                "name": "bids",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "users",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ]
+          },
+          {
+            "name": "windows",
+            "type": "tuple[]",
+            "internalType": "struct BidWindow[]",
+            "components": [
+              {
+                "name": "windowType",
+                "type": "uint8",
+                "internalType": "enum BidWindowType"
+              },
+              {
+                "name": "windowOpenTimestamp",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "windowCloseTimestamp",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "timer",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ]
+          },
+          {
+            "name": "emissions",
+            "type": "tuple",
+            "internalType": "struct AuctionEmissions",
+            "components": [
+              {
+                "name": "bp",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "biddersEmission",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "treasuryEmission",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ]
+          },
+          {
+            "name": "rewards",
+            "type": "tuple",
+            "internalType": "struct AuctionLot",
+            "components": [
+              {
+                "name": "estimatedValue",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "tokens",
+                "type": "tuple[]",
+                "internalType": "struct TokenData[]",
+                "components": [
+                  {
+                    "name": "amount",
+                    "type": "uint256",
+                    "internalType": "uint256"
+                  },
+                  {
+                    "name": "token",
+                    "type": "address",
+                    "internalType": "address"
+                  }
+                ]
+              },
+              {
+                "name": "nfts",
+                "type": "tuple[]",
+                "internalType": "struct NftData[]",
+                "components": [
+                  {
+                    "name": "id",
+                    "type": "uint256",
+                    "internalType": "uint256"
+                  },
+                  {
+                    "name": "nft",
+                    "type": "address",
+                    "internalType": "address"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "name": "bidData",
+            "type": "tuple",
+            "internalType": "struct AuctionBidData",
+            "components": [
+              {
+                "name": "revenue",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "bid",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "bidTimestamp",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "nextBidBy",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "bidUser",
+                "type": "address",
+                "internalType": "address"
+              },
+              {
+                "name": "bidRune",
+                "type": "uint8",
+                "internalType": "uint8"
+              },
+              {
+                "name": "bids",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "bidCost",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "usdDecimals",
+                "type": "uint8",
+                "internalType": "uint8"
+              }
+            ]
+          },
+          {
+            "name": "finalized",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
+      },
+      {
+        "name": "ext",
+        "type": "tuple",
+        "internalType": "struct AuctionExt",
+        "components": [
+          {
+            "name": "lot",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "blockTimestamp",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "isBiddingOpen",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "isEnded",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "activeWindow",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getAuctionsOnDay",
+    "inputs": [
+      {
+        "name": "_day",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getAuctionsPerDay",
+    "inputs": [
+      {
+        "name": "_day",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getDailyAuctionsMinimalData",
+    "inputs": [
+      {
+        "name": "lookBackDays",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "lookForwardDays",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "data",
+        "type": "tuple[]",
+        "internalType": "struct DailyAuctionsMinimalData[]",
+        "components": [
+          {
+            "name": "day",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "auctions",
+            "type": "tuple[]",
+            "internalType": "struct AuctionMinimalData[]",
+            "components": [
+              {
+                "name": "lot",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "fastPolling",
+                "type": "bool",
+                "internalType": "bool"
+              }
+            ]
           }
         ]
       }
@@ -1518,14 +1837,14 @@
         "internalType": "struct TokenData[]",
         "components": [
           {
-            "name": "token",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
             "name": "amount",
             "type": "uint256",
             "internalType": "uint256"
+          },
+          {
+            "name": "token",
+            "type": "address",
+            "internalType": "address"
           }
         ]
       },
@@ -1536,14 +1855,14 @@
         "internalType": "struct NftData[]",
         "components": [
           {
-            "name": "nft",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
             "name": "id",
             "type": "uint256",
             "internalType": "uint256"
+          },
+          {
+            "name": "nft",
+            "type": "address",
+            "internalType": "address"
           }
         ]
       }

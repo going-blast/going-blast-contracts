@@ -3,22 +3,33 @@
 	"version": "1.0.0",
 	"description": "You know what it is",
 	"scripts": {
+		"====== ENV ======": "",
 		"env:anvil": "dotenv -e .env.anvil --",
 		"env:blast:testnet": "dotenv -e .env.blast.testnet --",
+		"====== ANVIL ======": "",
 		"anvil:fork": "anvil --fork-url $RPC_URL",
 		"anvil:fork:blast:testnet": "yarn env:blast:testnet yarn anvil:fork",
-		"generate:abi:Auctioneer": "forge inspect src/Auctioneer.sol:Auctioneer abi > data/$CHAIN_NAME/abi/Auctioneer.json",
-		"generate:abi:AuctioneerUser": "forge inspect src/AuctioneerUser.sol:AuctioneerUser abi > data/$CHAIN_NAME/abi/AuctioneerUser.json",
-		"generate:abi:AuctioneerEmissions": "forge inspect src/AuctioneerEmissions.sol:AuctioneerEmissions abi > data/$CHAIN_NAME/abi/AuctioneerEmissions.json",
-		"generate:abi:AuctioneerFarm": "forge inspect src/AuctioneerFarm.sol:AuctioneerFarm abi > data/$CHAIN_NAME/abi/AuctioneerFarm.json",
-		"generate:abi:root": "yarn generate:abi:Auctioneer & yarn generate:abi:AuctioneerUser & yarn generate:abi:AuctioneerEmissions & yarn generate:abi:AuctioneerFarm",
-		"generate:abi:blast:testnet": "yarn env:blast:testnet yarn generate:abi:root",
+		"====== MISC ======": "",
 		"forge:coverage": "forge coverage --report lcov && genhtml lcov.info --branch-coverage --output-dir coverage",
+		"====== ABI ======": "",
+		"generate:abi:Auctioneer": "forge inspect src/Auctioneer.sol:Auctioneer abi > abi/Auctioneer.json",
+		"generate:abi:AuctioneerUser": "forge inspect src/AuctioneerUser.sol:AuctioneerUser abi > abi/AuctioneerUser.json",
+		"generate:abi:AuctioneerEmissions": "forge inspect src/AuctioneerEmissions.sol:AuctioneerEmissions abi > abi/AuctioneerEmissions.json",
+		"generate:abi:AuctioneerFarm": "forge inspect src/AuctioneerFarm.sol:AuctioneerFarm abi > abi/AuctioneerFarm.json",
+		"generate:abi": "yarn generate:abi:Auctioneer & yarn generate:abi:AuctioneerUser & yarn generate:abi:AuctioneerEmissions & yarn generate:abi:AuctioneerFarm",
+		"====== INJECT ======": "",
+		"inject:frontend:root": "yarn generate:abi",
+		"inject:frontend:deployment": "cp data/$CHAIN_NAME/deployment.json ../going-blast-frontend/src/config/deployments/$CHAIN_NAME.json",
+		"inject:frontend:anvil": "yarn env:anvil yarn inject:frontend:deployment",
+		"inject:frontend:abi": "yarn generate:abi && cp -R abi ../going-blast-frontend/src/config/deployments",
+		"====== SCRIPT ======": "",
 		"script:run": "forge script script/GB.s.sol:GBScripts --rpc-url $RPC_URL --legacy --with-gas-price $GAS_PRICE -vvv",
 		"script:anvil": "yarn env:anvil yarn script:run",
 		"script:anvil:broadcast": "yarn script:anvil --broadcast",
 		"script:blast:testnet": "yarn env:blast:testnet yarn script:run",
-		"script:blast:testnet:broadcast": "yarn script:blast:testnet --broadcast"
+		"script:blast:testnet:broadcast": "yarn script:blast:testnet --broadcast",
+		"====== UTILS ======": "",
+		"script:anvil:setup": "yarn script:anvil:broadcast --sig 'fullDeploy()' && yarn script:anvil:broadcast --sig 'ANVIL_treasuryWrapETH()' && yarn script:anvil:broadcast --sig 'treasuryApproveAuctioneer()' && yarn script:anvil:broadcast --sig 'createAuctions()' && yarn inject:frontend:abi && yarn inject:frontend:anvil"
 	},
 	"author": "Architect <halftonedev@gmail.com>",
 	"license": "MIT",
@@ -35,5 +46,9 @@
 		"ts-node": "^10.9.2",
 		"typescript": "^5.2.2"
 	},
-	"dependencies": {}
+	"dependencies": {
+		"@typechain/ethers-v6": "^0.5.1",
+		"global": "^4.4.0",
+		"typechain": "^8.3.2"
+	}
 }

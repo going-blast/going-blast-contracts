@@ -22,6 +22,7 @@ contract Auctioneer is IAuctioneer, Ownable, ReentrancyGuard, AuctioneerEvents, 
 	using AuctionParamsUtils for AuctionParams;
 	using AuctionViewUtils for Auction;
 	using AuctionMutateUtils for Auction;
+	using EnumerableSet for EnumerableSet.UintSet;
 
 	// FACETS (not really)
 	IAuctioneerUser public auctioneerUser;
@@ -42,7 +43,7 @@ contract Auctioneer is IAuctioneer, Ownable, ReentrancyGuard, AuctioneerEvents, 
 	// Auctions
 	uint256 public lotCount;
 	mapping(uint256 => Auction) public auctions;
-	mapping(uint256 => uint256) public auctionsPerDay;
+	mapping(uint256 => EnumerableSet.UintSet) private auctionsOnDay;
 	mapping(uint256 => uint256) public dailyCumulativeEmissionBP;
 
 	// Bid Params
@@ -208,20 +209,16 @@ contract Auctioneer is IAuctioneer, Ownable, ReentrancyGuard, AuctioneerEvents, 
 		Auction storage auction = auctions[lot];
 
 		// Validate that day has room for auction
-		if ((auctionsPerDay[day] + 1) > 4) revert TooManyAuctionsPerDay();
+		auctionsOnDay[day].add(lot);
+		if ((auctionsOnDay[day].values().length) > 4) revert TooManyAuctionsPerDay();
 
 		// Check that days emission doesn't exceed allowable bonus (30000)
 		// Most days, the emission will be 10000
 		// An emission BP over 10000 means it is using emissions scheduled for other days
 		// Auction emissions for the remainder of the epoch will be reduced
 		// This will never overflow the emissions though, because the emission amount is calculated from remaining emissions
-		if ((dailyCumulativeEmissionBP[day] + _params.emissionBP) > 30000) {
-			revert InvalidDailyEmissionBP();
-		}
-
-		// Update daily accumulators
-		auctionsPerDay[day] += 1;
 		dailyCumulativeEmissionBP[day] += _params.emissionBP;
+		if (dailyCumulativeEmissionBP[day] > 30000) revert InvalidDailyEmissionBP();
 
 		// Base data
 		auction.lot = lot;
@@ -275,7 +272,7 @@ contract Auctioneer is IAuctioneer, Ownable, ReentrancyGuard, AuctioneerEvents, 
 		auction.transferLotTo(treasury, 1e18, _unwrapETH, ETH, address(WETH));
 
 		// Revert day's accumulators
-		auctionsPerDay[auction.day] -= 1;
+		auctionsOnDay[auction.day].remove(_lot);
 		dailyCumulativeEmissionBP[auction.day] -= auction.emissions.bp;
 
 		// Cancel emissions
@@ -445,6 +442,51 @@ contract Auctioneer is IAuctioneer, Ownable, ReentrancyGuard, AuctioneerEvents, 
 
 	function getAuction(uint256 _lot) public view validAuctionLot(_lot) returns (Auction memory) {
 		return auctions[_lot];
+	}
+
+	function getAuctionsPerDay(uint256 _day) public view returns (uint256) {
+		return auctionsOnDay[_day].values().length;
+	}
+
+	function getAuctionsOnDay(uint256 _day) public view returns (uint256[] memory) {
+		return auctionsOnDay[_day].values();
+	}
+
+	function getDailyAuctionsMinimalData(
+		uint256 lookBackDays,
+		uint256 lookForwardDays
+	) public view returns (DailyAuctionsMinimalData[] memory data) {
+		uint256 currentDay = block.timestamp / 1 days;
+		uint256[] memory dayLots;
+		uint256 day = currentDay - lookBackDays;
+		data = new DailyAuctionsMinimalData[](lookBackDays + 1 + lookForwardDays);
+		for (uint256 dayIndex = 0; dayIndex < (lookBackDays + 1 + lookForwardDays); dayIndex++) {
+			dayLots = auctionsOnDay[day].values();
+			data[dayIndex].day = day;
+			data[dayIndex].auctions = new AuctionMinimalData[](dayLots.length);
+
+			for (uint256 dayLotIndex = 0; dayLotIndex < dayLots.length; dayLotIndex++) {
+				data[dayIndex].auctions[dayLotIndex] = AuctionMinimalData({
+					lot: dayLots[dayLotIndex],
+					fastPolling: day == currentDay || !auctions[dayLots[dayLotIndex]].isEnded()
+				});
+			}
+
+			day++;
+		}
+	}
+
+	function getAuctionExt(
+		uint256 _lot
+	) public view validAuctionLot(_lot) returns (Auction memory auction, AuctionExt memory ext) {
+		auction = auctions[_lot];
+		ext = AuctionExt({
+			lot: auction.lot,
+			blockTimestamp: block.timestamp,
+			activeWindow: auctions[_lot].activeWindow(),
+			isBiddingOpen: auctions[_lot].isBiddingOpen(),
+			isEnded: auctions[_lot].isEnded()
+		});
 	}
 
 	function getUserPrivateAuctionsPermitted(address _user) public view returns (bool) {
