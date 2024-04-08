@@ -21,7 +21,6 @@ interface IAuctioneerUser {
 		uint256 _biddersEmission,
 		BidOptions memory _options
 	) external returns (bool isUsersFirstBid);
-	function preselectRune(uint256 _lot, address _user, uint8 _rune) external;
 	function claimLot(uint256 _lot, address _user) external returns (uint8 rune, uint256 bids);
 	function harvestAuctionEmissions(
 		uint256 _lot,
@@ -117,16 +116,6 @@ contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, Auctioneer
 		}
 
 		emit Bid(_lot, _user, _bidAmount, userAlias[_user], _options);
-	}
-
-	function preselectRune(
-		uint256 _lot,
-		address _user,
-		uint8 _rune
-	) public onlyAuctioneer validUserRuneSelection(_lot, _user, _rune) {
-		AuctionUser storage user = auctionUsers[_lot][_user];
-		user.rune = _rune;
-		emit PreselectedRune(_lot, _user, _rune);
 	}
 
 	///////////////////

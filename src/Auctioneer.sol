@@ -39,7 +39,7 @@ contract Auctioneer is IAuctioneer, Ownable, ReentrancyGuard, AuctioneerEvents, 
 	IERC20 public GO;
 	IERC20 public VOUCHER;
 	IWETH public WETH;
-	address public ETH = address(0);
+	address private ETH = address(0);
 
 	// Auctions
 	uint256 public lotCount;
@@ -49,11 +49,11 @@ contract Auctioneer is IAuctioneer, Ownable, ReentrancyGuard, AuctioneerEvents, 
 
 	// Bid Params
 	IERC20 public USD;
-	uint8 public usdDecimals;
+	uint8 private usdDecimals;
 	uint256 public bidIncrement;
 	uint256 public startingBid;
 	uint256 public bidCost;
-	uint256 public onceTwiceBlastBonusTime = 9;
+	uint256 private onceTwiceBlastBonusTime = 9;
 	uint256 public privateAuctionRequirement;
 
 	// FREE BIDS using VOUCHERS
@@ -180,10 +180,6 @@ contract Auctioneer is IAuctioneer, Ownable, ReentrancyGuard, AuctioneerEvents, 
 		if (farm != address(0)) {
 			bal += IAuctioneerFarm(farm).getEqualizedUserStaked(_user);
 		}
-	}
-
-	function _getUserPrivateAuctionsPermitted(address _user) internal view returns (bool) {
-		return _userGOBalance(_user) >= privateAuctionRequirement;
 	}
 
 	///////////////////
@@ -318,7 +314,7 @@ contract Auctioneer is IAuctioneer, Ownable, ReentrancyGuard, AuctioneerEvents, 
 		auction.validateBiddingOpen();
 
 		// VALIDATE: User can participate in auction
-		if (auction.isPrivate && !_getUserPrivateAuctionsPermitted(msg.sender)) revert PrivateAuction();
+		if (auction.isPrivate && _userGOBalance(msg.sender) < privateAuctionRequirement) revert PrivateAuction();
 
 		// Force bid count to be at least one
 		if (_options.multibid == 0) _options.multibid = 1;
@@ -366,11 +362,6 @@ contract Auctioneer is IAuctioneer, Ownable, ReentrancyGuard, AuctioneerEvents, 
 		if (_options.paymentType == BidPaymentType.VOUCHER) {
 			VOUCHER.safeTransferFrom(msg.sender, deadAddress, _options.multibid * 1e18);
 		}
-	}
-
-	function preselectRune(uint256 _lot, uint8 _rune) public nonReentrant validAuctionLot(_lot) validRune(_lot, _rune) {
-		if (auctions[_lot].runes.length == 0) revert InvalidRune();
-		auctioneerUser.preselectRune(_lot, msg.sender, _rune);
 	}
 
 	function claimLotWithPermit(
@@ -531,6 +522,6 @@ contract Auctioneer is IAuctioneer, Ownable, ReentrancyGuard, AuctioneerEvents, 
 	}
 
 	function getUserPrivateAuctionsPermitted(address _user) public view returns (bool) {
-		return _getUserPrivateAuctionsPermitted(_user);
+		return _userGOBalance(_user) >= privateAuctionRequirement;
 	}
 }
