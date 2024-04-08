@@ -33,11 +33,13 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	address public treasury = address(50);
 	address public treasury2 = address(51);
 
-	address public user1 = address(100);
-	address public user2 = address(101);
+	address public user1;
+	uint256 public user1PK;
+	address public user2;
+	uint256 public user2PK;
 	address public user3 = address(102);
 	address public user4 = address(103);
-	address[4] public users = [user1, user2, user3, user4];
+	address[4] public users;
 
 	AuctioneerHarness public auctioneer;
 	AuctioneerUser public auctioneerUser;
@@ -92,6 +94,10 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	}
 
 	function setUp() public virtual {
+		(user1, user1PK) = makeAddrAndKey("user1");
+		(user2, user2PK) = makeAddrAndKey("user2");
+		users = [user1, user2, user3, user4];
+
 		setLabels();
 
 		usdDecimals = 18;

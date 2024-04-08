@@ -157,5 +157,16 @@ Tests:
   [x] Lot profit sent to farm increases usdRewardPerShare
 
 
+[x] Permits
+  [x] VOUCHER permit auctioneer
+  [x] USD permit auctioneer
+  [x] GO permit farm
+  [x] GO_LP permit farm
+  [x] USD permit auctioneerUser (funds)
+
+[x] Auctioneer - PreselectRune
+
+
+
 
 ```

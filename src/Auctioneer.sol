@@ -368,6 +368,11 @@ contract Auctioneer is IAuctioneer, Ownable, ReentrancyGuard, AuctioneerEvents, 
 		}
 	}
 
+	function preselectRune(uint256 _lot, uint8 _rune) public nonReentrant validAuctionLot(_lot) validRune(_lot, _rune) {
+		if (auctions[_lot].runes.length == 0) revert InvalidRune();
+		auctioneerUser.preselectRune(_lot, msg.sender, _rune);
+	}
+
 	function claimLotWithPermit(
 		uint256 _lot,
 		ClaimLotOptions memory _options,
