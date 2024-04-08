@@ -12,6 +12,7 @@
 		"solhint",
 		"Undeployed",
 		"USDB",
+		"viem",
 		"YY"
 	],
 	"editor.defaultFormatter": "esbenp.prettier-vscode",

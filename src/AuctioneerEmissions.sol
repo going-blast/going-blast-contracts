@@ -123,13 +123,13 @@ contract AuctioneerEmissions is IAuctioneerEmissions, Ownable, AuctioneerEvents 
 	function _getEpochDataAtTimestamp(uint256 timestamp) internal view returns (EpochData memory epochData) {
 		epochData.epoch = _getEpochAtTimestamp(timestamp);
 
-		epochData.start = epochData.epoch * epochDuration;
-		epochData.end = (epochData.epoch + 1) * epochDuration;
+		epochData.start = startTimestamp + (epochData.epoch * epochDuration);
+		epochData.end = epochData.start + epochDuration;
 
 		if (timestamp > epochData.end) {
 			epochData.daysRemaining = 0;
 		} else {
-			epochData.daysRemaining = ((epochData.end - timestamp) / 1 days) + 1;
+			epochData.daysRemaining = ((epochData.end - timestamp) / 1 days);
 		}
 
 		// Emissions only exist for first 8 epochs, prevent array out of bounds

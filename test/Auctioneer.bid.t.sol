@@ -33,7 +33,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 	}
 
 	function test_bid_RevertWhen_AuctionNotYetOpen() public {
-		vm.expectRevert(BiddingClosed.selector);
+		vm.expectRevert(AuctionNotYetOpen.selector);
 		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "", rune: 0 });
 		auctioneer.bid(0, options);
 	}

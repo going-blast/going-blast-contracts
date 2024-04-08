@@ -336,6 +336,9 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		AuctionParams[] memory params = new AuctionParams[](1);
 		params[0] = _getBaseSingleAuctionParams();
 
+		EpochData memory epoch = auctioneerEmissions.getEpochDataAtTimestamp(block.timestamp);
+		console.log("Days remaining", epoch.daysRemaining);
+
 		uint256 expectedEmission = auctioneerEmissions.epochEmissionsRemaining(0) / 90;
 
 		auctioneer.createAuctions(params);

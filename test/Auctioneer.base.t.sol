@@ -417,8 +417,12 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		options.paymentType = paymentType;
 	}
 
-	function _bidShouldRevert(address user) public {
-		vm.expectRevert(BiddingClosed.selector);
+	function _bidShouldRevert_AuctionEnded(address user) public {
+		vm.expectRevert(AuctionEnded.selector);
+		_bid(user);
+	}
+	function _bidShouldRevert_AuctionNotYetOpen(address user) public {
+		vm.expectRevert(AuctionNotYetOpen.selector);
 		_bid(user);
 	}
 	function _bidShouldEmit(address user) public {

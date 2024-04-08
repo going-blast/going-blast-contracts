@@ -8,6 +8,7 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.s
 import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import { IWETH } from "./WETH9.sol";
 import { IAuctioneerFarm } from "./IAuctioneerFarm.sol";
 import "./IAuctioneer.sol";
@@ -174,8 +175,6 @@ contract Auctioneer is IAuctioneer, Ownable, ReentrancyGuard, AuctioneerEvents, 
 
 	// PRIVATE AUCTION
 
-	// TODO: clean this shit up
-
 	function _userGOBalance(address _user) internal view returns (uint256 bal) {
 		bal = GO.balanceOf(_user);
 		if (farm != address(0)) {
@@ -290,7 +289,31 @@ contract Auctioneer is IAuctioneer, Ownable, ReentrancyGuard, AuctioneerEvents, 
 		emit AuctionCancelled(_lot);
 	}
 
-	function bid(uint256 _lot, BidOptions memory _options) public validAuctionLot(_lot) validRune(_lot, _options.rune) {
+	function _selfPermit(PermitData memory _permitData) internal {
+		IERC20Permit(_permitData.token).permit(
+			msg.sender,
+			address(this),
+			_permitData.value,
+			_permitData.deadline,
+			_permitData.v,
+			_permitData.r,
+			_permitData.s
+		);
+	}
+
+	function bidWithPermit(uint256 _lot, BidOptions memory _options, PermitData memory _permitData) public nonReentrant {
+		_selfPermit(_permitData);
+		_bid(_lot, _options);
+	}
+
+	function bid(uint256 _lot, BidOptions memory _options) public nonReentrant {
+		_bid(_lot, _options);
+	}
+
+	function _bid(
+		uint256 _lot,
+		BidOptions memory _options
+	) internal validAuctionLot(_lot) validRune(_lot, _options.rune) {
 		Auction storage auction = auctions[_lot];
 		auction.validateBiddingOpen();
 
@@ -345,7 +368,20 @@ contract Auctioneer is IAuctioneer, Ownable, ReentrancyGuard, AuctioneerEvents, 
 		}
 	}
 
-	function claimLot(uint256 _lot, ClaimLotOptions memory _options) public validAuctionLot(_lot) {
+	function claimLotWithPermit(
+		uint256 _lot,
+		ClaimLotOptions memory _options,
+		PermitData memory _permitData
+	) public nonReentrant {
+		_selfPermit(_permitData);
+		_claimLot(_lot, _options);
+	}
+
+	function claimLot(uint256 _lot, ClaimLotOptions memory _options) public nonReentrant {
+		_claimLot(_lot, _options);
+	}
+
+	function _claimLot(uint256 _lot, ClaimLotOptions memory _options) internal validAuctionLot(_lot) {
 		Auction storage auction = auctions[_lot];
 		auction.validateEnded();
 

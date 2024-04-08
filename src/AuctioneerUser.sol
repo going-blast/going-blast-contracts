@@ -6,6 +6,7 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import { Auctioneer } from "./Auctioneer.sol";
 import "./IAuctioneer.sol";
 import { GBMath } from "./AuctionUtils.sol";
@@ -117,6 +118,18 @@ contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, Auctioneer
 		emit Bid(_lot, _user, _bidAmount, userAlias[_user], _options);
 	}
 
+	function preselectRune(
+		uint256 _lot,
+		address _user,
+		uint8 _rune
+	) public onlyAuctioneer validUserRuneSelection(_lot, _user, _rune) returns (bool preselected) {
+		AuctionUser storage user = auctionUsers[_lot][_user];
+		preselected = user.rune == 0;
+		user.rune = _rune;
+
+		emit PreselectedRune(_lot, _user, _rune);
+	}
+
 	///////////////////
 	// CLAIM
 	///////////////////
@@ -177,7 +190,22 @@ contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, Auctioneer
 		userFunds[_user] -= _amount;
 	}
 
+	function addFundsWithPermit(uint256 _amount, PermitData memory _permitData) public nonReentrant {
+		IERC20Permit(_permitData.token).permit(
+			msg.sender,
+			address(this),
+			_permitData.value,
+			_permitData.deadline,
+			_permitData.v,
+			_permitData.r,
+			_permitData.s
+		);
+		_addFunds(_amount);
+	}
 	function addFunds(uint256 _amount) public nonReentrant {
+		_addFunds(_amount);
+	}
+	function _addFunds(uint256 _amount) internal {
 		if (_amount > USD.balanceOf(msg.sender)) revert BadDeposit();
 
 		USD.safeTransferFrom(msg.sender, address(auctioneer), _amount);

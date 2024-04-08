@@ -1948,12 +1948,17 @@
   },
   {
     "type": "error",
-    "name": "AuctionStillRunning",
+    "name": "AuctionEnded",
     "inputs": []
   },
   {
     "type": "error",
-    "name": "BiddingClosed",
+    "name": "AuctionNotYetOpen",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "AuctionStillRunning",
     "inputs": []
   },
   {

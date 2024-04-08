@@ -4,6 +4,11 @@ Contracts / tests / deployments
 
 ```
 
+ToDos:
+[x] Change min timer duration to 30s
+[ ] Allow rune preselection
+[ ] Add permit option to bidding (self permit + overloaded bid param w/ permit options)
+
 Tests:
 
 [x] Auctioneer - NFTs

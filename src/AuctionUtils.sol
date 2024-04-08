@@ -71,7 +71,10 @@ library AuctionViewUtils {
 		return block.timestamp <= auction.bidData.nextBidBy;
 	}
 	function validateBiddingOpen(Auction storage auction) internal view {
-		if (!isBiddingOpen(auction)) revert BiddingClosed();
+		if (!isBiddingOpen(auction)) {
+			if (block.timestamp <= auction.unlockTimestamp) revert AuctionNotYetOpen();
+			revert AuctionEnded();
+		}
 	}
 
 	function isEnded(Auction storage auction) internal view returns (bool) {
@@ -305,7 +308,7 @@ library AuctionParamsUtils {
 
 		// VALIDATE: Timed windows must have a valid timer
 		for (uint8 i = 0; i < _params.windows.length; i++) {
-			// TIMED and INFINITE windows should have a timer >= 60 seconds
+			// TIMED and INFINITE windows should have a timer >= 30 seconds
 			if (_params.windows[i].windowType != BidWindowType.OPEN && _params.windows[i].timer < 30 seconds)
 				revert InvalidBidWindowTimer();
 

@@ -5,7 +5,9 @@ pragma experimental ABIEncoderV2;
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import "./IAuctioneerFarm.sol";
+import { PermitData } from "./IAuctioneer.sol";
 import { BlastYield } from "./BlastYield.sol";
 
 contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, AuctioneerFarmEvents, BlastYield {
@@ -185,7 +187,27 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 
 	// USER ACTIONS
 
-	function deposit(uint256 pid, uint256 amount, address to) public validPid(pid) nonReentrant {
+	function depositWithPermit(
+		uint256 pid,
+		uint256 amount,
+		address to,
+		PermitData memory _permitData
+	) public nonReentrant {
+		IERC20Permit(_permitData.token).permit(
+			msg.sender,
+			address(this),
+			_permitData.value,
+			_permitData.deadline,
+			_permitData.v,
+			_permitData.r,
+			_permitData.s
+		);
+		_deposit(pid, amount, to);
+	}
+	function deposit(uint256 pid, uint256 amount, address to) public nonReentrant {
+		_deposit(pid, amount, to);
+	}
+	function _deposit(uint256 pid, uint256 amount, address to) internal validPid(pid) {
 		PoolInfo storage pool = poolInfo[pid];
 		UserInfo storage user = userInfo[pid][to];
 

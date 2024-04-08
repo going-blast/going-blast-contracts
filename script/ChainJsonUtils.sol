@@ -39,6 +39,9 @@ contract ChainJsonUtils is Script {
 	function auctioneerConfigPath(string memory item) internal pure returns (string memory) {
 		return string.concat(".auctioneerConfig.", item);
 	}
+	function tokensPath(string memory item) internal pure returns (string memory) {
+		return string.concat(".tokens.", item);
+	}
 
 	// Primitives
 
@@ -71,12 +74,12 @@ contract ChainJsonUtils is Script {
 	}
 
 	// Contract freezing
-	function readContractsFrozen() internal returns (bool) {
+	function readContractsFrozen() internal view returns (bool) {
 		return readBool(configPath(".contractsFrozen"));
 	}
 	function writeContractAddress(string memory contractName, address contractAddress) internal {
 		if (bytes(contractName).length == 0) revert MissingPath();
-		if (readContractsFrozen()) revert DeployedContractWhileFrozen();
+		// if (readContractsFrozen()) revert DeployedContractWhileFrozen();
 		writeAddress(contractPath(contractName), contractAddress);
 	}
 	function writeFreezeContracts() internal {

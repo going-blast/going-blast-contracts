@@ -59,10 +59,10 @@ contract GBScriptUtils is Script, ChainJsonUtils {
 	modifier loadContracts() {
 		if (bytes(chainName).length == 0) revert ChainNameNotSet();
 
-		auctioneer = Auctioneer(payable(readAddress(contractPath("auctioneer"))));
-		auctioneerUser = AuctioneerUser(readAddress(contractPath("auctioneerUser")));
-		auctioneerEmissions = AuctioneerEmissions(readAddress(contractPath("auctioneerEmissions")));
-		auctioneerFarm = AuctioneerFarm(readAddress(contractPath("auctioneerFarm")));
+		auctioneer = Auctioneer(payable(readAddress(contractPath("Auctioneer"))));
+		auctioneerUser = AuctioneerUser(readAddress(contractPath("AuctioneerUser")));
+		auctioneerEmissions = AuctioneerEmissions(readAddress(contractPath("AuctioneerEmissions")));
+		auctioneerFarm = AuctioneerFarm(readAddress(contractPath("AuctioneerFarm")));
 		GO = GoToken(readAddress(contractPath("GO")));
 		VOUCHER = VoucherToken(readAddress(contractPath("VOUCHER")));
 		USD = IERC20(readAddress(contractPath("USD")));

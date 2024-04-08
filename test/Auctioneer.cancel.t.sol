@@ -168,7 +168,7 @@ contract AuctioneerCancelTest is AuctioneerHelper {
 		auctioneer.cancelAuction(0, true);
 
 		// User bids and should revert
-		vm.expectRevert(BiddingClosed.selector);
+		vm.expectRevert(AuctionNotYetOpen.selector);
 		_bid(user1);
 	}
 

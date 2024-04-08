@@ -5,6 +5,7 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { BasicERC20 } from "../src/BasicERC20.sol";
 import { GBScriptUtils } from "./GBScriptUtils.sol";
 import { BasicERC20 } from "../src/BasicERC20.sol";
 import { IWETH, WETH9 } from "../src/WETH9.sol";
@@ -16,7 +17,7 @@ import { GoToken } from "../src/GoToken.sol";
 import { VoucherToken } from "../src/VoucherToken.sol";
 import { IERC20Rebasing } from "../src/BlastYield.sol";
 import { GBMath, AuctionParamsUtils } from "../src/AuctionUtils.sol";
-import { AuctionParams } from "../src/IAuctioneer.sol";
+import { AuctionParams, EpochData, BidPaymentType, BidOptions } from "../src/IAuctioneer.sol";
 
 contract GBScripts is GBScriptUtils {
 	using SafeERC20 for IERC20;
@@ -24,12 +25,15 @@ contract GBScripts is GBScriptUtils {
 	using AuctionParamsUtils for AuctionParams;
 	error AlreadyInitialized();
 	error NotBlastChain();
+	error OnlyAnvil();
 
 	function fullDeploy() public broadcast loadChain loadConfigValues {
+		_setupTokens();
 		_deployCore();
 		_updateTreasury();
 		_initializeAuctioneerEmissions();
 		_freezeContracts();
+		_initArch();
 	}
 
 	function deployCore() public broadcast loadChain loadConfigValues {
@@ -44,7 +48,7 @@ contract GBScripts is GBScriptUtils {
 		_initializeAuctioneerEmissions();
 	}
 
-	function _deployCore() internal {
+	function _setupTokens() internal {
 		if (isAnvil) {
 			// Anvil resets contracts frozen
 			writeBool(configPath("contractsFrozen"), false);
@@ -57,7 +61,18 @@ contract GBScripts is GBScriptUtils {
 			USD = IERC20(readAddress(contractPath("USD")));
 			WETH = IWETH(readAddress(contractPath("WETH")));
 		}
+	}
 
+	function _initArch() internal {
+		if (!isAnvil) return;
+
+		address arch = 0x3a7679E3662bC7c2EB2B1E71FA221dA430c6f64B;
+		BasicERC20(address(USD)).mint(arch, 1000e18);
+		VOUCHER.mint(arch, 100e18);
+		arch.call{ value: 1e18 }("");
+	}
+
+	function _deployCore() internal {
 		// TODO: check if deployed bytecode matches potentially deploying bytecode?
 
 		GO = new GoToken();
@@ -67,18 +82,18 @@ contract GBScripts is GBScriptUtils {
 		writeContractAddress("VOUCHER", address(VOUCHER));
 
 		auctioneer = new Auctioneer(GO, VOUCHER, USD, WETH, bidCost, bidIncrement, startingBid, privateAuctionRequirement);
-		writeContractAddress("auctioneer", address(auctioneer));
+		writeContractAddress("Auctioneer", address(auctioneer));
 
 		auctioneerUser = new AuctioneerUser(USD);
-		writeContractAddress("auctioneerUser", address(auctioneerUser));
+		writeContractAddress("AuctioneerUser", address(auctioneerUser));
 
 		auctioneerEmissions = new AuctioneerEmissions(GO);
-		writeContractAddress("auctioneerEmissions", address(auctioneerEmissions));
+		writeContractAddress("AuctioneerEmissions", address(auctioneerEmissions));
 
 		auctioneer.link(address(auctioneerUser), address(auctioneerEmissions));
 
 		auctioneerFarm = new AuctioneerFarm(USD, GO, VOUCHER);
-		writeContractAddress("auctioneerFarm", address(auctioneerFarm));
+		writeContractAddress("AuctioneerFarm", address(auctioneerFarm));
 
 		auctioneer.updateFarm(address(auctioneerFarm));
 
@@ -102,8 +117,16 @@ contract GBScripts is GBScriptUtils {
 		uint256 proofOfBidEmissions = uint256(1000000e18).scaleByBP(6000);
 		IERC20(GO).safeTransfer(address(auctioneerEmissions), proofOfBidEmissions);
 
-		uint256 unlockTimestamp = block.timestamp; // TODO: Maybe consider changing this, not really that important though
+		console.log("AuctioneerEmissions GO amount", GO.balanceOf(address(auctioneerEmissions)));
+
+		uint256 unlockTimestamp = block.timestamp;
 		auctioneerEmissions.initializeEmissions(unlockTimestamp);
+
+		EpochData memory currentEpochData = auctioneerEmissions.getEpochDataAtTimestamp(block.timestamp);
+		console.log("Epoch", currentEpochData.epoch);
+		console.log("EmissionsRemaining", currentEpochData.emissionsRemaining);
+		console.log("DaysRemaining", currentEpochData.daysRemaining);
+		console.log("Daily emission set", currentEpochData.dailyEmission);
 	}
 
 	function _freezeContracts() internal {
@@ -238,5 +261,30 @@ contract GBScripts is GBScriptUtils {
 		amountWETH = IERC20Rebasing(address(WETH)).getClaimableAmount(address(auctioneerFarm));
 		amountUSDB = IERC20Rebasing(address(USD)).getClaimableAmount(address(auctioneerFarm));
 		auctioneerFarm.claimYieldAll(_recipient, amountWETH, amountUSDB, 0);
+	}
+
+	function ANVIL_bid(uint32 userIndex, uint256 lot) public loadChain loadContracts loadConfigValues {
+		if (!isAnvil) revert OnlyAnvil();
+
+		string memory mnemonic = vm.envString("MNEMONIC");
+		(address user, ) = deriveRememberKey(mnemonic, userIndex);
+
+		if (USD.balanceOf(user) == 0) {
+			(address deployer, ) = deriveRememberKey(mnemonic, 0);
+
+			vm.broadcast(deployer);
+			BasicERC20(address(USD)).mint(user, 10000e18);
+
+			vm.broadcast(user);
+			USD.approve(address(auctioneer), UINT256_MAX);
+		}
+
+		if (block.timestamp < auctioneer.getAuction(lot).unlockTimestamp) return;
+
+		vm.broadcast(user);
+		auctioneer.bid(
+			lot,
+			BidOptions({ multibid: 1, rune: 0, paymentType: BidPaymentType.WALLET, message: "I JUST BID" })
+		);
 	}
 }

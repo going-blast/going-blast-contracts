@@ -35,6 +35,15 @@ struct ClaimLotOptions {
 	bool unwrapETH;
 }
 
+struct PermitData {
+	address token;
+	uint256 value;
+	uint256 deadline;
+	uint8 v;
+	bytes32 r;
+	bytes32 s;
+}
+
 // Alphabetical field ordering for json parsing
 struct BidWindowParams {
 	uint256 duration;
@@ -186,7 +195,8 @@ error LastWindowNotInfinite();
 error MultipleInfiniteWindows();
 error TooManyTokens();
 error TooManyNFTs();
-error BiddingClosed();
+error AuctionEnded();
+error AuctionNotYetOpen();
 error AuctionStillRunning();
 error NoRewards();
 error AuctionClosed();
@@ -222,6 +232,7 @@ interface AuctioneerEvents {
 	event UpdatedEmissionTaxDuration(uint256 _emissionTax);
 	event AuctionCreated(uint256 indexed _lot);
 	event Bid(uint256 indexed _lot, address indexed _user, uint256 _bid, string _alias, BidOptions _options);
+	event PreselectedRune(uint256 indexed _lot, address indexed _user, uint8 _rune);
 	event AuctionFinalized(uint256 indexed _lot);
 	event UserClaimedLot(
 		uint256 indexed _lot,

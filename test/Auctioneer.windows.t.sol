@@ -119,7 +119,7 @@ contract AuctioneerWindowsTest is AuctioneerHelper {
 			} else {
 				assertEq(auctioneer.exposed_auction_isBiddingOpen(0), false, "Time tick bidding not open");
 				assertEq(auctioneer.exposed_auction_isEnded(0), true, "Time tick bidding closed");
-				_bidShouldRevert(user1);
+				_bidShouldRevert_AuctionEnded(user1);
 			}
 		}
 	}
@@ -129,7 +129,7 @@ contract AuctioneerWindowsTest is AuctioneerHelper {
 		assertEq(auctioneer.exposed_auction_isBiddingOpen(0), false, "Before auction unlocks, bidding closed");
 		assertEq(auctioneer.exposed_auction_isEnded(0), false, "Before action unlocks, not closed");
 
-		_bidShouldRevert(user1);
+		_bidShouldRevert_AuctionNotYetOpen(user1);
 
 		// Warp to open window
 		uint256 timestamp = auctioneer.getAuction(0).unlockTimestamp;
@@ -187,7 +187,7 @@ contract AuctioneerWindowsTest is AuctioneerHelper {
 			} else {
 				assertEq(auctioneer.exposed_auction_isBiddingOpen(0), false, "Time tick bidding not open");
 				assertEq(auctioneer.exposed_auction_isEnded(0), true, "Time tick bidding closed");
-				_bidShouldRevert(user1);
+				_bidShouldRevert_AuctionEnded(user1);
 			}
 		}
 
