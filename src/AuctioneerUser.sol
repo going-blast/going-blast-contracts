@@ -27,8 +27,9 @@ interface IAuctioneerUser {
 		address _user,
 		uint256 _unlockTimestamp,
 		uint256 _auctionBids,
-		uint256 _biddersEmission
-	) external;
+		uint256 _biddersEmission,
+		bool _harvestToFarm
+	) external returns (uint256 harvested, uint256 burned);
 	function payFromFunds(address _user, uint256 _amount) external;
 }
 
@@ -145,26 +146,31 @@ contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, Auctioneer
 		address _user,
 		uint256 _unlockTimestamp,
 		uint256 _auctionBids,
-		uint256 _biddersEmission
-	) public onlyAuctioneer {
+		uint256 _biddersEmission,
+		bool _harvestToFarm
+	) public onlyAuctioneer returns (uint256 harvested, uint256 burned) {
 		AuctionUser storage user = auctionUsers[_lot][_user];
 
 		// Exit if user already harvested emissions from auction
-		if (user.emissionsHarvested) return;
+		if (user.emissionsHarvested) return (0, 0);
 
 		// Exit early if nothing to claim
-		if (user.bids == 0) return;
+		if (user.bids == 0) return (0, 0);
 
 		// Mark harvested
 		user.emissionsHarvested = true;
 		userUnharvestedLots[_user].remove(_lot);
 
 		// Signal auctioneerEmissions to harvest user's emissions
-		(user.harvestedEmissions, user.burnedEmissions) = auctioneerEmissions.harvestEmissions(
+		(harvested, burned) = auctioneerEmissions.harvestEmissions(
 			_user,
 			(_biddersEmission * user.bids) / _auctionBids,
-			_unlockTimestamp
+			_unlockTimestamp,
+			_harvestToFarm
 		);
+
+		user.harvestedEmissions = harvested;
+		user.burnedEmissions = burned;
 
 		emit UserHarvestedLotEmissions(_lot, _user, user.harvestedEmissions, user.burnedEmissions);
 	}

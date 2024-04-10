@@ -7,11 +7,15 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.s
 import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import "./IAuctioneerFarm.sol";
-import { PermitData } from "./IAuctioneer.sol";
+import { PermitData, AlreadyLinked, NotAuctioneer } from "./IAuctioneer.sol";
 import { BlastYield } from "./BlastYield.sol";
 
 contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, AuctioneerFarmEvents, BlastYield {
 	using SafeERC20 for IERC20;
+
+	address public auctioneer;
+	bool public linked;
+	uint256 public goPid = 0;
 
 	PoolInfo[] public poolInfo;
 	mapping(address => bool) public tokensWithPool;
@@ -38,6 +42,17 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 		usdEmission.token = USD;
 
 		_add(10000, GO);
+	}
+
+	function link() public {
+		if (linked) revert AlreadyLinked();
+		linked = true;
+		auctioneer = msg.sender;
+	}
+
+	modifier onlyAuctioneer() {
+		if (msg.sender != auctioneer) revert NotAuctioneer();
+		_;
 	}
 
 	modifier validPid(uint256 pid) {
@@ -230,6 +245,22 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 	function deposit(uint256 pid, uint256 amount, address to) public nonReentrant {
 		_deposit(pid, amount, to);
 	}
+	function depositLockedGo(
+		uint256 _amount,
+		address _user,
+		uint256 _depositUnlockTimestamp
+	) public onlyAuctioneer nonReentrant {
+		// Deposit (GO already approved within auctioneer)
+		_deposit(goPid, _amount, _user);
+
+		UserInfo storage user = userInfo[goPid][_user];
+
+		// Increase the unlock timestamp if necessary
+		if (_depositUnlockTimestamp > user.goUnlockTimestamp) {
+			user.goUnlockTimestamp = _depositUnlockTimestamp;
+		}
+	}
+
 	function _deposit(uint256 pid, uint256 amount, address to) internal validPid(pid) {
 		PoolInfo storage pool = poolInfo[pid];
 		UserInfo storage user = userInfo[pid][to];
@@ -254,6 +285,8 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 		UserInfo storage user = userInfo[pid][msg.sender];
 
 		if (amount > user.amount) revert BadWithdrawal();
+
+		if (pid == goPid && block.timestamp < user.goUnlockTimestamp) revert GoLocked();
 
 		_harvest(pool, user, to);
 

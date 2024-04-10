@@ -259,9 +259,6 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 	uint256 public totalBids = user1Bids + user2Bids + user3Bids + user4Bids;
 
 	function _setUpFarmBids(uint256 lot) internal {
-		// Set farm
-		auctioneer.updateFarm(address(farm));
-
 		vm.warp(auctioneer.getAuction(lot).unlockTimestamp);
 		_multibidLot(user2, user2Bids, lot);
 		_multibidLot(user3, user3Bids, lot);
@@ -307,7 +304,7 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 		vm.prank(user1);
 		uint256[] memory auctionsToHarvest = new uint256[](1);
 		auctionsToHarvest[0] = 0;
-		auctioneer.harvestAuctionsEmissions(auctionsToHarvest);
+		auctioneer.harvestAuctionsEmissions(auctionsToHarvest, false);
 	}
 
 	function test_proofOfBid_harvestAuctionEmissions_MultipleAuctions() public {
@@ -350,7 +347,7 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 		auctionsToHarvest[0] = 0;
 		auctionsToHarvest[1] = 1;
 		auctionsToHarvest[2] = 2;
-		auctioneer.harvestAuctionsEmissions(auctionsToHarvest);
+		auctioneer.harvestAuctionsEmissions(auctionsToHarvest, false);
 	}
 
 	function test_proofOfBid_firstBidAddsAuctionToUserInteractedLots() public {
@@ -377,7 +374,7 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 		uint256[] memory auctionsToHarvest = new uint256[](1);
 		auctionsToHarvest[0] = 0;
 		vm.prank(user1);
-		auctioneer.harvestAuctionsEmissions(auctionsToHarvest);
+		auctioneer.harvestAuctionsEmissions(auctionsToHarvest, false);
 	}
 
 	function test_proofOfBid_harvestAuctionEmissions_MarkedAsHarvested() public {
@@ -393,7 +390,7 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 		uint256[] memory auctionsToHarvest = new uint256[](1);
 		auctionsToHarvest[0] = 0;
 		vm.prank(user1);
-		auctioneer.harvestAuctionsEmissions(auctionsToHarvest);
+		auctioneer.harvestAuctionsEmissions(auctionsToHarvest, false);
 
 		harvested = auctioneerUser.getAuctionUser(0, user1).emissionsHarvested;
 		assertEq(harvested, true, "User has harvested emissions");
@@ -422,7 +419,7 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 		uint256[] memory auctionsToHarvest = new uint256[](1);
 		auctionsToHarvest[0] = 0;
 		vm.prank(user1);
-		auctioneer.harvestAuctionsEmissions(auctionsToHarvest);
+		auctioneer.harvestAuctionsEmissions(auctionsToHarvest, false);
 
 		interactedLots = auctioneerUser.getUserInteractedLots(user1);
 		unharvestedLots = auctioneerUser.getUserUnharvestedLots(user1);
@@ -448,7 +445,7 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 		uint256[] memory auctionsToHarvest = new uint256[](1);
 		auctionsToHarvest[0] = 0;
 		vm.prank(user1);
-		auctioneer.harvestAuctionsEmissions(auctionsToHarvest);
+		auctioneer.harvestAuctionsEmissions(auctionsToHarvest, false);
 
 		// Final status
 		uint256 userGOFinal = GO.balanceOf(user1);
@@ -483,7 +480,7 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 		uint256[] memory auctionsToHarvest = new uint256[](1);
 		auctionsToHarvest[0] = 0;
 		vm.prank(user1);
-		auctioneer.harvestAuctionsEmissions(auctionsToHarvest);
+		auctioneer.harvestAuctionsEmissions(auctionsToHarvest, false);
 
 		// Final status
 		uint256 userGOFinal = GO.balanceOf(user1);
@@ -523,7 +520,7 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 		_expectTokenTransfer(GO, address(auctioneerEmissions), dead, user1Burnable);
 
 		vm.prank(user1);
-		auctioneer.harvestAuctionsEmissions(auctionsToHarvest);
+		auctioneer.harvestAuctionsEmissions(auctionsToHarvest, false);
 
 		// USER 2
 		BidCounts memory user2BidCounts = auctioneerUser.getUserLotInfo(lot, user2).bidCounts;
@@ -534,7 +531,7 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 		_expectTokenTransfer(GO, address(auctioneerEmissions), dead, user2Burnable);
 
 		vm.prank(user2);
-		auctioneer.harvestAuctionsEmissions(auctionsToHarvest);
+		auctioneer.harvestAuctionsEmissions(auctionsToHarvest, false);
 	}
 
 	function test_proofOfBid_auctionWithRunes_harvestAuctionEmissions_MatureHarvest_0PercTax() public {
@@ -564,7 +561,7 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 		);
 
 		vm.prank(user1);
-		auctioneer.harvestAuctionsEmissions(auctionsToHarvest);
+		auctioneer.harvestAuctionsEmissions(auctionsToHarvest, false);
 
 		// USER 2
 		BidCounts memory user2BidCounts = auctioneerUser.getUserLotInfo(lot, user2).bidCounts;
@@ -576,6 +573,6 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 		);
 
 		vm.prank(user2);
-		auctioneer.harvestAuctionsEmissions(auctionsToHarvest);
+		auctioneer.harvestAuctionsEmissions(auctionsToHarvest, false);
 	}
 }

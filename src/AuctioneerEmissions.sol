@@ -10,6 +10,7 @@ import "./IAuctioneer.sol";
 import { GBMath } from "./AuctionUtils.sol";
 
 interface IAuctioneerEmissions {
+	function emissionTaxDuration() external view returns (uint256);
 	function emissionsInitialized() external view returns (bool);
 
 	function link(address _auctioneerUser) external;
@@ -19,7 +20,8 @@ interface IAuctioneerEmissions {
 	function harvestEmissions(
 		address _user,
 		uint256 _emissions,
-		uint256 _emissionsEarnedTimestamp
+		uint256 _emissionsEarnedTimestamp,
+		bool _harvestToFarm
 	) external returns (uint256 harvested, uint256 burned);
 }
 
@@ -200,17 +202,18 @@ contract AuctioneerEmissions is IAuctioneerEmissions, Ownable, AuctioneerEvents 
 	function harvestEmissions(
 		address _user,
 		uint256 _emissions,
-		uint256 _emissionsEarnedTimestamp
+		uint256 _emissionsEarnedTimestamp,
+		bool _harvestToFarm
 	) public onlyAuctioneerUser returns (uint256 harvested, uint256 burned) {
 		// If emissions should be taxed
-		bool incursTax = block.timestamp < _emissionsEarnedTimestamp + emissionTaxDuration;
+		bool incursTax = !_harvestToFarm && block.timestamp < (_emissionsEarnedTimestamp + emissionTaxDuration);
 
 		// Calculate emission amounts
 		harvested = _emissions.scaleByBP(incursTax ? (10000 - earlyHarvestTax) : 10000);
 		burned = _emissions - harvested;
 
 		// Harvest emissions
-		_transferEmissions(_user, harvested);
+		_transferEmissions(_harvestToFarm ? auctioneer : _user, harvested);
 
 		// Burn emissions
 		_transferEmissions(deadAddress, burned);

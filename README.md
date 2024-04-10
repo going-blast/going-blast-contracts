@@ -166,6 +166,15 @@ Tests:
 
 [x] Auctioneer - PreselectRune
 
+[ ] Auctioneer - Harvest to farm
+  [ ] Deposits in farm correctly
+  [ ] Locks deposited go
+  [ ] Transfers go correctly
+  [ ] Unlock timestamp set to max(current unlock, deposit unlock)
+  [ ] Withdrawing GO reverts if locked
+  [ ] Emergency withdrawing GO reverts if locked
+  [ ] Marked as harvested correctly
+
 
 
 

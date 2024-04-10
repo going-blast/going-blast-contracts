@@ -181,9 +181,6 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 	}
 
 	function test_finalizeAuction_Should_DistributeLotRevenue_RevenueLessThanLotValue() public {
-		// Set farm
-		auctioneer.updateFarm(address(farm));
-
 		vm.warp(auctioneer.getAuction(0).unlockTimestamp);
 		_multibid(user2, 58);
 		_multibid(user3, 152);
@@ -212,9 +209,6 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 	}
 
 	function test_finalizeAuction_Should_DistributeLotRevenue_RevenueLessThan110PercLotValue() public {
-		// Set farm
-		auctioneer.updateFarm(address(farm));
-
 		vm.warp(auctioneer.getAuction(0).unlockTimestamp);
 		_multibid(user2, 580);
 		_multibid(user3, 1520);
@@ -253,9 +247,6 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 	}
 
 	function test_finalizeAuction_Should_DistributeLotRevenue_RevenueGreaterThanLotValue() public {
-		// Set farm
-		auctioneer.updateFarm(address(farm));
-
 		// Deposit some non zero value into farm to prevent distribution fallback
 		_farmDeposit();
 

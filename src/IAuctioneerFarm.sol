@@ -21,6 +21,7 @@ struct UserInfo {
 	uint256 goDebt;
 	uint256 voucherDebt;
 	uint256 usdDebt;
+	uint256 goUnlockTimestamp;
 }
 
 struct PoolInfo {
@@ -54,7 +55,10 @@ interface IAuctioneerFarm {
 	error AlreadyAdded();
 	error AlreadyInitializedEmissions();
 	error InvalidPid();
+	error GoLocked();
 
+	function link() external;
+	function depositLockedGo(uint256 amount, address user, uint256 lockDuration) external;
 	function receiveUsdDistribution(uint256 _amount) external returns (bool);
 	function getEqualizedUserStaked(address _user) external view returns (uint256);
 }

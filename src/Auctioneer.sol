@@ -126,6 +126,7 @@ contract Auctioneer is IAuctioneer, Ownable, ReentrancyGuard, AuctioneerEvents, 
 
 	function updateFarm(address _farm) public onlyOwner {
 		farm = _farm;
+		IAuctioneerFarm(farm).link();
 		emit UpdatedFarm(_farm);
 	}
 
@@ -446,22 +447,32 @@ contract Auctioneer is IAuctioneer, Ownable, ReentrancyGuard, AuctioneerEvents, 
 
 	// HARVEST
 
-	function harvestAuctionsEmissions(uint256[] memory _lots) public nonReentrant {
+	function harvestAuctionsEmissions(uint256[] memory _lots, bool _harvestToFarm) public nonReentrant {
 		for (uint256 i = 0; i < _lots.length; i++) {
-			harvestAuctionEmissions(_lots[i]);
+			harvestAuctionEmissions(_lots[i], _harvestToFarm);
 		}
 	}
 
-	function harvestAuctionEmissions(uint256 _lot) internal validAuctionLot(_lot) {
+	function harvestAuctionEmissions(uint256 _lot, bool _harvestToFarm) internal validAuctionLot(_lot) {
 		auctions[_lot].validateEnded();
 
-		auctioneerUser.harvestAuctionEmissions(
+		(uint256 harvestAmount, ) = auctioneerUser.harvestAuctionEmissions(
 			_lot,
 			msg.sender,
 			auctions[_lot].day * 1 days,
 			auctions[_lot].bidData.bids,
-			auctions[_lot].emissions.biddersEmission
+			auctions[_lot].emissions.biddersEmission,
+			_harvestToFarm
 		);
+
+		if (_harvestToFarm && harvestAmount > 0) {
+			GO.safeIncreaseAllowance(farm, harvestAmount);
+			IAuctioneerFarm(farm).depositLockedGo(
+				harvestAmount,
+				msg.sender,
+				(auctions[_lot].day * 1 days) + auctioneerEmissions.emissionTaxDuration()
+			);
+		}
 	}
 
 	// FUNDS
