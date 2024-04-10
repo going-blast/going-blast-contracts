@@ -3,7 +3,7 @@
 		"name": "000",
 		"isPrivate": false,
 		"emissionBP": 10000,
-		"unlockTimestamp": 1712590200,
+		"unlockTimestamp": 1712737800,
 		"lotValue": 181e18,
 		"runeSymbols": [],
 		"tokens": [
@@ -35,7 +35,7 @@
 		"name": "001",
 		"isPrivate": true,
 		"emissionBP": 10000,
-		"unlockTimestamp": 1712590200,
+		"unlockTimestamp": 1712737800,
 		"lotValue": 181e18,
 		"runeSymbols": [],
 		"tokens": [
@@ -67,7 +67,7 @@
 		"name": "002",
 		"isPrivate": true,
 		"emissionBP": 10000,
-		"unlockTimestamp": 1712590200,
+		"unlockTimestamp": 1712737800,
 		"lotValue": 181e18,
 		"runeSymbols": [1, 2, 3],
 		"tokens": [

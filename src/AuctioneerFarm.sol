@@ -129,26 +129,49 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 		}
 	}
 
-	function _updateEmissions(PoolInfo storage pool) internal {
-		// Todo maybe something to look at here?
-		// Todo maybe add a test on that something?
+	function _getUpdatedEmissionsValues(
+		PoolInfo memory pool
+	) internal view returns (uint256 accGoPerShare, uint256 accVoucherPerShare, uint256 lastRewardTimestamp) {
+		accGoPerShare = pool.accGoPerShare;
+		accVoucherPerShare = pool.accVoucherPerShare;
+		lastRewardTimestamp = pool.lastRewardTimestamp;
+
 		if (block.timestamp > pool.lastRewardTimestamp) {
 			// GO
-			if (pool.supply > 0 && totalAllocPoint > 0 && block.timestamp <= goEmission.endTimestamp) {
-				uint256 secs = block.timestamp - pool.lastRewardTimestamp;
+			if (pool.supply > 0 && totalAllocPoint > 0 && pool.lastRewardTimestamp <= goEmission.endTimestamp) {
+				uint256 minTimestamp = block.timestamp < goEmission.endTimestamp ? block.timestamp : goEmission.endTimestamp;
+				uint256 secs = minTimestamp - pool.lastRewardTimestamp;
 				uint256 reward = (secs * goEmission.perSecond * pool.allocPoint) / totalAllocPoint;
-				pool.accGoPerShare = pool.accGoPerShare + ((reward * REWARD_PRECISION) / pool.supply);
+				accGoPerShare += ((reward * REWARD_PRECISION) / pool.supply);
 			}
 
 			// VOUCHER
-			if (pool.supply > 0 && totalAllocPoint > 0 && block.timestamp <= voucherEmission.endTimestamp) {
-				uint256 secs = block.timestamp - pool.lastRewardTimestamp;
+			if (pool.supply > 0 && totalAllocPoint > 0 && pool.lastRewardTimestamp <= voucherEmission.endTimestamp) {
+				uint256 minTimestamp = block.timestamp < voucherEmission.endTimestamp
+					? block.timestamp
+					: voucherEmission.endTimestamp;
+				uint256 secs = minTimestamp - pool.lastRewardTimestamp;
 				uint256 reward = (secs * voucherEmission.perSecond * pool.allocPoint) / totalAllocPoint;
-				pool.accVoucherPerShare = pool.accVoucherPerShare + ((reward * REWARD_PRECISION) / pool.supply);
+				accVoucherPerShare += ((reward * REWARD_PRECISION) / pool.supply);
 			}
 
-			pool.lastRewardTimestamp = block.timestamp;
+			lastRewardTimestamp = block.timestamp;
 		}
+	}
+
+	function _updateEmissions(PoolInfo storage pool) internal {
+		(uint256 accGoPerShare, uint256 accVoucherPerShare, uint256 lastRewardTimestamp) = _getUpdatedEmissionsValues(pool);
+		pool.accGoPerShare = accGoPerShare;
+		pool.accVoucherPerShare = accVoucherPerShare;
+		pool.lastRewardTimestamp = lastRewardTimestamp;
+	}
+
+	function _getUpdatedEmissions(PoolInfo memory pool) internal view returns (PoolInfo memory updatedPool) {
+		updatedPool = pool;
+		(uint256 accGoPerShare, uint256 accVoucherPerShare, uint256 lastRewardTimestamp) = _getUpdatedEmissionsValues(pool);
+		updatedPool.accGoPerShare = accGoPerShare;
+		updatedPool.accVoucherPerShare = accVoucherPerShare;
+		updatedPool.lastRewardTimestamp = lastRewardTimestamp;
 	}
 
 	// AUCTIONEER
@@ -244,9 +267,9 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 	}
 
 	function _pending(
-		PoolInfo storage pool,
-		UserInfo storage user
-	) internal view returns (PendingAmounts memory pendingAmounts) {
+		PoolInfo memory pool,
+		UserInfo memory user
+	) internal pure returns (PendingAmounts memory pendingAmounts) {
 		pendingAmounts.go = ((user.amount * pool.accGoPerShare) / REWARD_PRECISION) - user.goDebt;
 		pendingAmounts.voucher = ((user.amount * pool.accVoucherPerShare) / REWARD_PRECISION) - user.voucherDebt;
 		pendingAmounts.usd = ((user.amount * pool.accUsdPerShare) / REWARD_PRECISION) - user.usdDebt;
@@ -303,17 +326,17 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 
 	// VIEW
 
-	function pending(uint256 pid, address _user) public returns (PendingAmounts memory pendingAmounts) {
-		PoolInfo storage pool = poolInfo[pid];
-		UserInfo storage user = userInfo[pid][_user];
+	function pending(uint256 pid, address _user) public view returns (PendingAmounts memory pendingAmounts) {
+		PoolInfo memory pool = poolInfo[pid];
+		UserInfo memory user = userInfo[pid][_user];
 
-		_updateEmissions(pool);
+		_getUpdatedEmissions(pool);
 		pendingAmounts = _pending(pool, user);
 	}
-	function allPending(address _user) public returns (PendingAmounts memory pendingAmounts) {
+	function allPending(address _user) public view returns (PendingAmounts memory pendingAmounts) {
 		for (uint256 i = 0; i < poolInfo.length; i++) {
-			_updateEmissions(poolInfo[i]);
-			PendingAmounts memory tmpPending = _pending(poolInfo[i], userInfo[i][_user]);
+			PoolInfo memory pool = _getUpdatedEmissions(poolInfo[i]);
+			PendingAmounts memory tmpPending = _pending(pool, userInfo[i][_user]);
 			pendingAmounts.go += tmpPending.go;
 			pendingAmounts.voucher += tmpPending.voucher;
 			pendingAmounts.usd += tmpPending.usd;
@@ -323,9 +346,8 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 	function getPool(uint256 pid) public view validPid(pid) returns (PoolInfo memory pool) {
 		pool = poolInfo[pid];
 	}
-	function getPoolUpdated(uint256 pid) public validPid(pid) returns (PoolInfo memory pool) {
-		_updateEmissions(poolInfo[pid]);
-		pool = poolInfo[pid];
+	function getPoolUpdated(uint256 pid) public view validPid(pid) returns (PoolInfo memory pool) {
+		pool = _getUpdatedEmissions(poolInfo[pid]);
 	}
 	function getPoolUser(uint256 pid, address _user) public view validPid(pid) returns (UserInfo memory user) {
 		user = userInfo[pid][_user];
@@ -334,5 +356,12 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 		if (_token == address(GO)) emission = goEmission;
 		if (_token == address(VOUCHER)) emission = voucherEmission;
 		if (_token == address(USD)) emission = usdEmission;
+	}
+
+	function getAllPools() public view returns (PoolInfo[] memory pools) {
+		pools = new PoolInfo[](poolInfo.length);
+		for (uint256 i = 0; i < poolInfo.length; i++) {
+			pools[i] = _getUpdatedEmissions(poolInfo[i]);
+		}
 	}
 }

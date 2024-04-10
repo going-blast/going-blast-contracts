@@ -652,6 +652,31 @@
   },
   {
     "type": "event",
+    "name": "PreselectedRune",
+    "inputs": [
+      {
+        "name": "_lot",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "_user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "_rune",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "UpdatedAlias",
     "inputs": [
       {

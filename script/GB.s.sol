@@ -28,12 +28,13 @@ contract GBScripts is GBScriptUtils {
 	error OnlyAnvil();
 
 	function fullDeploy() public broadcast loadChain loadConfigValues {
-		_setupTokens();
+		_ANVIL_setupTokens();
 		_deployCore();
 		_updateTreasury();
 		_initializeAuctioneerEmissions();
 		_freezeContracts();
-		_initArch();
+		_ANVIL_initArch();
+		_ANVIL_initializeAuctioneerFarmEmissions();
 	}
 
 	function deployCore() public broadcast loadChain loadConfigValues {
@@ -48,7 +49,7 @@ contract GBScripts is GBScriptUtils {
 		_initializeAuctioneerEmissions();
 	}
 
-	function _setupTokens() internal {
+	function _ANVIL_setupTokens() internal {
 		if (isAnvil) {
 			// Anvil resets contracts frozen
 			writeBool(configPath("contractsFrozen"), false);
@@ -63,13 +64,29 @@ contract GBScripts is GBScriptUtils {
 		}
 	}
 
-	function _initArch() internal {
+	function _ANVIL_initArch() internal {
 		if (!isAnvil) return;
 
 		address arch = 0x3a7679E3662bC7c2EB2B1E71FA221dA430c6f64B;
 		BasicERC20(address(USD)).mint(arch, 1000e18);
 		VOUCHER.mint(arch, 100e18);
+		GO.transfer(arch, 100e18);
 		arch.call{ value: 1e18 }("");
+	}
+
+	function _ANVIL_initializeAuctioneerFarmEmissions() internal {
+		if (!isAnvil) return;
+
+		// GO
+		uint256 farmGOEmissions = uint256(1000000e18).scaleByBP(500);
+		IERC20(GO).safeTransfer(address(auctioneerFarm), farmGOEmissions);
+		auctioneerFarm.initializeEmissions(farmGOEmissions, 180 days);
+		console.log("AuctioneerFarm GO emissions", GO.balanceOf(address(auctioneerFarm)));
+
+		// VOUCHER
+		VOUCHER.mint(address(auctioneerFarm), 100e18 * 180);
+		auctioneerFarm.setVoucherEmissions(100e18 * 180, 180 days);
+		console.log("AuctioneerFarm VOUCHER emissions", VOUCHER.balanceOf(address(auctioneerFarm)));
 	}
 
 	function _deployCore() internal {
