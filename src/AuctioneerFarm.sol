@@ -7,13 +7,14 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.s
 import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import "./IAuctioneerFarm.sol";
-import { PermitData, AlreadyLinked, NotAuctioneer } from "./IAuctioneer.sol";
+import { PermitData, AlreadyLinked, NotAuctioneer, NotAuctioneerAuction } from "./IAuctioneer.sol";
 import { BlastYield } from "./BlastYield.sol";
 
 contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, AuctioneerFarmEvents, BlastYield {
 	using SafeERC20 for IERC20;
 
 	address public auctioneer;
+	address public auctioneerAuction;
 	bool public linked;
 	uint256 public goPid = 0;
 
@@ -44,15 +45,11 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 		_add(10000, GO);
 	}
 
-	function link() public {
+	function link(address _auctioneerAuction) public {
 		if (linked) revert AlreadyLinked();
 		linked = true;
 		auctioneer = msg.sender;
-	}
-
-	modifier onlyAuctioneer() {
-		if (msg.sender != auctioneer) revert NotAuctioneer();
-		_;
+		auctioneerAuction = _auctioneerAuction;
 	}
 
 	modifier validPid(uint256 pid) {
@@ -191,12 +188,14 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 
 	// AUCTIONEER
 
-	function receiveUsdDistribution(uint256 _amount) public override nonReentrant returns (bool) {
-		// Nothing yet staked, reject the receive
-		uint256 staked = getEqualizedTotalStaked();
-		if (staked == 0) return false;
+	function usdDistributionReceivable() public view returns (bool) {
+		return getEqualizedTotalStaked() > 0;
+	}
 
-		USD.safeTransferFrom(msg.sender, address(this), _amount);
+	function receiveUsdDistribution(uint256 _amount) public nonReentrant {
+		if (msg.sender != auctioneerAuction) revert NotAuctioneerAuction();
+
+		if (getEqualizedTotalStaked() == 0) return;
 
 		// Distribute USD between the pools
 		for (uint256 i = 0; i < poolInfo.length; ++i) {
@@ -206,7 +205,6 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 		}
 
 		emit ReceivedUsdDistribution(_amount);
-		return true;
 	}
 
 	function getEqualizedTotalStaked() public view returns (uint256 staked) {
@@ -245,11 +243,9 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 	function deposit(uint256 pid, uint256 amount, address to) public nonReentrant {
 		_deposit(pid, amount, to);
 	}
-	function depositLockedGo(
-		uint256 _amount,
-		address _user,
-		uint256 _depositUnlockTimestamp
-	) public onlyAuctioneer nonReentrant {
+	function depositLockedGo(uint256 _amount, address _user, uint256 _depositUnlockTimestamp) public nonReentrant {
+		if (msg.sender != auctioneer) revert NotAuctioneer();
+
 		// Deposit (GO already approved within auctioneer)
 		_deposit(goPid, _amount, _user);
 
@@ -345,6 +341,9 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 	function emergencyWithdraw(uint256 pid, address to) public validPid(pid) nonReentrant {
 		PoolInfo storage pool = poolInfo[pid];
 		UserInfo storage user = userInfo[pid][msg.sender];
+
+		if (pid == goPid && block.timestamp < user.goUnlockTimestamp) revert GoLocked();
+
 		uint256 amount = user.amount;
 
 		pool.supply -= amount;
@@ -395,6 +394,13 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 		pools = new PoolInfo[](poolInfo.length);
 		for (uint256 i = 0; i < poolInfo.length; i++) {
 			pools[i] = _getUpdatedEmissions(poolInfo[i]);
+		}
+	}
+
+	function getAllPoolsUser(address _user) public view returns (UserInfo[] memory poolsUser) {
+		poolsUser = new UserInfo[](poolInfo.length);
+		for (uint256 i = 0; i < poolInfo.length; i++) {
+			poolsUser[i] = userInfo[i][_user];
 		}
 	}
 }

@@ -10,7 +10,7 @@ import { AuctioneerFarm } from "../src/AuctioneerFarm.sol";
 import { BasicERC20, BasicERC20WithDecimals } from "../src/BasicERC20.sol";
 import { BasicERC721 } from "../src/BasicERC721.sol";
 import { IWETH, WETH9 } from "../src/WETH9.sol";
-import { AuctioneerHarness } from "./AuctioneerHarness.sol";
+import { AuctioneerHarness, AuctioneerAuctionHarness } from "./AuctioneerHarness.sol";
 import { Auctioneer } from "../src/Auctioneer.sol";
 import { GBMath } from "../src/AuctionUtils.sol";
 import { AuctioneerUser } from "../src/AuctioneerUser.sol";
@@ -42,6 +42,7 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	address[4] public users;
 
 	AuctioneerHarness public auctioneer;
+	AuctioneerAuctionHarness public auctioneerAuction;
 	AuctioneerUser public auctioneerUser;
 	AuctioneerEmissions public auctioneerEmissions;
 	AuctioneerFarm public farm;
@@ -78,6 +79,7 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		vm.label(user3, "user3");
 		vm.label(user4, "user4");
 		vm.label(address(auctioneer), "auctioneer");
+		vm.label(address(auctioneerAuction), "auctioneerAuction");
 		vm.label(address(auctioneerUser), "auctioneerUser");
 		vm.label(address(auctioneerEmissions), "auctioneerEmissions");
 		vm.label(address(farm), "farm");
@@ -117,9 +119,8 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	// SETUP UTILS
 
 	function _createAndLinkAuctioneers() public {
-		auctioneer = new AuctioneerHarness(
-			GO,
-			VOUCHER,
+		auctioneer = new AuctioneerHarness(GO, VOUCHER, USD, WETH);
+		auctioneerAuction = new AuctioneerAuctionHarness(
 			USD,
 			WETH,
 			usdDecOffset(1e18),
@@ -132,14 +133,14 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		farm = new AuctioneerFarm(USD, GO, VOUCHER);
 
 		// LINK
-		auctioneer.link(address(auctioneerUser), address(auctioneerEmissions));
+		auctioneer.link(address(auctioneerUser), address(auctioneerEmissions), address(auctioneerAuction));
 	}
 
 	function _setupAuctioneerTreasury() public {
 		auctioneer.updateTreasury(treasury);
 		_giveETH(treasury, 5e18);
 		_giveWETH(treasury, 5e18);
-		_approveWeth(treasury, address(auctioneer), UINT256_MAX);
+		_approveWeth(treasury, address(auctioneerAuction), UINT256_MAX);
 		_treasuryApproveNFTs();
 	}
 
@@ -260,23 +261,23 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	function _treasuryApproveNFTs() public {
 		// Approve nft1
 		vm.prank(treasury);
-		mockNFT1.approve(address(auctioneer), 1);
+		mockNFT1.approve(address(auctioneerAuction), 1);
 		vm.prank(treasury);
-		mockNFT1.approve(address(auctioneer), 2);
+		mockNFT1.approve(address(auctioneerAuction), 2);
 		vm.prank(treasury);
-		mockNFT1.approve(address(auctioneer), 3);
+		mockNFT1.approve(address(auctioneerAuction), 3);
 		vm.prank(treasury);
-		mockNFT1.approve(address(auctioneer), 4);
+		mockNFT1.approve(address(auctioneerAuction), 4);
 
 		// Approve nft2
 		vm.prank(treasury);
-		mockNFT2.approve(address(auctioneer), 1);
+		mockNFT2.approve(address(auctioneerAuction), 1);
 		vm.prank(treasury);
-		mockNFT2.approve(address(auctioneer), 2);
+		mockNFT2.approve(address(auctioneerAuction), 2);
 		vm.prank(treasury);
-		mockNFT2.approve(address(auctioneer), 3);
+		mockNFT2.approve(address(auctioneerAuction), 3);
 		vm.prank(treasury);
-		mockNFT2.approve(address(auctioneer), 4);
+		mockNFT2.approve(address(auctioneerAuction), 4);
 	}
 
 	// UTILS
@@ -288,10 +289,10 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	}
 
 	function _warpToUnlockTimestamp(uint256 lot) public {
-		vm.warp(auctioneer.getAuction(lot).unlockTimestamp);
+		vm.warp(auctioneerAuction.getAuction(lot).unlockTimestamp);
 	}
 	function _warpToAuctionEndTimestamp(uint256 lot) public {
-		vm.warp(auctioneer.getAuction(lot).bidData.nextBidBy + 1);
+		vm.warp(auctioneerAuction.getAuction(lot).bidData.nextBidBy + 1);
 	}
 
 	function _getNextDay2PMTimestamp() public view returns (uint256) {
@@ -346,8 +347,8 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		XXToken.mint(treasury, 1000e18);
 		YYToken.mint(treasury, 1000e18);
 		vm.startPrank(treasury);
-		XXToken.approve(address(auctioneer), 1000e18);
-		YYToken.approve(address(auctioneer), 1000e18);
+		XXToken.approve(address(auctioneerAuction), 1000e18);
+		YYToken.approve(address(auctioneerAuction), 1000e18);
 		vm.stopPrank();
 	}
 
@@ -392,11 +393,19 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		params[0] = _getRunesAuctionParams(numRunes);
 		params[0].emissionBP = 2000;
 		auctioneer.createAuctions(params);
-		lot = auctioneer.lotCount() - 1;
+		lot = auctioneerAuction.lotCount() - 1;
 
 		if (warp) {
 			_warpToUnlockTimestamp(lot);
 		}
+	}
+
+	function _injectFarmUSD(uint256 amount) public {
+		vm.prank(user1);
+		USD.transfer(address(farm), amount);
+
+		vm.prank(address(auctioneerAuction));
+		farm.receiveUsdDistribution(amount);
 	}
 
 	// EVENTS
@@ -415,10 +424,10 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	// BIDS
 
 	function _createDefaultBidOptions() public pure returns (BidOptions memory options) {
-		options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "Hello World", rune: 0 });
+		options = BidOptions({ paymentType: PaymentType.WALLET, multibid: 1, message: "Hello World", rune: 0 });
 	}
 
-	function _createBidOptions_PaymentType(BidPaymentType paymentType) public pure returns (BidOptions memory options) {
+	function _createBidOptions_PaymentType(PaymentType paymentType) public pure returns (BidOptions memory options) {
 		options = _createDefaultBidOptions();
 		options.paymentType = paymentType;
 	}
@@ -432,26 +441,26 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		_bid(user);
 	}
 	function _bidShouldEmit(address user) public {
-		uint256 expectedBid = auctioneer.getAuction(0).bidData.bid + auctioneer.bidIncrement();
+		uint256 expectedBid = auctioneerAuction.getAuction(0).bidData.bid + auctioneerAuction.bidIncrement();
 		vm.expectEmit(true, true, true, true);
-		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "", rune: 0 });
+		BidOptions memory options = BidOptions({ paymentType: PaymentType.WALLET, multibid: 1, message: "", rune: 0 });
 		emit Bid(0, user, expectedBid, "", options);
 		_bid(user);
 	}
 	function _bid(address user) public {
 		vm.prank(user);
-		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "", rune: 0 });
+		BidOptions memory options = BidOptions({ paymentType: PaymentType.WALLET, multibid: 1, message: "", rune: 0 });
 		auctioneer.bid(0, options);
 	}
 	function _bidOnLot(address user, uint256 lot) public {
 		vm.prank(user);
-		BidOptions memory options = BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "", rune: 0 });
+		BidOptions memory options = BidOptions({ paymentType: PaymentType.WALLET, multibid: 1, message: "", rune: 0 });
 		auctioneer.bid(lot, options);
 	}
 	function _multibid(address user, uint256 bidCount) public {
 		vm.prank(user);
 		BidOptions memory options = BidOptions({
-			paymentType: BidPaymentType.WALLET,
+			paymentType: PaymentType.WALLET,
 			multibid: bidCount,
 			message: "",
 			rune: 0
@@ -461,7 +470,7 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	function _multibidLot(address user, uint256 bidCount, uint256 lot) public {
 		vm.prank(user);
 		BidOptions memory options = BidOptions({
-			paymentType: BidPaymentType.WALLET,
+			paymentType: PaymentType.WALLET,
 			multibid: bidCount,
 			message: "",
 			rune: 0
@@ -477,15 +486,12 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	}
 	function _bidWithRune(address user, uint256 lot, uint8 rune) internal {
 		vm.prank(user);
-		auctioneer.bid(lot, BidOptions({ paymentType: BidPaymentType.WALLET, multibid: 1, message: "", rune: rune }));
+		auctioneer.bid(lot, BidOptions({ paymentType: PaymentType.WALLET, multibid: 1, message: "", rune: rune }));
 	}
 
 	function _multibidWithRune(address user, uint256 lot, uint256 multibid, uint8 rune) internal {
 		vm.prank(user);
-		auctioneer.bid(
-			lot,
-			BidOptions({ paymentType: BidPaymentType.WALLET, multibid: multibid, message: "", rune: rune })
-		);
+		auctioneer.bid(lot, BidOptions({ paymentType: PaymentType.WALLET, multibid: multibid, message: "", rune: rune }));
 	}
 
 	// Farm helpers

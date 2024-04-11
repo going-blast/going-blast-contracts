@@ -29,13 +29,6 @@ contract AuctioneerFarmHarvestTest is AuctioneerHelper, AuctioneerFarmEvents {
 		farm.deposit(pid, amount, user);
 	}
 
-	function _injectFarmUSD(uint256 amount) public {
-		vm.startPrank(user1);
-		USD.approve(address(farm), amount);
-		farm.receiveUsdDistribution(amount);
-		vm.stopPrank();
-	}
-
 	function test_harvest_ExpectEmit_Harvest() public {
 		vm.prank(user1);
 		farm.deposit(goPid, 5e18, user1);

@@ -24,13 +24,6 @@ contract AuctioneerFarmWithdrawTest is AuctioneerHelper, AuctioneerFarmEvents {
 		_createDefaultDay1Auction();
 	}
 
-	function _injectFarmUSD(uint256 amount) public {
-		vm.startPrank(user1);
-		USD.approve(address(farm), amount);
-		farm.receiveUsdDistribution(amount);
-		vm.stopPrank();
-	}
-
 	function test_withdraw_RevertWhen_BadWithdrawal() public {
 		vm.expectRevert(IAuctioneerFarm.BadWithdrawal.selector);
 		vm.prank(user1);

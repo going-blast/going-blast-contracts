@@ -31,12 +31,6 @@ contract AuctioneerFarmEmissionsTest is AuctioneerHelper, AuctioneerFarmEvents {
 		vm.prank(user);
 		farm.withdraw(pid, amount, user);
 	}
-	function _injectFarmUSD(uint256 amount) public {
-		vm.startPrank(user1);
-		USD.approve(address(farm), amount);
-		farm.receiveUsdDistribution(amount);
-		vm.stopPrank();
-	}
 
 	uint256 public user1Deposited = 5e18;
 	uint256 public user2Deposited = 15e18;

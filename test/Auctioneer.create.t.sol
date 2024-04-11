@@ -78,10 +78,10 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 	function test_createAuctions_createSingleAuction_RevertWhen_TokenNotApproved() public {
 		// SETUP
 		vm.prank(treasury);
-		WETH.approve(address(auctioneer), 0);
+		WETH.approve(address(auctioneerAuction), 0);
 
 		// EXECUTE
-		vm.expectRevert(abi.encodeWithSelector(ERC20InsufficientAllowance.selector, address(auctioneer), 0, 1e18));
+		vm.expectRevert(abi.encodeWithSelector(ERC20InsufficientAllowance.selector, address(auctioneerAuction), 0, 1e18));
 
 		AuctionParams[] memory params = new AuctionParams[](1);
 
@@ -303,31 +303,35 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		AuctionParams memory auction = _getBaseSingleAuctionParams();
 		params[0] = auction;
 
-		uint256 lotCount = auctioneer.lotCount();
+		uint256 lotCount = auctioneerAuction.lotCount();
 
 		uint256 day = auction.unlockTimestamp / 1 days;
-		uint256 auctionsTodayInit = auctioneer.getAuctionsPerDay(day);
-		uint256 auctionsTodayEmissionsBP = auctioneer.dailyCumulativeEmissionBP(day);
+		uint256 auctionsTodayInit = auctioneerAuction.getAuctionsPerDay(day);
+		uint256 auctionsTodayEmissionsBP = auctioneerAuction.dailyCumulativeEmissionBP(day);
 
 		uint256 treasuryWethBal = WETH.balanceOf(treasury);
-		uint256 auctioneerWethBal = WETH.balanceOf(address(auctioneer));
+		uint256 auctioneerAuctionWethBal = WETH.balanceOf(address(auctioneerAuction));
 
 		uint256 expectedEmission = auctioneerEmissions.epochEmissionsRemaining(0) / 90;
 		uint256 emissionsRemaining = auctioneerEmissions.epochEmissionsRemaining(0);
 
 		auctioneer.createAuctions(params);
 
-		assertEq(auctioneer.lotCount(), lotCount + 1, "Lot count matches");
+		assertEq(auctioneerAuction.lotCount(), lotCount + 1, "Lot count matches");
 
-		assertEq(auctioneer.getAuctionsPerDay(day), auctionsTodayInit + 1, "Auctions per day matches");
+		assertEq(auctioneerAuction.getAuctionsPerDay(day), auctionsTodayInit + 1, "Auctions per day matches");
 		assertEq(
-			auctioneer.dailyCumulativeEmissionBP(day),
+			auctioneerAuction.dailyCumulativeEmissionBP(day),
 			auctionsTodayEmissionsBP + 10000,
 			"Daily cumulative emission bp matches"
 		);
 
 		assertEq(WETH.balanceOf(treasury), treasuryWethBal - 1e18, "Treasury weth balance updated");
-		assertEq(WETH.balanceOf(address(auctioneer)), auctioneerWethBal + 1e18, "AuctionManager weth balance updated");
+		assertEq(
+			WETH.balanceOf(address(auctioneerAuction)),
+			auctioneerAuctionWethBal + 1e18,
+			"AuctionManager weth balance updated"
+		);
 
 		assertEq(auctioneerEmissions.epochEmissionsRemaining(0), emissionsRemaining - expectedEmission);
 	}
@@ -343,7 +347,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 
 		auctioneer.createAuctions(params);
 
-		Auction memory auction = auctioneer.getAuction(0);
+		Auction memory auction = auctioneerAuction.getAuction(0);
 
 		assertEq(auction.lot, 0, "Auction lot should be 0");
 		assertEq(auction.isPrivate, false, "Auction should not be private");
@@ -372,7 +376,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		assertEq(auction.unlockTimestamp, params[0].unlockTimestamp, "Unlock timestamp set correctly");
 		assertEq(auction.bidData.bids, 0, "Bids should be 0");
 		assertEq(auction.bidData.revenue, 0, "Revenue should be 0");
-		assertEq(auction.bidData.bid, auctioneer.startingBid(), "Initial bid amount should be starting bid");
+		assertEq(auction.bidData.bid, auctioneerAuction.startingBid(), "Initial bid amount should be starting bid");
 		assertEq(auction.bidData.bidTimestamp, params[0].unlockTimestamp, "Last bid timestamp should be unlock timestamp");
 		assertEq(auction.bidData.bidUser, address(0), "Bidding user should be empty");
 		assertEq(auction.bidData.bidRune, 0, "Bidding rune should be 0");

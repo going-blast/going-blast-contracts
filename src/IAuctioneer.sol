@@ -6,14 +6,10 @@ enum BidWindowType {
 	TIMED,
 	INFINITE
 }
-enum BidPaymentType {
+enum PaymentType {
 	WALLET,
 	FUNDS,
 	VOUCHER
-}
-enum LotPaymentType {
-	WALLET,
-	FUNDS
 }
 
 // Params
@@ -25,13 +21,13 @@ struct BidRune {
 }
 
 struct BidOptions {
-	BidPaymentType paymentType;
+	PaymentType paymentType;
 	uint256 multibid;
 	string message;
 	uint8 rune;
 }
 struct ClaimLotOptions {
-	LotPaymentType paymentType;
+	PaymentType paymentType;
 	bool unwrapETH;
 }
 
@@ -178,6 +174,7 @@ struct DailyAuctionsMinimalData {
 }
 
 error NotAuctioneer();
+error NotAuctioneerAuction();
 error NotAuctioneerUser();
 error GONotYetReceived();
 error EmissionsNotInitialized();
@@ -221,9 +218,15 @@ error InvalidRunesCount();
 error DuplicateRuneSymbols();
 error CantSwitchRune();
 error CannotHaveNFTsWithRunes();
+error CannotPayForLotWithVouchers();
 
 interface AuctioneerEvents {
-	event Linked(address indexed _auctioneer, address indexed _auctioneerUser, address indexed _auctioneerEmissions);
+	event Linked(
+		address indexed _auctioneer,
+		address indexed _auctioneerUser,
+		address indexed _auctioneerEmissions,
+		address _auctioneerAuction
+	);
 	event Initialized();
 	event InitializedEmissions();
 	event UpdatedStartingBid(uint256 _startingBid);
@@ -234,7 +237,7 @@ interface AuctioneerEvents {
 	event Bid(uint256 indexed _lot, address indexed _user, uint256 _bid, string _alias, BidOptions _options);
 	event PreselectedRune(uint256 indexed _lot, address indexed _user, uint8 _rune);
 	event AuctionFinalized(uint256 indexed _lot);
-	event UserClaimedLot(
+	event ClaimedLot(
 		uint256 indexed _lot,
 		address indexed _user,
 		uint8 _rune,
@@ -242,7 +245,13 @@ interface AuctioneerEvents {
 		TokenData[] _tokens,
 		NftData[] _nfts
 	);
-	event UserHarvestedLotEmissions(uint256 _lot, address indexed _user, uint256 _userEmissions, uint256 _burnEmissions);
+	event UserHarvestedLotEmissions(
+		uint256 _lot,
+		address indexed _user,
+		uint256 _userEmissions,
+		uint256 _burnEmissions,
+		bool _harvestToFarm
+	);
 	event AuctionCancelled(uint256 indexed _lot);
 	event UpdatedTreasury(address indexed _treasury);
 	event UpdatedFarm(address indexed _farm);
@@ -252,9 +261,4 @@ interface AuctioneerEvents {
 	event AddedFunds(address _user, uint256 _amount);
 	event WithdrewFunds(address _user, uint256 _amount);
 	event UpdatedAlias(address _user, string _alias);
-}
-
-interface IAuctioneer {
-	function getAuction(uint256 _lot) external view returns (Auction memory);
-	function approveWithdrawUserFunds(uint256 _amount) external;
 }

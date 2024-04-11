@@ -37,18 +37,18 @@ contract AuctioneerNFTsTest is AuctioneerHelper {
 
 		assertEq(mockNFT1.ownerOf(1), treasury, "Treasury owns NFT1-1");
 		assertEq(mockNFT1.ownerOf(2), treasury, "Treasury owns NFT1-2");
-		assertEq(mockNFT1.ownerOf(3), address(auctioneer), "AuctionManager owns NFT1-3");
+		assertEq(mockNFT1.ownerOf(3), address(auctioneerAuction), "AuctioneerAuction owns NFT1-3");
 		assertEq(mockNFT1.ownerOf(4), treasury, "Treasury owns NFT1-4");
 
-		assertEq(mockNFT2.ownerOf(1), address(auctioneer), "AuctionManager owns NFT2-1");
+		assertEq(mockNFT2.ownerOf(1), address(auctioneerAuction), "AuctioneerAuction owns NFT2-1");
 		assertEq(mockNFT2.ownerOf(2), treasury, "Treasury owns NFT2-2");
 		assertEq(mockNFT2.ownerOf(3), treasury, "Treasury owns NFT2-3");
 		assertEq(mockNFT2.ownerOf(4), treasury, "Treasury owns NFT2-4");
 
-		assertEq(auctioneer.getAuction(0).rewards.nfts[0].nft, address(mockNFT1), "Nft 0 added to auction");
-		assertEq(auctioneer.getAuction(0).rewards.nfts[1].nft, address(mockNFT2), "Nft 1 added to auction");
-		assertEq(auctioneer.getAuction(0).rewards.nfts[0].id, 3, "Nft 0 id added to auction");
-		assertEq(auctioneer.getAuction(0).rewards.nfts[1].id, 1, "Nft 1 id added to auction");
+		assertEq(auctioneerAuction.getAuction(0).rewards.nfts[0].nft, address(mockNFT1), "Nft 0 added to auction");
+		assertEq(auctioneerAuction.getAuction(0).rewards.nfts[1].nft, address(mockNFT2), "Nft 1 added to auction");
+		assertEq(auctioneerAuction.getAuction(0).rewards.nfts[0].id, 3, "Nft 0 id added to auction");
+		assertEq(auctioneerAuction.getAuction(0).rewards.nfts[1].id, 1, "Nft 1 id added to auction");
 	}
 
 	function test_nfts_RevertWhen_TooManyNFTs() public {
@@ -76,10 +76,10 @@ contract AuctioneerNFTsTest is AuctioneerHelper {
 
 		assertEq(mockNFT1.ownerOf(1), treasury, "Treasury owns NFT1-1");
 		assertEq(mockNFT1.ownerOf(2), treasury, "Treasury owns NFT1-2");
-		assertEq(mockNFT1.ownerOf(3), address(auctioneer), "AuctionManager owns NFT1-3");
+		assertEq(mockNFT1.ownerOf(3), address(auctioneerAuction), "AuctioneerAuction owns NFT1-3");
 		assertEq(mockNFT1.ownerOf(4), treasury, "Treasury owns NFT1-4");
 
-		assertEq(mockNFT2.ownerOf(1), address(auctioneer), "AuctionManager owns NFT2-1");
+		assertEq(mockNFT2.ownerOf(1), address(auctioneerAuction), "AuctioneerAuction owns NFT2-1");
 		assertEq(mockNFT2.ownerOf(2), treasury, "Treasury owns NFT2-2");
 		assertEq(mockNFT2.ownerOf(3), treasury, "Treasury owns NFT2-3");
 		assertEq(mockNFT2.ownerOf(4), treasury, "Treasury owns NFT2-4");
@@ -102,16 +102,16 @@ contract AuctioneerNFTsTest is AuctioneerHelper {
 
 		assertEq(mockNFT1.ownerOf(1), treasury, "Treasury owns NFT1-1");
 		assertEq(mockNFT1.ownerOf(2), treasury, "Treasury owns NFT1-2");
-		assertEq(mockNFT1.ownerOf(3), address(auctioneer), "AuctionManager owns NFT1-3");
+		assertEq(mockNFT1.ownerOf(3), address(auctioneerAuction), "AuctioneerAuction owns NFT1-3");
 		assertEq(mockNFT1.ownerOf(4), treasury, "Treasury owns NFT1-4");
 
-		assertEq(mockNFT2.ownerOf(1), address(auctioneer), "AuctionManager owns NFT2-1");
+		assertEq(mockNFT2.ownerOf(1), address(auctioneerAuction), "AuctioneerAuction owns NFT2-1");
 		assertEq(mockNFT2.ownerOf(2), treasury, "Treasury owns NFT2-2");
 		assertEq(mockNFT2.ownerOf(3), treasury, "Treasury owns NFT2-3");
 		assertEq(mockNFT2.ownerOf(4), treasury, "Treasury owns NFT2-4");
 
 		// Bid
-		vm.warp(auctioneer.getAuction(0).unlockTimestamp);
+		vm.warp(auctioneerAuction.getAuction(0).unlockTimestamp);
 		_bid(user1);
 
 		// User 1 wins auction
@@ -119,7 +119,7 @@ contract AuctioneerNFTsTest is AuctioneerHelper {
 
 		// Claim auction
 		vm.prank(user1);
-		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: LotPaymentType.WALLET, unwrapETH: false }));
+		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.WALLET, unwrapETH: false }));
 
 		assertEq(mockNFT1.ownerOf(1), treasury, "Treasury owns NFT1-1");
 		assertEq(mockNFT1.ownerOf(2), treasury, "Treasury owns NFT1-2");

@@ -87,19 +87,19 @@ contract AuctioneerPermitTest is AuctioneerHelper, AuctioneerFarmEvents {
 		USD.approve(address(auctioneer), 0);
 		assertEq(USD.allowance(user1, address(auctioneer)), 0, "User1 not approved USD for auctioneer");
 
-		uint256 expectedBid = auctioneer.startingBid() + auctioneer.bidIncrement();
+		uint256 expectedBid = auctioneerAuction.startingBid() + auctioneerAuction.bidIncrement();
 		BidOptions memory options = BidOptions({
-			paymentType: BidPaymentType.WALLET,
+			paymentType: PaymentType.WALLET,
 			multibid: 1,
 			message: "Hello World",
 			rune: 0
 		});
 		PermitData memory permitData = getPermitData(user1, user1PK, address(auctioneer), address(USD), 100e18);
 
+		_expectTokenTransfer(USD, user1, address(auctioneer), 1e18);
+
 		vm.expectEmit(true, true, true, true);
 		emit Bid(0, user1, expectedBid, "", options);
-
-		_expectTokenTransfer(USD, user1, address(auctioneer), 1e18);
 
 		vm.prank(user1);
 		auctioneer.bidWithPermit(0, options, permitData);
@@ -115,19 +115,19 @@ contract AuctioneerPermitTest is AuctioneerHelper, AuctioneerFarmEvents {
 
 		assertEq(VOUCHER.allowance(user1, address(auctioneer)), 0, "User1 not approved VOUCHER for auctioneer");
 
-		uint256 expectedBid = auctioneer.startingBid() + auctioneer.bidIncrement();
+		uint256 expectedBid = auctioneerAuction.startingBid() + auctioneerAuction.bidIncrement();
 		BidOptions memory options = BidOptions({
-			paymentType: BidPaymentType.VOUCHER,
+			paymentType: PaymentType.VOUCHER,
 			multibid: 1,
 			message: "Hello World",
 			rune: 0
 		});
 		PermitData memory permitData = getPermitData(user1, user1PK, address(auctioneer), address(VOUCHER), 10e18);
 
+		_expectTokenTransfer(VOUCHER, user1, dead, 1e18);
+
 		vm.expectEmit(true, true, true, true);
 		emit Bid(0, user1, expectedBid, "", options);
-
-		_expectTokenTransfer(VOUCHER, user1, dead, 1e18);
 
 		vm.prank(user1);
 		auctioneer.bidWithPermit(0, options, permitData);
@@ -144,11 +144,11 @@ contract AuctioneerPermitTest is AuctioneerHelper, AuctioneerFarmEvents {
 		vm.prank(user1);
 		USD.approve(address(auctioneer), 0);
 
-		uint256 lotPrice = auctioneer.getAuction(0).bidData.bid;
+		uint256 lotPrice = auctioneerAuction.getAuction(0).bidData.bid;
 		vm.expectRevert(abi.encodeWithSelector(ERC20InsufficientAllowance.selector, address(auctioneer), 0, lotPrice));
 
 		vm.prank(user1);
-		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: LotPaymentType.WALLET, unwrapETH: true }));
+		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.WALLET, unwrapETH: true }));
 
 		PermitData memory permitData = getPermitData(user1, user1PK, address(auctioneer), address(USD), 100e18);
 
@@ -156,14 +156,10 @@ contract AuctioneerPermitTest is AuctioneerHelper, AuctioneerFarmEvents {
 		TokenData[] memory tokens = new TokenData[](1);
 		tokens[0] = TokenData({ token: ETH_ADDR, amount: 1e18 });
 		NftData[] memory nfts = new NftData[](0);
-		emit UserClaimedLot(0, user1, 0, 1e18, tokens, nfts);
+		emit ClaimedLot(0, user1, 0, 1e18, tokens, nfts);
 
 		vm.prank(user1);
-		auctioneer.claimLotWithPermit(
-			0,
-			ClaimLotOptions({ paymentType: LotPaymentType.WALLET, unwrapETH: true }),
-			permitData
-		);
+		auctioneer.claimLotWithPermit(0, ClaimLotOptions({ paymentType: PaymentType.WALLET, unwrapETH: true }), permitData);
 	}
 
 	// AuctioneerUser

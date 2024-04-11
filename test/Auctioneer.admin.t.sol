@@ -13,10 +13,10 @@ contract AuctioneerAdminTest is AuctioneerHelper {
 	function test_initialConditions() public {
 		assertEq(address(USD), address(auctioneer.USD()));
 		assertEq(address(GO), address(auctioneer.GO()));
-		assertEq(auctioneer.bidCost(), usdDecOffset(1e18));
-		assertEq(auctioneer.bidIncrement(), usdDecOffset(1e16));
-		assertEq(auctioneer.startingBid(), usdDecOffset(1e18));
-		assertEq(auctioneer.privateAuctionRequirement(), 20e18);
+		assertEq(auctioneerAuction.bidCost(), usdDecOffset(1e18));
+		assertEq(auctioneerAuction.bidIncrement(), usdDecOffset(1e16));
+		assertEq(auctioneerAuction.startingBid(), usdDecOffset(1e18));
+		assertEq(auctioneerAuction.privateAuctionRequirement(), 20e18);
 	}
 
 	// SET TREASURY
@@ -43,7 +43,7 @@ contract AuctioneerAdminTest is AuctioneerHelper {
 	// SET FARM
 	function test_updateFarm() public {
 		auctioneer.updateFarm(address(farm));
-		assertEq(address(farm), auctioneer.farm());
+		assertEq(address(farm), address(auctioneer.auctioneerFarm()));
 	}
 	function test_updateFarm_ExpectEmit_UpdatedFarm() public {
 		vm.expectEmit(true, true, true, true);
@@ -58,86 +58,86 @@ contract AuctioneerAdminTest is AuctioneerHelper {
 
 	// SET TREASURY SPLIT
 	function test_updateTreasurySplit() public {
-		auctioneer.updateTreasurySplit(5000);
-		assertEq(auctioneer.treasurySplit(), 5000);
+		auctioneerAuction.updateTreasurySplit(5000);
+		assertEq(auctioneerAuction.treasurySplit(), 5000);
 	}
 	function test_updateTreasurySplit_ExpectEmit_UpdatedTreasurySplit() public {
 		vm.expectEmit(true, true, true, true);
 		emit UpdatedTreasurySplit(4000);
-		auctioneer.updateTreasurySplit(4000);
+		auctioneerAuction.updateTreasurySplit(4000);
 	}
 	function test_updateTreasurySplit_RevertWhen_CallerIsNotOwner() public {
 		vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, address(0)));
 		vm.prank(address(0));
-		auctioneer.updateTreasurySplit(4000);
+		auctioneerAuction.updateTreasurySplit(4000);
 	}
 	function test_updateTreasurySplit_RevertWhen_CutIsTooSteep() public {
 		vm.expectRevert(TooSteep.selector);
-		auctioneer.updateTreasurySplit(5001);
+		auctioneerAuction.updateTreasurySplit(5001);
 	}
 
 	// SET FARM
 	function test_updatePrivateAuctionRequirement() public {
-		auctioneer.updatePrivateAuctionRequirement(25e18);
-		assertEq(25e18, auctioneer.privateAuctionRequirement());
+		auctioneerAuction.updatePrivateAuctionRequirement(25e18);
+		assertEq(25e18, auctioneerAuction.privateAuctionRequirement());
 	}
 	function test_updatePrivateAuctionRequirement_ExpectEmit_UpdatedPrivateAuctionRequirement() public {
 		vm.expectEmit(true, true, true, true);
 		emit UpdatedPrivateAuctionRequirement(25e18);
-		auctioneer.updatePrivateAuctionRequirement(25e18);
+		auctioneerAuction.updatePrivateAuctionRequirement(25e18);
 	}
 	function test_updatePrivateAuctionRequirement_RevertWhen_CallerIsNotOwner() public {
 		vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, address(0)));
 		vm.prank(address(0));
-		auctioneer.updatePrivateAuctionRequirement(25e18);
+		auctioneerAuction.updatePrivateAuctionRequirement(25e18);
 	}
 
 	// SET STARTING BID
 	function test_updateStartingBid() public {
-		auctioneer.updateStartingBid(usdDecOffset(2e18));
-		assertEq(usdDecOffset(2e18), auctioneer.startingBid());
+		auctioneerAuction.updateStartingBid(usdDecOffset(2e18));
+		assertEq(usdDecOffset(2e18), auctioneerAuction.startingBid());
 	}
 	function test_updateStartingBid_ExpectEmit_UpdatedStartingBid() public {
 		vm.expectEmit(true, true, true, true);
 		emit UpdatedStartingBid(usdDecOffset(2e18));
-		auctioneer.updateStartingBid(usdDecOffset(2e18));
+		auctioneerAuction.updateStartingBid(usdDecOffset(2e18));
 	}
 	function test_updateStartingBid_RevertWhen_CallerIsNotOwner() public {
 		vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, address(0)));
 		vm.prank(address(0));
-		auctioneer.updateStartingBid(usdDecOffset(2e18));
+		auctioneerAuction.updateStartingBid(usdDecOffset(2e18));
 	}
 	function test_updateStartingBid_RevertWhen_Invalid_TooLow() public {
 		vm.expectRevert(Invalid.selector);
-		auctioneer.updateStartingBid(usdDecOffset(0.49e18));
+		auctioneerAuction.updateStartingBid(usdDecOffset(0.49e18));
 	}
 	function test_updateStartingBid_RevertWhen_Invalid_TooHigh() public {
 		vm.expectRevert(Invalid.selector);
-		auctioneer.updateStartingBid(usdDecOffset(2.01e18));
+		auctioneerAuction.updateStartingBid(usdDecOffset(2.01e18));
 	}
 
 	// SET BID COST
 	function test_updateBidCost() public {
-		auctioneer.updateBidCost(usdDecOffset(0.5e18));
-		assertEq(usdDecOffset(0.5e18), auctioneer.bidCost());
+		auctioneerAuction.updateBidCost(usdDecOffset(0.5e18));
+		assertEq(usdDecOffset(0.5e18), auctioneerAuction.bidCost());
 	}
 	function test_updateBidCost_ExpectEmit_UpdatedBidCost() public {
 		vm.expectEmit(true, true, true, true);
 		emit UpdatedBidCost(usdDecOffset(0.5e18));
-		auctioneer.updateBidCost(usdDecOffset(0.5e18));
+		auctioneerAuction.updateBidCost(usdDecOffset(0.5e18));
 	}
 	function test_updateBidCost_RevertWhen_CallerIsNotOwner() public {
 		vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, address(0)));
 		vm.prank(address(0));
-		auctioneer.updateBidCost(usdDecOffset(0.5e18));
+		auctioneerAuction.updateBidCost(usdDecOffset(0.5e18));
 	}
 	function test_updateBidCost_RevertWhen_Invalid_TooLow() public {
 		vm.expectRevert(Invalid.selector);
-		auctioneer.updateBidCost(usdDecOffset(0.49e18));
+		auctioneerAuction.updateBidCost(usdDecOffset(0.49e18));
 	}
 	function test_updateBidCost_RevertWhen_Invalid_TooHigh() public {
 		vm.expectRevert(Invalid.selector);
-		auctioneer.updateBidCost(usdDecOffset(2.01e18));
+		auctioneerAuction.updateBidCost(usdDecOffset(2.01e18));
 	}
 
 	// SET EARLY HARVEST TAX

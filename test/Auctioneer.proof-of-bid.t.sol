@@ -59,9 +59,9 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 		params[0].unlockTimestamp = timestamp;
 		params[0].emissionBP = 10000;
 		auctioneer.createAuctions(params);
-		uint256 lot = auctioneer.lotCount() - 1;
+		uint256 lot = auctioneerAuction.lotCount() - 1;
 
-		Auction memory auction = auctioneer.getAuction(lot);
+		Auction memory auction = auctioneerAuction.getAuction(lot);
 		uint256 auctionEmission = auction.emissions.biddersEmission + auction.emissions.treasuryEmission;
 		assertApproxEqAbs(auctionEmission, bp10000Emission, 10, "Auction receives correct amount of emissions (BP 10000)");
 
@@ -74,9 +74,9 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 		params[0].unlockTimestamp = timestamp;
 		params[0].emissionBP = 1750;
 		auctioneer.createAuctions(params);
-		lot = auctioneer.lotCount() - 1;
+		lot = auctioneerAuction.lotCount() - 1;
 
-		auction = auctioneer.getAuction(lot);
+		auction = auctioneerAuction.getAuction(lot);
 		auctionEmission = auction.emissions.biddersEmission + auction.emissions.treasuryEmission;
 		assertApproxEqAbs(auctionEmission, bp17500Emission, 10, "Auction receives correct amount of emissions (BP 17500)");
 	}
@@ -95,9 +95,9 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 		params[0].unlockTimestamp = day2Timestamp;
 		params[0].emissionBP = 10000;
 		auctioneer.createAuctions(params);
-		uint256 lot = auctioneer.lotCount() - 1;
-		uint256 day2ActualEmission = auctioneer.getAuction(lot).emissions.biddersEmission +
-			auctioneer.getAuction(lot).emissions.treasuryEmission;
+		uint256 lot = auctioneerAuction.lotCount() - 1;
+		uint256 day2ActualEmission = auctioneerAuction.getAuction(lot).emissions.biddersEmission +
+			auctioneerAuction.getAuction(lot).emissions.treasuryEmission;
 
 		// Day 3 expected daily emission
 		epochData = auctioneerEmissions.getEpochDataAtTimestamp(day3Timestamp);
@@ -128,9 +128,9 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 		params[0].unlockTimestamp = day2Timestamp;
 		params[0].emissionBP = 20000;
 		auctioneer.createAuctions(params);
-		uint256 lot = auctioneer.lotCount() - 1;
-		uint256 day2ActualEmission = auctioneer.getAuction(lot).emissions.biddersEmission +
-			auctioneer.getAuction(lot).emissions.treasuryEmission;
+		uint256 lot = auctioneerAuction.lotCount() - 1;
+		uint256 day2ActualEmission = auctioneerAuction.getAuction(lot).emissions.biddersEmission +
+			auctioneerAuction.getAuction(lot).emissions.treasuryEmission;
 
 		// Day 3 actual daily emission
 		epochData = auctioneerEmissions.getEpochDataAtTimestamp(day3Timestamp);
@@ -167,9 +167,9 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 		params[0].unlockTimestamp = day2Timestamp;
 		params[0].emissionBP = 5000;
 		auctioneer.createAuctions(params);
-		uint256 lot = auctioneer.lotCount() - 1;
-		uint256 day2ActualEmission = auctioneer.getAuction(lot).emissions.biddersEmission +
-			auctioneer.getAuction(lot).emissions.treasuryEmission;
+		uint256 lot = auctioneerAuction.lotCount() - 1;
+		uint256 day2ActualEmission = auctioneerAuction.getAuction(lot).emissions.biddersEmission +
+			auctioneerAuction.getAuction(lot).emissions.treasuryEmission;
 
 		// Day 3 actual daily emission
 		epochData = auctioneerEmissions.getEpochDataAtTimestamp(day3Timestamp);
@@ -211,9 +211,9 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 		params[0].unlockTimestamp = day2Timestamp;
 		params[0].emissionBP = 20000;
 		auctioneer.createAuctions(params);
-		uint256 lot = auctioneer.lotCount() - 1;
-		uint256 day2ActualEmission = auctioneer.getAuction(lot).emissions.biddersEmission +
-			auctioneer.getAuction(lot).emissions.treasuryEmission;
+		uint256 lot = auctioneerAuction.lotCount() - 1;
+		uint256 day2ActualEmission = auctioneerAuction.getAuction(lot).emissions.biddersEmission +
+			auctioneerAuction.getAuction(lot).emissions.treasuryEmission;
 
 		// Day 3 actual daily emission
 		epochData = auctioneerEmissions.getEpochDataAtTimestamp(day3Timestamp);
@@ -259,14 +259,14 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 	uint256 public totalBids = user1Bids + user2Bids + user3Bids + user4Bids;
 
 	function _setUpFarmBids(uint256 lot) internal {
-		vm.warp(auctioneer.getAuction(lot).unlockTimestamp);
+		vm.warp(auctioneerAuction.getAuction(lot).unlockTimestamp);
 		_multibidLot(user2, user2Bids, lot);
 		_multibidLot(user3, user3Bids, lot);
 		_multibidLot(user4, user4Bids, lot);
 		_multibidLot(user1, user1Bids, lot);
 
 		// Harvestable after next bid by
-		vm.warp(auctioneer.getAuction(lot).bidData.nextBidBy + 1);
+		vm.warp(auctioneerAuction.getAuction(lot).bidData.nextBidBy + 1);
 	}
 
 	function _getUsersExpectedEmissions(
@@ -281,7 +281,7 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 			uint256 user4ExpectedEmissions
 		)
 	{
-		uint256 emissions = auctioneer.getAuction(lot).emissions.biddersEmission;
+		uint256 emissions = auctioneerAuction.getAuction(lot).emissions.biddersEmission;
 		user1ExpectedEmissions = (emissions * user1Bids) / totalBids;
 		user2ExpectedEmissions = (emissions * user2Bids) / totalBids;
 		user3ExpectedEmissions = (emissions * user3Bids) / totalBids;
@@ -298,7 +298,8 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 			0,
 			user1,
 			user1ExpectedEmissions / 2,
-			user1ExpectedEmissions - (user1ExpectedEmissions / 2)
+			user1ExpectedEmissions - (user1ExpectedEmissions / 2),
+			false
 		);
 
 		vm.prank(user1);
@@ -325,21 +326,24 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 			0,
 			user1,
 			user1Lot0ExpectedEmissions / 2,
-			user1Lot0ExpectedEmissions - (user1Lot0ExpectedEmissions / 2)
+			user1Lot0ExpectedEmissions - (user1Lot0ExpectedEmissions / 2),
+			false
 		);
 		vm.expectEmit(true, true, true, true);
 		emit UserHarvestedLotEmissions(
 			1,
 			user1,
 			user1Lot1ExpectedEmissions / 2,
-			user1Lot1ExpectedEmissions - (user1Lot1ExpectedEmissions / 2)
+			user1Lot1ExpectedEmissions - (user1Lot1ExpectedEmissions / 2),
+			false
 		);
 		vm.expectEmit(true, true, true, true);
 		emit UserHarvestedLotEmissions(
 			2,
 			user1,
 			user1Lot2ExpectedEmissions / 2,
-			user1Lot2ExpectedEmissions - (user1Lot2ExpectedEmissions / 2)
+			user1Lot2ExpectedEmissions - (user1Lot2ExpectedEmissions / 2),
+			false
 		);
 
 		vm.prank(user1);
@@ -351,7 +355,7 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 	}
 
 	function test_proofOfBid_firstBidAddsAuctionToUserInteractedLots() public {
-		vm.warp(auctioneer.getAuction(0).unlockTimestamp);
+		vm.warp(auctioneerAuction.getAuction(0).unlockTimestamp);
 
 		uint256[] memory unharvestedLots = auctioneerUser.getUserUnharvestedLots(user1);
 		assertEq(unharvestedLots.length, 0, "unharvestedLots lots should be []");
@@ -364,7 +368,7 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 	}
 
 	function test_proofOfBid_harvestAuctionEmissions_RevertWhen_AuctionNotEnded() public {
-		vm.warp(auctioneer.getAuction(0).unlockTimestamp);
+		vm.warp(auctioneerAuction.getAuction(0).unlockTimestamp);
 
 		_bid(user1);
 
@@ -378,7 +382,7 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 	}
 
 	function test_proofOfBid_harvestAuctionEmissions_MarkedAsHarvested() public {
-		vm.warp(auctioneer.getAuction(0).unlockTimestamp);
+		vm.warp(auctioneerAuction.getAuction(0).unlockTimestamp);
 
 		_bid(user1);
 
@@ -397,7 +401,7 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 	}
 
 	function test_proofOfBid_harvestAuctionEmissions_AfterClaim_LotRemovedFromList() public {
-		vm.warp(auctioneer.getAuction(0).unlockTimestamp);
+		vm.warp(auctioneerAuction.getAuction(0).unlockTimestamp);
 
 		uint256[] memory interactedLots = auctioneerUser.getUserInteractedLots(user1);
 		uint256[] memory unharvestedLots = auctioneerUser.getUserUnharvestedLots(user1);
@@ -429,7 +433,7 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 	}
 
 	function test_proofOfBid_harvestAuctionEmissions_EarlyHarvest_50PercTax() public {
-		vm.warp(auctioneer.getAuction(0).unlockTimestamp);
+		vm.warp(auctioneerAuction.getAuction(0).unlockTimestamp);
 
 		_bid(user1);
 
@@ -461,7 +465,7 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 	}
 
 	function test_proofOfBid_harvestAuctionEmissions_DelayedHarvest_0PercTax() public {
-		vm.warp(auctioneer.getAuction(0).unlockTimestamp);
+		vm.warp(auctioneerAuction.getAuction(0).unlockTimestamp);
 
 		_bid(user1);
 
@@ -503,7 +507,7 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 		_multibidWithRune(user3, lot, 32, 1);
 		_multibidWithRune(user4, lot, 77, 2);
 
-		uint256 auctionEmissions = auctioneer.getAuction(lot).emissions.biddersEmission;
+		uint256 auctionEmissions = auctioneerAuction.getAuction(lot).emissions.biddersEmission;
 
 		vm.warp(block.timestamp + 1 days);
 
@@ -542,7 +546,7 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 		_multibidWithRune(user3, lot, 32, 1);
 		_multibidWithRune(user4, lot, 77, 2);
 
-		uint256 auctionEmissions = auctioneer.getAuction(lot).emissions.biddersEmission;
+		uint256 auctionEmissions = auctioneerAuction.getAuction(lot).emissions.biddersEmission;
 
 		vm.warp(block.timestamp + 1 days);
 		vm.warp(block.timestamp + auctioneerUser.getUserLotInfo(0, user1).timeUntilMature);

@@ -7,33 +7,36 @@ import { AuctionViewUtils, AuctionMutateUtils } from "../src/AuctionUtils.sol";
 import { AuctioneerFarm } from "../src/AuctioneerFarm.sol";
 import { Auctioneer } from "../src/Auctioneer.sol";
 import "../src/IAuctioneer.sol";
+import { AuctioneerAuction } from "../src/AuctioneerAuction.sol";
 
 contract AuctioneerHarness is Auctioneer {
+	constructor(IERC20 _go, IERC20 _voucher, IERC20 _usd, IWETH _weth) Auctioneer(_go, _voucher, _usd, _weth) {}
+}
+
+contract AuctioneerAuctionHarness is AuctioneerAuction {
 	using AuctionViewUtils for Auction;
 	using AuctionMutateUtils for Auction;
 
 	constructor(
-		IERC20 _go,
-		IERC20 _voucher,
 		IERC20 _usd,
 		IWETH _weth,
 		uint256 _bidCost,
 		uint256 _bidIncrement,
 		uint256 _startingBid,
-		uint256 _privateRequirement
-	) Auctioneer(_go, _voucher, _usd, _weth, _bidCost, _bidIncrement, _startingBid, _privateRequirement) {}
+		uint256 _privateAuctionRequirement
+	) AuctioneerAuction(_usd, _weth, _bidCost, _bidIncrement, _startingBid, _privateAuctionRequirement) {}
 
 	// AuctionUtils
-	function exposed_auction_activeWindow(uint256 _lot) public view validAuctionLot(_lot) returns (uint256) {
+	function exposed_auction_activeWindow(uint256 _lot) public view returns (uint256) {
 		return auctions[_lot].activeWindow();
 	}
-	function exposed_auction_isBiddingOpen(uint256 _lot) public view validAuctionLot(_lot) returns (bool) {
+	function exposed_auction_isBiddingOpen(uint256 _lot) public view returns (bool) {
 		return auctions[_lot].isBiddingOpen();
 	}
-	function exposed_auction_isEnded(uint256 _lot) public view validAuctionLot(_lot) returns (bool) {
+	function exposed_auction_isEnded(uint256 _lot) public view returns (bool) {
 		return auctions[_lot].isEnded();
 	}
-	function exposed_auction_hasRunes(uint256 _lot) public view validAuctionLot(_lot) returns (bool) {
+	function exposed_auction_hasRunes(uint256 _lot) public view returns (bool) {
 		return auctions[_lot].hasRunes();
 	}
 }

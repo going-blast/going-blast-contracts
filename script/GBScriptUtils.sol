@@ -6,6 +6,7 @@ import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { ChainJsonUtils } from "./ChainJsonUtils.sol";
 import { IWETH } from "../src/WETH9.sol";
 import { Auctioneer } from "../src/Auctioneer.sol";
+import { AuctioneerAuction } from "../src/AuctioneerAuction.sol";
 import { AuctioneerFarm } from "../src/AuctioneerFarm.sol";
 import { AuctioneerUser } from "../src/AuctioneerUser.sol";
 import { AuctioneerEmissions } from "../src/AuctioneerEmissions.sol";
@@ -17,6 +18,7 @@ contract GBScriptUtils is Script, ChainJsonUtils {
 
 	// Ecosystem contracts
 	Auctioneer public auctioneer;
+	AuctioneerAuction public auctioneerAuction;
 	AuctioneerUser public auctioneerUser;
 	AuctioneerEmissions public auctioneerEmissions;
 	AuctioneerFarm public auctioneerFarm;
@@ -60,6 +62,7 @@ contract GBScriptUtils is Script, ChainJsonUtils {
 		if (bytes(chainName).length == 0) revert ChainNameNotSet();
 
 		auctioneer = Auctioneer(payable(readAddress(contractPath("Auctioneer"))));
+		auctioneerAuction = AuctioneerAuction(payable(readAddress(contractPath("AuctioneerAuction"))));
 		auctioneerUser = AuctioneerUser(readAddress(contractPath("AuctioneerUser")));
 		auctioneerEmissions = AuctioneerEmissions(readAddress(contractPath("AuctioneerEmissions")));
 		auctioneerFarm = AuctioneerFarm(readAddress(contractPath("AuctioneerFarm")));

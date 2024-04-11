@@ -90,7 +90,7 @@ contract AuctioneerCancelTest is AuctioneerHelper {
 
 		auctioneer.cancelAuction(0, true);
 
-		assertEq(auctioneer.getAuction(0).finalized, true, "Auction should be marked as finalized");
+		assertEq(auctioneerAuction.getAuction(0).finalized, true, "Auction should be marked as finalized");
 	}
 
 	function test_cancelAuction_Should_ReturnEmissionsToEpoch() public {
@@ -100,7 +100,7 @@ contract AuctioneerCancelTest is AuctioneerHelper {
 		uint256 epoch0EmissionsBeforeAuction = auctioneerEmissions.epochEmissionsRemaining(0);
 		auctioneer.createAuctions(params);
 
-		Auction memory auction = auctioneer.getAuction(0);
+		Auction memory auction = auctioneerAuction.getAuction(0);
 		uint256 auctionTotalEmission = auction.emissions.biddersEmission + auction.emissions.treasuryEmission;
 		uint256 epoch0EmissionsRemaining = auctioneerEmissions.epochEmissionsRemaining(0);
 
@@ -126,17 +126,17 @@ contract AuctioneerCancelTest is AuctioneerHelper {
 		params[0] = _getBaseSingleAuctionParams();
 
 		uint256 day = params[0].unlockTimestamp / 1 days;
-		uint256 auctionsOnDayInit = auctioneer.getAuctionsPerDay(day);
+		uint256 auctionsOnDayInit = auctioneerAuction.getAuctionsPerDay(day);
 		assertEq(auctionsOnDayInit, 0, "Should start with 0 auctions");
 
 		auctioneer.createAuctions(params);
 
-		uint256 auctionsOnDayMid = auctioneer.getAuctionsPerDay(day);
+		uint256 auctionsOnDayMid = auctioneerAuction.getAuctionsPerDay(day);
 		assertEq(auctionsOnDayMid, 1, "Should add 1 auction to day");
 
 		auctioneer.cancelAuction(0, true);
 
-		uint256 auctionsOnDayFinal = auctioneer.getAuctionsPerDay(day);
+		uint256 auctionsOnDayFinal = auctioneerAuction.getAuctionsPerDay(day);
 		assertEq(auctionsOnDayFinal, 0, "Should reduce back to 0 after cancel");
 	}
 
@@ -146,17 +146,17 @@ contract AuctioneerCancelTest is AuctioneerHelper {
 		params[0].emissionBP = 15000;
 
 		uint256 day = params[0].unlockTimestamp / 1 days;
-		uint256 bpOnDayInit = auctioneer.dailyCumulativeEmissionBP(day);
+		uint256 bpOnDayInit = auctioneerAuction.dailyCumulativeEmissionBP(day);
 		assertEq(bpOnDayInit, 0, "Should start with 0 bp");
 
 		auctioneer.createAuctions(params);
 
-		uint256 bpOnDayMid = auctioneer.dailyCumulativeEmissionBP(day);
+		uint256 bpOnDayMid = auctioneerAuction.dailyCumulativeEmissionBP(day);
 		assertEq(bpOnDayMid, 15000, "Should add 15000 bp to day");
 
 		auctioneer.cancelAuction(0, true);
 
-		uint256 bpOnDayFinal = auctioneer.dailyCumulativeEmissionBP(day);
+		uint256 bpOnDayFinal = auctioneerAuction.dailyCumulativeEmissionBP(day);
 		assertEq(bpOnDayFinal, 0, "Should reduce bp back to 0 after cancel");
 	}
 

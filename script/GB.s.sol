@@ -10,6 +10,7 @@ import { GBScriptUtils } from "./GBScriptUtils.sol";
 import { BasicERC20 } from "../src/BasicERC20.sol";
 import { IWETH, WETH9 } from "../src/WETH9.sol";
 import { Auctioneer } from "../src/Auctioneer.sol";
+import { AuctioneerAuction } from "../src/AuctioneerAuction.sol";
 import { AuctioneerUser } from "../src/AuctioneerUser.sol";
 import { AuctioneerEmissions } from "../src/AuctioneerEmissions.sol";
 import { AuctioneerFarm } from "../src/AuctioneerFarm.sol";
@@ -17,7 +18,7 @@ import { GoToken } from "../src/GoToken.sol";
 import { VoucherToken } from "../src/VoucherToken.sol";
 import { IERC20Rebasing } from "../src/BlastYield.sol";
 import { GBMath, AuctionParamsUtils } from "../src/AuctionUtils.sol";
-import { AuctionParams, EpochData, BidPaymentType, BidOptions } from "../src/IAuctioneer.sol";
+import { AuctionParams, EpochData, PaymentType, BidOptions } from "../src/IAuctioneer.sol";
 
 contract GBScripts is GBScriptUtils {
 	using SafeERC20 for IERC20;
@@ -98,8 +99,11 @@ contract GBScripts is GBScriptUtils {
 		VOUCHER = new VoucherToken();
 		writeContractAddress("VOUCHER", address(VOUCHER));
 
-		auctioneer = new Auctioneer(GO, VOUCHER, USD, WETH, bidCost, bidIncrement, startingBid, privateAuctionRequirement);
+		auctioneer = new Auctioneer(GO, VOUCHER, USD, WETH);
 		writeContractAddress("Auctioneer", address(auctioneer));
+
+		auctioneerAuction = new AuctioneerAuction(USD, WETH, bidCost, bidIncrement, startingBid, privateAuctionRequirement);
+		writeContractAddress("AuctioneerAuction", address(auctioneerAuction));
 
 		auctioneerUser = new AuctioneerUser(USD);
 		writeContractAddress("AuctioneerUser", address(auctioneerUser));
@@ -107,7 +111,7 @@ contract GBScripts is GBScriptUtils {
 		auctioneerEmissions = new AuctioneerEmissions(GO);
 		writeContractAddress("AuctioneerEmissions", address(auctioneerEmissions));
 
-		auctioneer.link(address(auctioneerUser), address(auctioneerEmissions));
+		auctioneer.link(address(auctioneerUser), address(auctioneerEmissions), address(auctioneerAuction));
 
 		auctioneerFarm = new AuctioneerFarm(USD, GO, VOUCHER);
 		writeContractAddress("AuctioneerFarm", address(auctioneerFarm));
@@ -117,6 +121,7 @@ contract GBScripts is GBScriptUtils {
 		if (isBlast) {
 			auctioneer.initializeBlast();
 			auctioneerFarm.initializeBlast(address(WETH));
+			auctioneerAuction.initializeBlast();
 		}
 	}
 
@@ -159,7 +164,7 @@ contract GBScripts is GBScriptUtils {
 	}
 
 	function createAuctions() public broadcast loadChain loadContracts loadConfigValues {
-		uint256 lotCount = auctioneer.lotCount();
+		uint256 lotCount = auctioneerAuction.lotCount();
 		uint256 jsonAuctionCount = readAuctionCount();
 
 		console.log("Auction readiness checks:");
@@ -204,29 +209,29 @@ contract GBScripts is GBScriptUtils {
 
 	function syncConfigValues() public broadcast loadChain loadContracts loadConfigValues {
 		console.log(". sync bidCost");
-		if (bidCost != auctioneer.bidCost()) {
-			console.log("  . bidCost updated %s --> %s", auctioneer.bidCost(), bidCost);
-			auctioneer.updateBidCost(bidCost);
+		if (bidCost != auctioneerAuction.bidCost()) {
+			console.log("  . bidCost updated %s --> %s", auctioneerAuction.bidCost(), bidCost);
+			auctioneerAuction.updateBidCost(bidCost);
 		} else {
 			console.log("  . skipped");
 		}
 
 		console.log(". sync startingBid");
-		if (startingBid != auctioneer.startingBid()) {
-			console.log("  . startingBid updated %s --> %s", auctioneer.startingBid(), startingBid);
-			auctioneer.updateStartingBid(startingBid);
+		if (startingBid != auctioneerAuction.startingBid()) {
+			console.log("  . startingBid updated %s --> %s", auctioneerAuction.startingBid(), startingBid);
+			auctioneerAuction.updateStartingBid(startingBid);
 		} else {
 			console.log("  . skipped");
 		}
 
 		console.log(". sync privateAuctionRequirement");
-		if (privateAuctionRequirement != auctioneer.privateAuctionRequirement()) {
+		if (privateAuctionRequirement != auctioneerAuction.privateAuctionRequirement()) {
 			console.log(
 				"  . privateAuctionRequirement updated %s --> %s",
-				auctioneer.privateAuctionRequirement(),
+				auctioneerAuction.privateAuctionRequirement(),
 				privateAuctionRequirement
 			);
-			auctioneer.updatePrivateAuctionRequirement(privateAuctionRequirement);
+			auctioneerAuction.updatePrivateAuctionRequirement(privateAuctionRequirement);
 		} else {
 			console.log("  . skipped");
 		}
@@ -252,9 +257,9 @@ contract GBScripts is GBScriptUtils {
 		}
 
 		console.log(". sync treasurySplit");
-		if (treasurySplit != auctioneer.treasurySplit()) {
-			console.log("  . treasurySplit updated %s --> %s", auctioneer.treasurySplit(), treasurySplit);
-			auctioneer.updateTreasurySplit(treasurySplit);
+		if (treasurySplit != auctioneerAuction.treasurySplit()) {
+			console.log("  . treasurySplit updated %s --> %s", auctioneerAuction.treasurySplit(), treasurySplit);
+			auctioneerAuction.updateTreasurySplit(treasurySplit);
 		} else {
 			console.log("  . skipped");
 		}
@@ -296,12 +301,9 @@ contract GBScripts is GBScriptUtils {
 			USD.approve(address(auctioneer), UINT256_MAX);
 		}
 
-		if (block.timestamp < auctioneer.getAuction(lot).unlockTimestamp) return;
+		if (block.timestamp < auctioneerAuction.getAuction(lot).unlockTimestamp) return;
 
 		vm.broadcast(user);
-		auctioneer.bid(
-			lot,
-			BidOptions({ multibid: 1, rune: 0, paymentType: BidPaymentType.WALLET, message: "I JUST BID" })
-		);
+		auctioneer.bid(lot, BidOptions({ multibid: 1, rune: 0, paymentType: PaymentType.WALLET, message: "I JUST BID" }));
 	}
 }

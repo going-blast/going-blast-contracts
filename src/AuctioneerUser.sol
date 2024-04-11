@@ -10,17 +10,17 @@ import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IER
 import { Auctioneer } from "./Auctioneer.sol";
 import "./IAuctioneer.sol";
 import { GBMath } from "./AuctionUtils.sol";
-import { AuctioneerEmissions } from "./AuctioneerEmissions.sol";
+import { IAuctioneerEmissions } from "./AuctioneerEmissions.sol";
+import { IAuctioneerAuction } from "./AuctioneerAuction.sol";
 
 interface IAuctioneerUser {
-	function link(address _auctioneerEmissions) external;
+	function link(address _auctioneerEmissions, address _auctioneerAuction) external;
 	function bid(
 		uint256 _lot,
 		address _user,
-		uint256 _bidAmount,
-		uint256 _biddersEmission,
 		BidOptions memory _options
-	) external returns (bool isUsersFirstBid);
+	) external returns (bool isUsersFirstBid, string memory userAlias);
+	function preselectRune(uint256 _lot, address _user, uint8 _rune) external;
 	function claimLot(uint256 _lot, address _user) external returns (uint8 rune, uint256 bids);
 	function harvestAuctionEmissions(
 		uint256 _lot,
@@ -31,6 +31,7 @@ interface IAuctioneerUser {
 		bool _harvestToFarm
 	) external returns (uint256 harvested, uint256 burned);
 	function payFromFunds(address _user, uint256 _amount) external;
+	function markAuctionHarvestable(uint256 _lot, address _user) external;
 }
 
 contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, AuctioneerEvents {
@@ -38,8 +39,9 @@ contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, Auctioneer
 	using SafeERC20 for IERC20;
 	using EnumerableSet for EnumerableSet.UintSet;
 
-	IAuctioneer public auctioneer;
-	AuctioneerEmissions public auctioneerEmissions;
+	address public auctioneer;
+	IAuctioneerEmissions public auctioneerEmissions;
+	IAuctioneerAuction public auctioneerAuction;
 	bool public linked;
 
 	// AUCTION USER
@@ -57,12 +59,13 @@ contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, Auctioneer
 		USD = _usd;
 	}
 
-	function link(address _auctioneerEmissions) public {
+	function link(address _auctioneerEmissions, address _auctioneerAuction) public {
 		if (linked) revert AlreadyLinked();
 		linked = true;
 
-		auctioneer = IAuctioneer(payable(msg.sender));
-		auctioneerEmissions = AuctioneerEmissions(_auctioneerEmissions);
+		auctioneer = payable(msg.sender);
+		auctioneerEmissions = IAuctioneerEmissions(_auctioneerEmissions);
+		auctioneerAuction = IAuctioneerAuction(_auctioneerAuction);
 	}
 
 	///////////////////
@@ -70,7 +73,7 @@ contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, Auctioneer
 	///////////////////
 
 	modifier onlyAuctioneer() {
-		if (msg.sender != address(auctioneer)) revert NotAuctioneer();
+		if (msg.sender != auctioneer) revert NotAuctioneer();
 		_;
 	}
 
@@ -90,12 +93,16 @@ contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, Auctioneer
 	function bid(
 		uint256 _lot,
 		address _user,
-		uint256 _bidAmount,
-		uint256 _biddersEmission,
 		BidOptions memory _options
-	) public onlyAuctioneer validUserRuneSelection(_lot, _user, _options.rune) returns (bool isUsersFirstBid) {
+	)
+		public
+		onlyAuctioneer
+		validUserRuneSelection(_lot, _user, _options.rune)
+		returns (bool isUsersFirstBid, string memory userAliasRet)
+	{
 		AuctionUser storage user = auctionUsers[_lot][_user];
 		isUsersFirstBid = user.bids == 0;
+		userAliasRet = userAlias[_user];
 
 		// Force bid count to be at least one
 		if (_options.multibid == 0) _options.multibid = 1;
@@ -110,13 +117,19 @@ contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, Auctioneer
 
 		// Mark user has interacted with this lot
 		userInteractedLots[_user].add(_lot);
+	}
 
-		// Mark whether user will have emissions (any bid guarantees emissions)
-		if (_biddersEmission > 0) {
-			userUnharvestedLots[_user].add(_lot);
-		}
+	function markAuctionHarvestable(uint256 _lot, address _user) public onlyAuctioneer {
+		userUnharvestedLots[_user].add(_lot);
+	}
 
-		emit Bid(_lot, _user, _bidAmount, userAlias[_user], _options);
+	function preselectRune(
+		uint256 _lot,
+		address _user,
+		uint8 _rune
+	) public onlyAuctioneer validUserRuneSelection(_lot, _user, _rune) {
+		AuctionUser storage user = auctionUsers[_lot][_user];
+		user.rune = _rune;
 	}
 
 	///////////////////
@@ -171,8 +184,6 @@ contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, Auctioneer
 
 		user.harvestedEmissions = harvested;
 		user.burnedEmissions = burned;
-
-		emit UserHarvestedLotEmissions(_lot, _user, user.harvestedEmissions, user.burnedEmissions);
 	}
 
 	///////////////////
@@ -202,7 +213,7 @@ contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, Auctioneer
 	function _addFunds(uint256 _amount) internal {
 		if (_amount > USD.balanceOf(msg.sender)) revert BadDeposit();
 
-		USD.safeTransferFrom(msg.sender, address(auctioneer), _amount);
+		USD.safeTransferFrom(msg.sender, auctioneer, _amount);
 		userFunds[msg.sender] += _amount;
 
 		emit AddedFunds(msg.sender, _amount);
@@ -211,10 +222,7 @@ contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, Auctioneer
 	function withdrawFunds(uint256 _amount) public nonReentrant {
 		if (_amount > userFunds[msg.sender]) revert BadWithdrawal();
 
-		// Ensure that only the users funds can be withdrawn
-		auctioneer.approveWithdrawUserFunds(_amount);
-
-		USD.safeTransferFrom(address(auctioneer), msg.sender, _amount);
+		USD.safeTransferFrom(auctioneer, msg.sender, _amount);
 		userFunds[msg.sender] -= _amount;
 
 		emit WithdrewFunds(msg.sender, _amount);
@@ -256,7 +264,7 @@ contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, Auctioneer
 	}
 
 	function getUserLotInfo(uint256 _lot, address _user) public view returns (UserLotInfo memory info) {
-		Auction memory auction = auctioneer.getAuction(_lot);
+		Auction memory auction = auctioneerAuction.getAuction(_lot);
 		AuctionUser memory user = auctionUsers[_lot][_user];
 
 		info.lot = auction.lot;

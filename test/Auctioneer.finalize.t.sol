@@ -17,11 +17,11 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 		super.setUp();
 
 		_distributeGO();
-		_initializeFarmEmissions();
 		_initializeAuctioneerEmissions();
 		_setupAuctioneerTreasury();
 		_giveUsersTokensAndApprove();
 		_auctioneerUpdateFarm();
+		_initializeFarmEmissions();
 		_giveTreasuryXXandYYandApprove();
 
 		AuctionParams[] memory params = new AuctionParams[](2);
@@ -52,18 +52,18 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 	}
 
 	function test_finalize_finalizeAuction_ExpectEmit_AuctionFinalized() public {
-		vm.warp(auctioneer.getAuction(0).unlockTimestamp);
+		vm.warp(auctioneerAuction.getAuction(0).unlockTimestamp);
 		_bid(user1);
 
 		// Not claimable up until end of auction
-		vm.warp(auctioneer.getAuction(0).bidData.nextBidBy);
+		vm.warp(auctioneerAuction.getAuction(0).bidData.nextBidBy);
 
 		vm.expectRevert(AuctionStillRunning.selector);
 		vm.prank(user1);
-		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: LotPaymentType.WALLET, unwrapETH: true }));
+		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.WALLET, unwrapETH: true }));
 
 		// Claimable after next bid by
-		vm.warp(auctioneer.getAuction(0).bidData.nextBidBy + 1);
+		vm.warp(auctioneerAuction.getAuction(0).bidData.nextBidBy + 1);
 
 		vm.expectEmit(true, true, true, true);
 		emit AuctionFinalized(0);
@@ -73,50 +73,50 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 	}
 
 	function test_finalize_finalizeAuction_ExpectState_AuctionMarkedAsFinalized() public {
-		vm.warp(auctioneer.getAuction(0).unlockTimestamp);
+		vm.warp(auctioneerAuction.getAuction(0).unlockTimestamp);
 
 		// Claimable after next bid by
-		vm.warp(auctioneer.getAuction(0).bidData.nextBidBy + 1);
+		vm.warp(auctioneerAuction.getAuction(0).bidData.nextBidBy + 1);
 
 		auctioneer.finalizeAuction(0);
 
-		assertEq(auctioneer.getAuction(0).finalized, true, "Auction marked finalized");
+		assertEq(auctioneerAuction.getAuction(0).finalized, true, "Auction marked finalized");
 	}
 
 	function test_finalize_claimLot_ExpectEmit_AuctionFinalized() public {
-		vm.warp(auctioneer.getAuction(0).unlockTimestamp);
+		vm.warp(auctioneerAuction.getAuction(0).unlockTimestamp);
 		_bid(user1);
 
 		// Not claimable up until end of auction
-		vm.warp(auctioneer.getAuction(0).bidData.nextBidBy);
+		vm.warp(auctioneerAuction.getAuction(0).bidData.nextBidBy);
 
 		vm.expectRevert(AuctionStillRunning.selector);
 		vm.prank(user1);
-		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: LotPaymentType.WALLET, unwrapETH: true }));
+		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.WALLET, unwrapETH: true }));
 
 		// Claimable after next bid by
-		vm.warp(auctioneer.getAuction(0).bidData.nextBidBy + 1);
+		vm.warp(auctioneerAuction.getAuction(0).bidData.nextBidBy + 1);
 
 		vm.expectEmit(true, true, true, true);
 		emit AuctionFinalized(0);
 
 		vm.prank(user1);
-		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: LotPaymentType.WALLET, unwrapETH: true }));
+		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.WALLET, unwrapETH: true }));
 	}
 
 	function testFail_finalize_claimLot_alreadyFinalized_NotExpectEmit_AuctionFinalized() public {
-		vm.warp(auctioneer.getAuction(0).unlockTimestamp);
+		vm.warp(auctioneerAuction.getAuction(0).unlockTimestamp);
 		_bid(user1);
 
 		// Not claimable up until end of auction
-		vm.warp(auctioneer.getAuction(0).bidData.nextBidBy);
+		vm.warp(auctioneerAuction.getAuction(0).bidData.nextBidBy);
 
 		vm.expectRevert(AuctionStillRunning.selector);
 		vm.prank(user1);
-		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: LotPaymentType.WALLET, unwrapETH: true }));
+		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.WALLET, unwrapETH: true }));
 
 		// Claimable after next bid by
-		vm.warp(auctioneer.getAuction(0).bidData.nextBidBy + 1);
+		vm.warp(auctioneerAuction.getAuction(0).bidData.nextBidBy + 1);
 
 		// Finalize auction
 		vm.expectEmit(true, true, true, true);
@@ -131,7 +131,7 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 
 		// Should revert
 		vm.prank(user1);
-		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: LotPaymentType.WALLET, unwrapETH: true }));
+		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.WALLET, unwrapETH: true }));
 	}
 
 	function test_finalizeAuction_TransferEmissionsToTreasury() public {
@@ -139,7 +139,7 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 		_bid(user1);
 		_warpToAuctionEndTimestamp(0);
 
-		Auction memory auction = auctioneer.getAuction(0);
+		Auction memory auction = auctioneerAuction.getAuction(0);
 
 		_expectTokenTransfer(GO, address(auctioneerEmissions), treasury, auction.emissions.treasuryEmission);
 
@@ -149,15 +149,15 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 	function test_finalizeAuction_NoBids_CancelFallback() public {
 		_warpToAuctionEndTimestamp(0);
 
-		Auction memory auction = auctioneer.getAuction(0);
+		Auction memory auction = auctioneerAuction.getAuction(0);
 
 		uint256 treasuryGOInit = GO.balanceOf(treasury);
 		uint256 treasuryETH = treasury.balance;
 		uint256 auctionTotalEmission = auction.emissions.biddersEmission + auction.emissions.treasuryEmission;
 		uint256 epoch0EmissionsRemaining = auctioneerEmissions.epochEmissionsRemaining(0);
 
-		uint256 auctionsOnDay = auctioneer.getAuctionsPerDay(auction.day);
-		uint256 bpOnDay = auctioneer.dailyCumulativeEmissionBP(auction.day);
+		uint256 auctionsOnDay = auctioneerAuction.getAuctionsPerDay(auction.day);
+		uint256 bpOnDay = auctioneerAuction.dailyCumulativeEmissionBP(auction.day);
 
 		vm.expectEmit(true, true, true, true);
 		emit AuctionCancelled(0);
@@ -171,27 +171,27 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 			epoch0EmissionsRemaining + auctionTotalEmission,
 			"Emissions returned to epoch"
 		);
-		assertEq(auctioneer.getAuctionsPerDay(auction.day), auctionsOnDay - 1, "Auctions per day decremented");
+		assertEq(auctioneerAuction.getAuctionsPerDay(auction.day), auctionsOnDay - 1, "Auctions per day decremented");
 		assertEq(
-			auctioneer.dailyCumulativeEmissionBP(auction.day),
+			auctioneerAuction.dailyCumulativeEmissionBP(auction.day),
 			bpOnDay - auction.emissions.bp,
 			"BP per day reduced by auction bp"
 		);
-		assertEq(auctioneer.getAuction(0).finalized, true, "Auction should be marked as finalized");
+		assertEq(auctioneerAuction.getAuction(0).finalized, true, "Auction should be marked as finalized");
 	}
 
 	function test_finalizeAuction_Should_DistributeLotRevenue_RevenueLessThanLotValue() public {
-		vm.warp(auctioneer.getAuction(0).unlockTimestamp);
+		vm.warp(auctioneerAuction.getAuction(0).unlockTimestamp);
 		_multibid(user2, 58);
 		_multibid(user3, 152);
 		_multibid(user4, 96);
 		_multibid(user1, 110);
 
 		// Claimable after next bid by
-		vm.warp(auctioneer.getAuction(0).bidData.nextBidBy + 1);
+		vm.warp(auctioneerAuction.getAuction(0).bidData.nextBidBy + 1);
 
-		uint256 revenue = auctioneer.getAuction(0).bidData.revenue;
-		uint256 lotValue = auctioneer.getAuction(0).rewards.estimatedValue;
+		uint256 revenue = auctioneerAuction.getAuction(0).bidData.revenue;
+		uint256 lotValue = auctioneerAuction.getAuction(0).rewards.estimatedValue;
 		assertLt(revenue, lotValue, "Validate revenue < lotValue");
 
 		uint256 treasuryUSDInit = USD.balanceOf(treasury);
@@ -209,17 +209,17 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 	}
 
 	function test_finalizeAuction_Should_DistributeLotRevenue_RevenueLessThan110PercLotValue() public {
-		vm.warp(auctioneer.getAuction(0).unlockTimestamp);
+		vm.warp(auctioneerAuction.getAuction(0).unlockTimestamp);
 		_multibid(user2, 580);
 		_multibid(user3, 1520);
 		_multibid(user4, 960);
 		_multibid(user1, 1100);
 
 		// Claimable after next bid by
-		vm.warp(auctioneer.getAuction(0).bidData.nextBidBy + 1);
+		vm.warp(auctioneerAuction.getAuction(0).bidData.nextBidBy + 1);
 
-		uint256 revenue = auctioneer.getAuction(0).bidData.revenue;
-		uint256 lotValue = auctioneer.getAuction(0).rewards.estimatedValue.transformDec(18, usdDecimals);
+		uint256 revenue = auctioneerAuction.getAuction(0).bidData.revenue;
+		uint256 lotValue = auctioneerAuction.getAuction(0).rewards.estimatedValue.transformDec(18, usdDecimals);
 		assertGt(revenue, lotValue, "Validate revenue > lotValue");
 		assertLt(revenue, (lotValue * 110) / 100, "Validate revenue < 110% lotValue");
 
@@ -250,21 +250,21 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 		// Deposit some non zero value into farm to prevent distribution fallback
 		_farmDeposit();
 
-		vm.warp(auctioneer.getAuction(0).unlockTimestamp);
+		vm.warp(auctioneerAuction.getAuction(0).unlockTimestamp);
 		_multibid(user2, 1580);
 		_multibid(user3, 1520);
 		_multibid(user4, 1960);
 		_multibid(user1, 1100);
 
 		// Claimable after next bid by
-		vm.warp(auctioneer.getAuction(0).bidData.nextBidBy + 1);
+		vm.warp(auctioneerAuction.getAuction(0).bidData.nextBidBy + 1);
 
-		uint256 revenue = auctioneer.getAuction(0).bidData.revenue;
-		uint256 lotValue = auctioneer.getAuction(0).rewards.estimatedValue.transformDec(18, usdDecimals);
+		uint256 revenue = auctioneerAuction.getAuction(0).bidData.revenue;
+		uint256 lotValue = auctioneerAuction.getAuction(0).rewards.estimatedValue.transformDec(18, usdDecimals);
 		uint256 lotValue110Perc = lotValue.scaleByBP(11000);
 		assertGt(revenue, lotValue110Perc, "Validate revenue > 110% lotValue");
 
-		uint256 treasurySplit = auctioneer.treasurySplit();
+		uint256 treasurySplit = auctioneerAuction.treasurySplit();
 		uint256 profit = revenue - lotValue110Perc;
 		uint256 treasuryExpectedDisbursement = lotValue110Perc + profit.scaleByBP(treasurySplit);
 		uint256 farmExpectedDisbursement = profit.scaleByBP(10000 - treasurySplit);

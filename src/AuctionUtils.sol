@@ -202,6 +202,7 @@ library AuctionMutateUtils {
 		Auction storage,
 		IERC20 USD,
 		uint256 amount,
+		address auctioneer,
 		address treasury,
 		address farm,
 		uint256 treasurySplit
@@ -211,7 +212,7 @@ library AuctionMutateUtils {
 		farmDistribution = amount - treasuryDistribution;
 
 		// Add unused farm distribution to treasury (if no farm set, send all funds to treasury)
-		if (farm == address(0)) {
+		if (farm == address(0) || !IAuctioneerFarm(farm).usdDistributionReceivable()) {
 			treasuryDistribution += farmDistribution;
 			farmDistribution = 0;
 		}
@@ -219,23 +220,20 @@ library AuctionMutateUtils {
 		// If farm not set, farm distribution will be 0
 		// If farm has 0 staked, fallback to treasury
 		if (farmDistribution > 0) {
-			USD.approve(farm, farmDistribution);
-			bool received = IAuctioneerFarm(farm).receiveUsdDistribution(farmDistribution);
-			if (!received) {
-				treasuryDistribution += farmDistribution;
-				USD.approve(farm, 0);
-			}
+			USD.safeTransferFrom(auctioneer, farm, farmDistribution);
+			IAuctioneerFarm(farm).receiveUsdDistribution(farmDistribution);
 		}
 
 		// Distribute
 		if (treasuryDistribution > 0) {
-			USD.safeTransfer(treasury, treasuryDistribution);
+			USD.safeTransferFrom(auctioneer, treasury, treasuryDistribution);
 		}
 	}
 
 	function distributeLotRevenue(
 		Auction storage auction,
 		IERC20 USD,
+		address auctioneer,
 		address treasury,
 		address farm,
 		uint256 treasurySplit
@@ -250,10 +248,10 @@ library AuctionMutateUtils {
 			profit = auction.bidData.revenue - reimbursement;
 		}
 
-		USD.safeTransfer(treasury, reimbursement);
+		USD.safeTransferFrom(auctioneer, treasury, reimbursement);
 
 		if (profit > 0) {
-			distributeLotProfit(auction, USD, profit, treasury, farm, treasurySplit);
+			distributeLotProfit(auction, USD, profit, auctioneer, treasury, farm, treasurySplit);
 		}
 	}
 }

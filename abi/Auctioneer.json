@@ -1,2277 +1,2277 @@
 [
-  {
-    "type": "constructor",
-    "inputs": [
-      {
-        "name": "_go",
-        "type": "address",
-        "internalType": "contract IERC20"
-      },
-      {
-        "name": "_voucher",
-        "type": "address",
-        "internalType": "contract IERC20"
-      },
-      {
-        "name": "_usd",
-        "type": "address",
-        "internalType": "contract IERC20"
-      },
-      {
-        "name": "_weth",
-        "type": "address",
-        "internalType": "contract IWETH"
-      },
-      {
-        "name": "_bidCost",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_bidIncrement",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_startingBid",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_privateRequirement",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "receive",
-    "stateMutability": "payable"
-  },
-  {
-    "type": "function",
-    "name": "GO",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract IERC20"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "USD",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract IERC20"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "VOUCHER",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract IERC20"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "WETH",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract IWETH"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "approveWithdrawUserFunds",
-    "inputs": [
-      {
-        "name": "_amount",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "auctioneerEmissions",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract IAuctioneerEmissions"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "auctioneerUser",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract IAuctioneerUser"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "auctions",
-    "inputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "lot",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "day",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "name",
-        "type": "string",
-        "internalType": "string"
-      },
-      {
-        "name": "isPrivate",
-        "type": "bool",
-        "internalType": "bool"
-      },
-      {
-        "name": "unlockTimestamp",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "emissions",
-        "type": "tuple",
-        "internalType": "struct AuctionEmissions",
-        "components": [
-          {
-            "name": "bp",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "biddersEmission",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "treasuryEmission",
-            "type": "uint256",
-            "internalType": "uint256"
-          }
-        ]
-      },
-      {
-        "name": "rewards",
-        "type": "tuple",
-        "internalType": "struct AuctionLot",
-        "components": [
-          {
-            "name": "estimatedValue",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "tokens",
-            "type": "tuple[]",
-            "internalType": "struct TokenData[]",
-            "components": [
-              {
-                "name": "amount",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "token",
-                "type": "address",
-                "internalType": "address"
-              }
-            ]
-          },
-          {
-            "name": "nfts",
-            "type": "tuple[]",
-            "internalType": "struct NftData[]",
-            "components": [
-              {
-                "name": "id",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "nft",
-                "type": "address",
-                "internalType": "address"
-              }
-            ]
-          }
-        ]
-      },
-      {
-        "name": "bidData",
-        "type": "tuple",
-        "internalType": "struct AuctionBidData",
-        "components": [
-          {
-            "name": "revenue",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "bid",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "bidTimestamp",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "nextBidBy",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "bidUser",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "bidRune",
-            "type": "uint8",
-            "internalType": "uint8"
-          },
-          {
-            "name": "bids",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "bidCost",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "usdDecimals",
-            "type": "uint8",
-            "internalType": "uint8"
-          }
-        ]
-      },
-      {
-        "name": "finalized",
-        "type": "bool",
-        "internalType": "bool"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "bid",
-    "inputs": [
-      {
-        "name": "_lot",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_options",
-        "type": "tuple",
-        "internalType": "struct BidOptions",
-        "components": [
-          {
-            "name": "paymentType",
-            "type": "uint8",
-            "internalType": "enum BidPaymentType"
-          },
-          {
-            "name": "multibid",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "message",
-            "type": "string",
-            "internalType": "string"
-          },
-          {
-            "name": "rune",
-            "type": "uint8",
-            "internalType": "uint8"
-          }
-        ]
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "bidCost",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "bidIncrement",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "bidWithPermit",
-    "inputs": [
-      {
-        "name": "_lot",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_options",
-        "type": "tuple",
-        "internalType": "struct BidOptions",
-        "components": [
-          {
-            "name": "paymentType",
-            "type": "uint8",
-            "internalType": "enum BidPaymentType"
-          },
-          {
-            "name": "multibid",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "message",
-            "type": "string",
-            "internalType": "string"
-          },
-          {
-            "name": "rune",
-            "type": "uint8",
-            "internalType": "uint8"
-          }
-        ]
-      },
-      {
-        "name": "_permitData",
-        "type": "tuple",
-        "internalType": "struct PermitData",
-        "components": [
-          {
-            "name": "token",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "value",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "deadline",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "v",
-            "type": "uint8",
-            "internalType": "uint8"
-          },
-          {
-            "name": "r",
-            "type": "bytes32",
-            "internalType": "bytes32"
-          },
-          {
-            "name": "s",
-            "type": "bytes32",
-            "internalType": "bytes32"
-          }
-        ]
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "cancelAuction",
-    "inputs": [
-      {
-        "name": "_lot",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_unwrapETH",
-        "type": "bool",
-        "internalType": "bool"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "claimLot",
-    "inputs": [
-      {
-        "name": "_lot",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_options",
-        "type": "tuple",
-        "internalType": "struct ClaimLotOptions",
-        "components": [
-          {
-            "name": "paymentType",
-            "type": "uint8",
-            "internalType": "enum LotPaymentType"
-          },
-          {
-            "name": "unwrapETH",
-            "type": "bool",
-            "internalType": "bool"
-          }
-        ]
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "claimLotWithPermit",
-    "inputs": [
-      {
-        "name": "_lot",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_options",
-        "type": "tuple",
-        "internalType": "struct ClaimLotOptions",
-        "components": [
-          {
-            "name": "paymentType",
-            "type": "uint8",
-            "internalType": "enum LotPaymentType"
-          },
-          {
-            "name": "unwrapETH",
-            "type": "bool",
-            "internalType": "bool"
-          }
-        ]
-      },
-      {
-        "name": "_permitData",
-        "type": "tuple",
-        "internalType": "struct PermitData",
-        "components": [
-          {
-            "name": "token",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "value",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "deadline",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "v",
-            "type": "uint8",
-            "internalType": "uint8"
-          },
-          {
-            "name": "r",
-            "type": "bytes32",
-            "internalType": "bytes32"
-          },
-          {
-            "name": "s",
-            "type": "bytes32",
-            "internalType": "bytes32"
-          }
-        ]
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "claimYieldAll",
-    "inputs": [
-      {
-        "name": "_recipient",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "_amountWETH",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_amountUSDB",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_minClaimRateBips",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "createAuctions",
-    "inputs": [
-      {
-        "name": "_params",
-        "type": "tuple[]",
-        "internalType": "struct AuctionParams[]",
-        "components": [
-          {
-            "name": "emissionBP",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "isPrivate",
-            "type": "bool",
-            "internalType": "bool"
-          },
-          {
-            "name": "lotValue",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "name",
-            "type": "string",
-            "internalType": "string"
-          },
-          {
-            "name": "nfts",
-            "type": "tuple[]",
-            "internalType": "struct NftData[]",
-            "components": [
-              {
-                "name": "id",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "nft",
-                "type": "address",
-                "internalType": "address"
-              }
-            ]
-          },
-          {
-            "name": "runeSymbols",
-            "type": "uint8[]",
-            "internalType": "uint8[]"
-          },
-          {
-            "name": "tokens",
-            "type": "tuple[]",
-            "internalType": "struct TokenData[]",
-            "components": [
-              {
-                "name": "amount",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "token",
-                "type": "address",
-                "internalType": "address"
-              }
-            ]
-          },
-          {
-            "name": "unlockTimestamp",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "windows",
-            "type": "tuple[]",
-            "internalType": "struct BidWindowParams[]",
-            "components": [
-              {
-                "name": "duration",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "timer",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "windowType",
-                "type": "uint8",
-                "internalType": "enum BidWindowType"
-              }
-            ]
-          }
-        ]
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "dailyCumulativeEmissionBP",
-    "inputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "deadAddress",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "farm",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "finalizeAuction",
-    "inputs": [
-      {
-        "name": "_lot",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "getAuction",
-    "inputs": [
-      {
-        "name": "_lot",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "tuple",
-        "internalType": "struct Auction",
-        "components": [
-          {
-            "name": "lot",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "day",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "name",
-            "type": "string",
-            "internalType": "string"
-          },
-          {
-            "name": "isPrivate",
-            "type": "bool",
-            "internalType": "bool"
-          },
-          {
-            "name": "unlockTimestamp",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "runes",
-            "type": "tuple[]",
-            "internalType": "struct BidRune[]",
-            "components": [
-              {
-                "name": "runeSymbol",
-                "type": "uint8",
-                "internalType": "uint8"
-              },
-              {
-                "name": "bids",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "users",
-                "type": "uint256",
-                "internalType": "uint256"
-              }
-            ]
-          },
-          {
-            "name": "windows",
-            "type": "tuple[]",
-            "internalType": "struct BidWindow[]",
-            "components": [
-              {
-                "name": "windowType",
-                "type": "uint8",
-                "internalType": "enum BidWindowType"
-              },
-              {
-                "name": "windowOpenTimestamp",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "windowCloseTimestamp",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "timer",
-                "type": "uint256",
-                "internalType": "uint256"
-              }
-            ]
-          },
-          {
-            "name": "emissions",
-            "type": "tuple",
-            "internalType": "struct AuctionEmissions",
-            "components": [
-              {
-                "name": "bp",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "biddersEmission",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "treasuryEmission",
-                "type": "uint256",
-                "internalType": "uint256"
-              }
-            ]
-          },
-          {
-            "name": "rewards",
-            "type": "tuple",
-            "internalType": "struct AuctionLot",
-            "components": [
-              {
-                "name": "estimatedValue",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "tokens",
-                "type": "tuple[]",
-                "internalType": "struct TokenData[]",
-                "components": [
-                  {
-                    "name": "amount",
-                    "type": "uint256",
-                    "internalType": "uint256"
-                  },
-                  {
-                    "name": "token",
-                    "type": "address",
-                    "internalType": "address"
-                  }
-                ]
-              },
-              {
-                "name": "nfts",
-                "type": "tuple[]",
-                "internalType": "struct NftData[]",
-                "components": [
-                  {
-                    "name": "id",
-                    "type": "uint256",
-                    "internalType": "uint256"
-                  },
-                  {
-                    "name": "nft",
-                    "type": "address",
-                    "internalType": "address"
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "name": "bidData",
-            "type": "tuple",
-            "internalType": "struct AuctionBidData",
-            "components": [
-              {
-                "name": "revenue",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "bid",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "bidTimestamp",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "nextBidBy",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "bidUser",
-                "type": "address",
-                "internalType": "address"
-              },
-              {
-                "name": "bidRune",
-                "type": "uint8",
-                "internalType": "uint8"
-              },
-              {
-                "name": "bids",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "bidCost",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "usdDecimals",
-                "type": "uint8",
-                "internalType": "uint8"
-              }
-            ]
-          },
-          {
-            "name": "finalized",
-            "type": "bool",
-            "internalType": "bool"
-          }
-        ]
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "getAuctionExt",
-    "inputs": [
-      {
-        "name": "_lot",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "auction",
-        "type": "tuple",
-        "internalType": "struct Auction",
-        "components": [
-          {
-            "name": "lot",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "day",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "name",
-            "type": "string",
-            "internalType": "string"
-          },
-          {
-            "name": "isPrivate",
-            "type": "bool",
-            "internalType": "bool"
-          },
-          {
-            "name": "unlockTimestamp",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "runes",
-            "type": "tuple[]",
-            "internalType": "struct BidRune[]",
-            "components": [
-              {
-                "name": "runeSymbol",
-                "type": "uint8",
-                "internalType": "uint8"
-              },
-              {
-                "name": "bids",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "users",
-                "type": "uint256",
-                "internalType": "uint256"
-              }
-            ]
-          },
-          {
-            "name": "windows",
-            "type": "tuple[]",
-            "internalType": "struct BidWindow[]",
-            "components": [
-              {
-                "name": "windowType",
-                "type": "uint8",
-                "internalType": "enum BidWindowType"
-              },
-              {
-                "name": "windowOpenTimestamp",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "windowCloseTimestamp",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "timer",
-                "type": "uint256",
-                "internalType": "uint256"
-              }
-            ]
-          },
-          {
-            "name": "emissions",
-            "type": "tuple",
-            "internalType": "struct AuctionEmissions",
-            "components": [
-              {
-                "name": "bp",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "biddersEmission",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "treasuryEmission",
-                "type": "uint256",
-                "internalType": "uint256"
-              }
-            ]
-          },
-          {
-            "name": "rewards",
-            "type": "tuple",
-            "internalType": "struct AuctionLot",
-            "components": [
-              {
-                "name": "estimatedValue",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "tokens",
-                "type": "tuple[]",
-                "internalType": "struct TokenData[]",
-                "components": [
-                  {
-                    "name": "amount",
-                    "type": "uint256",
-                    "internalType": "uint256"
-                  },
-                  {
-                    "name": "token",
-                    "type": "address",
-                    "internalType": "address"
-                  }
-                ]
-              },
-              {
-                "name": "nfts",
-                "type": "tuple[]",
-                "internalType": "struct NftData[]",
-                "components": [
-                  {
-                    "name": "id",
-                    "type": "uint256",
-                    "internalType": "uint256"
-                  },
-                  {
-                    "name": "nft",
-                    "type": "address",
-                    "internalType": "address"
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "name": "bidData",
-            "type": "tuple",
-            "internalType": "struct AuctionBidData",
-            "components": [
-              {
-                "name": "revenue",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "bid",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "bidTimestamp",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "nextBidBy",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "bidUser",
-                "type": "address",
-                "internalType": "address"
-              },
-              {
-                "name": "bidRune",
-                "type": "uint8",
-                "internalType": "uint8"
-              },
-              {
-                "name": "bids",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "bidCost",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "usdDecimals",
-                "type": "uint8",
-                "internalType": "uint8"
-              }
-            ]
-          },
-          {
-            "name": "finalized",
-            "type": "bool",
-            "internalType": "bool"
-          }
-        ]
-      },
-      {
-        "name": "ext",
-        "type": "tuple",
-        "internalType": "struct AuctionExt",
-        "components": [
-          {
-            "name": "lot",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "blockTimestamp",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "isBiddingOpen",
-            "type": "bool",
-            "internalType": "bool"
-          },
-          {
-            "name": "isEnded",
-            "type": "bool",
-            "internalType": "bool"
-          },
-          {
-            "name": "activeWindow",
-            "type": "uint256",
-            "internalType": "uint256"
-          }
-        ]
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "getAuctionsOnDay",
-    "inputs": [
-      {
-        "name": "_day",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256[]",
-        "internalType": "uint256[]"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "getAuctionsPerDay",
-    "inputs": [
-      {
-        "name": "_day",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "getDailyAuctionsMinimalData",
-    "inputs": [
-      {
-        "name": "lookBackDays",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "lookForwardDays",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "data",
-        "type": "tuple[]",
-        "internalType": "struct DailyAuctionsMinimalData[]",
-        "components": [
-          {
-            "name": "day",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "auctions",
-            "type": "tuple[]",
-            "internalType": "struct AuctionMinimalData[]",
-            "components": [
-              {
-                "name": "lot",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "fastPolling",
-                "type": "bool",
-                "internalType": "bool"
-              }
-            ]
-          }
-        ]
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "getUserPrivateAuctionsPermitted",
-    "inputs": [
-      {
-        "name": "_user",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool",
-        "internalType": "bool"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "harvestAuctionsEmissions",
-    "inputs": [
-      {
-        "name": "_lots",
-        "type": "uint256[]",
-        "internalType": "uint256[]"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "initializeBlast",
-    "inputs": [],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "link",
-    "inputs": [
-      {
-        "name": "_auctioneerUser",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "_auctioneerEmissions",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "lotCount",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "onERC721Received",
-    "inputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "",
-        "type": "bytes",
-        "internalType": "bytes"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes4",
-        "internalType": "bytes4"
-      }
-    ],
-    "stateMutability": "pure"
-  },
-  {
-    "type": "function",
-    "name": "owner",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "privateAuctionRequirement",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "renounceOwnership",
-    "inputs": [],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "startingBid",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "transferOwnership",
-    "inputs": [
-      {
-        "name": "newOwner",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "treasury",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "treasurySplit",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "updateBidCost",
-    "inputs": [
-      {
-        "name": "_bidCost",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "updateFarm",
-    "inputs": [
-      {
-        "name": "_farm",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "updatePrivateAuctionRequirement",
-    "inputs": [
-      {
-        "name": "_requirement",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "updateStartingBid",
-    "inputs": [
-      {
-        "name": "_startingBid",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "updateTreasury",
-    "inputs": [
-      {
-        "name": "_treasury",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "updateTreasurySplit",
-    "inputs": [
-      {
-        "name": "_treasurySplit",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "event",
-    "name": "AddedFunds",
-    "inputs": [
-      {
-        "name": "_user",
-        "type": "address",
-        "indexed": false,
-        "internalType": "address"
-      },
-      {
-        "name": "_amount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "AuctionCancelled",
-    "inputs": [
-      {
-        "name": "_lot",
-        "type": "uint256",
-        "indexed": true,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "AuctionCreated",
-    "inputs": [
-      {
-        "name": "_lot",
-        "type": "uint256",
-        "indexed": true,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "AuctionFinalized",
-    "inputs": [
-      {
-        "name": "_lot",
-        "type": "uint256",
-        "indexed": true,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "Bid",
-    "inputs": [
-      {
-        "name": "_lot",
-        "type": "uint256",
-        "indexed": true,
-        "internalType": "uint256"
-      },
-      {
-        "name": "_user",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "_bid",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "_alias",
-        "type": "string",
-        "indexed": false,
-        "internalType": "string"
-      },
-      {
-        "name": "_options",
-        "type": "tuple",
-        "indexed": false,
-        "internalType": "struct BidOptions",
-        "components": [
-          {
-            "name": "paymentType",
-            "type": "uint8",
-            "internalType": "enum BidPaymentType"
-          },
-          {
-            "name": "multibid",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "message",
-            "type": "string",
-            "internalType": "string"
-          },
-          {
-            "name": "rune",
-            "type": "uint8",
-            "internalType": "uint8"
-          }
-        ]
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "ClaimYieldAll",
-    "inputs": [
-      {
-        "name": "recipient",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "amountWETH",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "amountUSDB",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "amountGas",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "Initialized",
-    "inputs": [],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "InitializedAuctions",
-    "inputs": [],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "InitializedEmissions",
-    "inputs": [],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "Linked",
-    "inputs": [
-      {
-        "name": "_auctioneer",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "_auctioneerUser",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "_auctioneerEmissions",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "OwnershipTransferred",
-    "inputs": [
-      {
-        "name": "previousOwner",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "newOwner",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "PreselectedRune",
-    "inputs": [
-      {
-        "name": "_lot",
-        "type": "uint256",
-        "indexed": true,
-        "internalType": "uint256"
-      },
-      {
-        "name": "_user",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "_rune",
-        "type": "uint8",
-        "indexed": false,
-        "internalType": "uint8"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "UpdatedAlias",
-    "inputs": [
-      {
-        "name": "_user",
-        "type": "address",
-        "indexed": false,
-        "internalType": "address"
-      },
-      {
-        "name": "_alias",
-        "type": "string",
-        "indexed": false,
-        "internalType": "string"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "UpdatedBidCost",
-    "inputs": [
-      {
-        "name": "_bidCost",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "UpdatedEarlyHarvestTax",
-    "inputs": [
-      {
-        "name": "_earlyHarvestTax",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "UpdatedEmissionTaxDuration",
-    "inputs": [
-      {
-        "name": "_emissionTax",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "UpdatedFarm",
-    "inputs": [
-      {
-        "name": "_farm",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "UpdatedPrivateAuctionRequirement",
-    "inputs": [
-      {
-        "name": "_requirement",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "UpdatedStartingBid",
-    "inputs": [
-      {
-        "name": "_startingBid",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "UpdatedTreasury",
-    "inputs": [
-      {
-        "name": "_treasury",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "UpdatedTreasurySplit",
-    "inputs": [
-      {
-        "name": "_split",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "UserClaimedLot",
-    "inputs": [
-      {
-        "name": "_lot",
-        "type": "uint256",
-        "indexed": true,
-        "internalType": "uint256"
-      },
-      {
-        "name": "_user",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "_rune",
-        "type": "uint8",
-        "indexed": false,
-        "internalType": "uint8"
-      },
-      {
-        "name": "_userShareOfLot",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "_tokens",
-        "type": "tuple[]",
-        "indexed": false,
-        "internalType": "struct TokenData[]",
-        "components": [
-          {
-            "name": "amount",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "token",
-            "type": "address",
-            "internalType": "address"
-          }
-        ]
-      },
-      {
-        "name": "_nfts",
-        "type": "tuple[]",
-        "indexed": false,
-        "internalType": "struct NftData[]",
-        "components": [
-          {
-            "name": "id",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "nft",
-            "type": "address",
-            "internalType": "address"
-          }
-        ]
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "UserHarvestedLotEmissions",
-    "inputs": [
-      {
-        "name": "_lot",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "_user",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "_userEmissions",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "_burnEmissions",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "WithdrewFunds",
-    "inputs": [
-      {
-        "name": "_user",
-        "type": "address",
-        "indexed": false,
-        "internalType": "address"
-      },
-      {
-        "name": "_amount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "error",
-    "name": "AddressEmptyCode",
-    "inputs": [
-      {
-        "name": "target",
-        "type": "address",
-        "internalType": "address"
-      }
-    ]
-  },
-  {
-    "type": "error",
-    "name": "AddressInsufficientBalance",
-    "inputs": [
-      {
-        "name": "account",
-        "type": "address",
-        "internalType": "address"
-      }
-    ]
-  },
-  {
-    "type": "error",
-    "name": "AlreadyLinked",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "AuctionEnded",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "AuctionNotYetOpen",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "AuctionStillRunning",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "CannotHaveNFTsWithRunes",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "DuplicateRuneSymbols",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "ETHTransferFailed",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "EmissionsNotInitialized",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "FailedInnerCall",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "Invalid",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "InvalidAuctionLot",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "InvalidBidWindowCount",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "InvalidBidWindowTimer",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "InvalidDailyEmissionBP",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "InvalidRune",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "InvalidRuneSymbol",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "InvalidRunesCount",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "InvalidWindowOrder",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "LastWindowNotInfinite",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "MultipleInfiniteWindows",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "NoRewards",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "NotAuctioneerUser",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "NotCancellable",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "NotWinner",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "OwnableInvalidOwner",
-    "inputs": [
-      {
-        "name": "owner",
-        "type": "address",
-        "internalType": "address"
-      }
-    ]
-  },
-  {
-    "type": "error",
-    "name": "OwnableUnauthorizedAccount",
-    "inputs": [
-      {
-        "name": "account",
-        "type": "address",
-        "internalType": "address"
-      }
-    ]
-  },
-  {
-    "type": "error",
-    "name": "PrivateAuction",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "ReentrancyGuardReentrantCall",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "SafeERC20FailedOperation",
-    "inputs": [
-      {
-        "name": "token",
-        "type": "address",
-        "internalType": "address"
-      }
-    ]
-  },
-  {
-    "type": "error",
-    "name": "TooManyAuctionsPerDay",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "TooManyNFTs",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "TooManyTokens",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "TooSteep",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "TreasuryNotSet",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "UnlockAlreadyPassed",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "WindowTooShort",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "ZeroAddress",
-    "inputs": []
-  }
+	{
+		"type": "constructor",
+		"inputs": [
+			{
+				"name": "_go",
+				"type": "address",
+				"internalType": "contract IERC20"
+			},
+			{
+				"name": "_voucher",
+				"type": "address",
+				"internalType": "contract IERC20"
+			},
+			{
+				"name": "_usd",
+				"type": "address",
+				"internalType": "contract IERC20"
+			},
+			{
+				"name": "_weth",
+				"type": "address",
+				"internalType": "contract IWETH"
+			},
+			{
+				"name": "_bidCost",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "_bidIncrement",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "_startingBid",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "_privateRequirement",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "receive",
+		"stateMutability": "payable"
+	},
+	{
+		"type": "function",
+		"name": "GO",
+		"inputs": [],
+		"outputs": [
+			{
+				"name": "",
+				"type": "address",
+				"internalType": "contract IERC20"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "USD",
+		"inputs": [],
+		"outputs": [
+			{
+				"name": "",
+				"type": "address",
+				"internalType": "contract IERC20"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "VOUCHER",
+		"inputs": [],
+		"outputs": [
+			{
+				"name": "",
+				"type": "address",
+				"internalType": "contract IERC20"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "WETH",
+		"inputs": [],
+		"outputs": [
+			{
+				"name": "",
+				"type": "address",
+				"internalType": "contract IWETH"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "approveWithdrawUserFunds",
+		"inputs": [
+			{
+				"name": "_amount",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"outputs": [],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "function",
+		"name": "auctioneerEmissions",
+		"inputs": [],
+		"outputs": [
+			{
+				"name": "",
+				"type": "address",
+				"internalType": "contract IAuctioneerEmissions"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "auctioneerUser",
+		"inputs": [],
+		"outputs": [
+			{
+				"name": "",
+				"type": "address",
+				"internalType": "contract IAuctioneerUser"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "auctions",
+		"inputs": [
+			{
+				"name": "",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"outputs": [
+			{
+				"name": "lot",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "day",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "name",
+				"type": "string",
+				"internalType": "string"
+			},
+			{
+				"name": "isPrivate",
+				"type": "bool",
+				"internalType": "bool"
+			},
+			{
+				"name": "unlockTimestamp",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "emissions",
+				"type": "tuple",
+				"internalType": "struct AuctionEmissions",
+				"components": [
+					{
+						"name": "bp",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "biddersEmission",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "treasuryEmission",
+						"type": "uint256",
+						"internalType": "uint256"
+					}
+				]
+			},
+			{
+				"name": "rewards",
+				"type": "tuple",
+				"internalType": "struct AuctionLot",
+				"components": [
+					{
+						"name": "estimatedValue",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "tokens",
+						"type": "tuple[]",
+						"internalType": "struct TokenData[]",
+						"components": [
+							{
+								"name": "amount",
+								"type": "uint256",
+								"internalType": "uint256"
+							},
+							{
+								"name": "token",
+								"type": "address",
+								"internalType": "address"
+							}
+						]
+					},
+					{
+						"name": "nfts",
+						"type": "tuple[]",
+						"internalType": "struct NftData[]",
+						"components": [
+							{
+								"name": "id",
+								"type": "uint256",
+								"internalType": "uint256"
+							},
+							{
+								"name": "nft",
+								"type": "address",
+								"internalType": "address"
+							}
+						]
+					}
+				]
+			},
+			{
+				"name": "bidData",
+				"type": "tuple",
+				"internalType": "struct AuctionBidData",
+				"components": [
+					{
+						"name": "revenue",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "bid",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "bidTimestamp",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "nextBidBy",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "bidUser",
+						"type": "address",
+						"internalType": "address"
+					},
+					{
+						"name": "bidRune",
+						"type": "uint8",
+						"internalType": "uint8"
+					},
+					{
+						"name": "bids",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "bidCost",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "usdDecimals",
+						"type": "uint8",
+						"internalType": "uint8"
+					}
+				]
+			},
+			{
+				"name": "finalized",
+				"type": "bool",
+				"internalType": "bool"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "bid",
+		"inputs": [
+			{
+				"name": "_lot",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "_options",
+				"type": "tuple",
+				"internalType": "struct BidOptions",
+				"components": [
+					{
+						"name": "paymentType",
+						"type": "uint8",
+						"internalType": "enum BidPaymentType"
+					},
+					{
+						"name": "multibid",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "message",
+						"type": "string",
+						"internalType": "string"
+					},
+					{
+						"name": "rune",
+						"type": "uint8",
+						"internalType": "uint8"
+					}
+				]
+			}
+		],
+		"outputs": [],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "function",
+		"name": "bidCost",
+		"inputs": [],
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "bidIncrement",
+		"inputs": [],
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "bidWithPermit",
+		"inputs": [
+			{
+				"name": "_lot",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "_options",
+				"type": "tuple",
+				"internalType": "struct BidOptions",
+				"components": [
+					{
+						"name": "paymentType",
+						"type": "uint8",
+						"internalType": "enum BidPaymentType"
+					},
+					{
+						"name": "multibid",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "message",
+						"type": "string",
+						"internalType": "string"
+					},
+					{
+						"name": "rune",
+						"type": "uint8",
+						"internalType": "uint8"
+					}
+				]
+			},
+			{
+				"name": "_permitData",
+				"type": "tuple",
+				"internalType": "struct PermitData",
+				"components": [
+					{
+						"name": "token",
+						"type": "address",
+						"internalType": "address"
+					},
+					{
+						"name": "value",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "deadline",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "v",
+						"type": "uint8",
+						"internalType": "uint8"
+					},
+					{
+						"name": "r",
+						"type": "bytes32",
+						"internalType": "bytes32"
+					},
+					{
+						"name": "s",
+						"type": "bytes32",
+						"internalType": "bytes32"
+					}
+				]
+			}
+		],
+		"outputs": [],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "function",
+		"name": "cancelAuction",
+		"inputs": [
+			{
+				"name": "_lot",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "_unwrapETH",
+				"type": "bool",
+				"internalType": "bool"
+			}
+		],
+		"outputs": [],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "function",
+		"name": "claimLot",
+		"inputs": [
+			{
+				"name": "_lot",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "_options",
+				"type": "tuple",
+				"internalType": "struct ClaimLotOptions",
+				"components": [
+					{
+						"name": "paymentType",
+						"type": "uint8",
+						"internalType": "enum LotPaymentType"
+					},
+					{
+						"name": "unwrapETH",
+						"type": "bool",
+						"internalType": "bool"
+					}
+				]
+			}
+		],
+		"outputs": [],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "function",
+		"name": "claimLotWithPermit",
+		"inputs": [
+			{
+				"name": "_lot",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "_options",
+				"type": "tuple",
+				"internalType": "struct ClaimLotOptions",
+				"components": [
+					{
+						"name": "paymentType",
+						"type": "uint8",
+						"internalType": "enum LotPaymentType"
+					},
+					{
+						"name": "unwrapETH",
+						"type": "bool",
+						"internalType": "bool"
+					}
+				]
+			},
+			{
+				"name": "_permitData",
+				"type": "tuple",
+				"internalType": "struct PermitData",
+				"components": [
+					{
+						"name": "token",
+						"type": "address",
+						"internalType": "address"
+					},
+					{
+						"name": "value",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "deadline",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "v",
+						"type": "uint8",
+						"internalType": "uint8"
+					},
+					{
+						"name": "r",
+						"type": "bytes32",
+						"internalType": "bytes32"
+					},
+					{
+						"name": "s",
+						"type": "bytes32",
+						"internalType": "bytes32"
+					}
+				]
+			}
+		],
+		"outputs": [],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "function",
+		"name": "claimYieldAll",
+		"inputs": [
+			{
+				"name": "_recipient",
+				"type": "address",
+				"internalType": "address"
+			},
+			{
+				"name": "_amountWETH",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "_amountUSDB",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "_minClaimRateBips",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"outputs": [],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "function",
+		"name": "createAuctions",
+		"inputs": [
+			{
+				"name": "_params",
+				"type": "tuple[]",
+				"internalType": "struct AuctionParams[]",
+				"components": [
+					{
+						"name": "emissionBP",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "isPrivate",
+						"type": "bool",
+						"internalType": "bool"
+					},
+					{
+						"name": "lotValue",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "name",
+						"type": "string",
+						"internalType": "string"
+					},
+					{
+						"name": "nfts",
+						"type": "tuple[]",
+						"internalType": "struct NftData[]",
+						"components": [
+							{
+								"name": "id",
+								"type": "uint256",
+								"internalType": "uint256"
+							},
+							{
+								"name": "nft",
+								"type": "address",
+								"internalType": "address"
+							}
+						]
+					},
+					{
+						"name": "runeSymbols",
+						"type": "uint8[]",
+						"internalType": "uint8[]"
+					},
+					{
+						"name": "tokens",
+						"type": "tuple[]",
+						"internalType": "struct TokenData[]",
+						"components": [
+							{
+								"name": "amount",
+								"type": "uint256",
+								"internalType": "uint256"
+							},
+							{
+								"name": "token",
+								"type": "address",
+								"internalType": "address"
+							}
+						]
+					},
+					{
+						"name": "unlockTimestamp",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "windows",
+						"type": "tuple[]",
+						"internalType": "struct BidWindowParams[]",
+						"components": [
+							{
+								"name": "duration",
+								"type": "uint256",
+								"internalType": "uint256"
+							},
+							{
+								"name": "timer",
+								"type": "uint256",
+								"internalType": "uint256"
+							},
+							{
+								"name": "windowType",
+								"type": "uint8",
+								"internalType": "enum BidWindowType"
+							}
+						]
+					}
+				]
+			}
+		],
+		"outputs": [],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "function",
+		"name": "dailyCumulativeEmissionBP",
+		"inputs": [
+			{
+				"name": "",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "deadAddress",
+		"inputs": [],
+		"outputs": [
+			{
+				"name": "",
+				"type": "address",
+				"internalType": "address"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "farm",
+		"inputs": [],
+		"outputs": [
+			{
+				"name": "",
+				"type": "address",
+				"internalType": "address"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "finalizeAuction",
+		"inputs": [
+			{
+				"name": "_lot",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"outputs": [],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "function",
+		"name": "getAuction",
+		"inputs": [
+			{
+				"name": "_lot",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"outputs": [
+			{
+				"name": "",
+				"type": "tuple",
+				"internalType": "struct Auction",
+				"components": [
+					{
+						"name": "lot",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "day",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "name",
+						"type": "string",
+						"internalType": "string"
+					},
+					{
+						"name": "isPrivate",
+						"type": "bool",
+						"internalType": "bool"
+					},
+					{
+						"name": "unlockTimestamp",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "runes",
+						"type": "tuple[]",
+						"internalType": "struct BidRune[]",
+						"components": [
+							{
+								"name": "runeSymbol",
+								"type": "uint8",
+								"internalType": "uint8"
+							},
+							{
+								"name": "bids",
+								"type": "uint256",
+								"internalType": "uint256"
+							},
+							{
+								"name": "users",
+								"type": "uint256",
+								"internalType": "uint256"
+							}
+						]
+					},
+					{
+						"name": "windows",
+						"type": "tuple[]",
+						"internalType": "struct BidWindow[]",
+						"components": [
+							{
+								"name": "windowType",
+								"type": "uint8",
+								"internalType": "enum BidWindowType"
+							},
+							{
+								"name": "windowOpenTimestamp",
+								"type": "uint256",
+								"internalType": "uint256"
+							},
+							{
+								"name": "windowCloseTimestamp",
+								"type": "uint256",
+								"internalType": "uint256"
+							},
+							{
+								"name": "timer",
+								"type": "uint256",
+								"internalType": "uint256"
+							}
+						]
+					},
+					{
+						"name": "emissions",
+						"type": "tuple",
+						"internalType": "struct AuctionEmissions",
+						"components": [
+							{
+								"name": "bp",
+								"type": "uint256",
+								"internalType": "uint256"
+							},
+							{
+								"name": "biddersEmission",
+								"type": "uint256",
+								"internalType": "uint256"
+							},
+							{
+								"name": "treasuryEmission",
+								"type": "uint256",
+								"internalType": "uint256"
+							}
+						]
+					},
+					{
+						"name": "rewards",
+						"type": "tuple",
+						"internalType": "struct AuctionLot",
+						"components": [
+							{
+								"name": "estimatedValue",
+								"type": "uint256",
+								"internalType": "uint256"
+							},
+							{
+								"name": "tokens",
+								"type": "tuple[]",
+								"internalType": "struct TokenData[]",
+								"components": [
+									{
+										"name": "amount",
+										"type": "uint256",
+										"internalType": "uint256"
+									},
+									{
+										"name": "token",
+										"type": "address",
+										"internalType": "address"
+									}
+								]
+							},
+							{
+								"name": "nfts",
+								"type": "tuple[]",
+								"internalType": "struct NftData[]",
+								"components": [
+									{
+										"name": "id",
+										"type": "uint256",
+										"internalType": "uint256"
+									},
+									{
+										"name": "nft",
+										"type": "address",
+										"internalType": "address"
+									}
+								]
+							}
+						]
+					},
+					{
+						"name": "bidData",
+						"type": "tuple",
+						"internalType": "struct AuctionBidData",
+						"components": [
+							{
+								"name": "revenue",
+								"type": "uint256",
+								"internalType": "uint256"
+							},
+							{
+								"name": "bid",
+								"type": "uint256",
+								"internalType": "uint256"
+							},
+							{
+								"name": "bidTimestamp",
+								"type": "uint256",
+								"internalType": "uint256"
+							},
+							{
+								"name": "nextBidBy",
+								"type": "uint256",
+								"internalType": "uint256"
+							},
+							{
+								"name": "bidUser",
+								"type": "address",
+								"internalType": "address"
+							},
+							{
+								"name": "bidRune",
+								"type": "uint8",
+								"internalType": "uint8"
+							},
+							{
+								"name": "bids",
+								"type": "uint256",
+								"internalType": "uint256"
+							},
+							{
+								"name": "bidCost",
+								"type": "uint256",
+								"internalType": "uint256"
+							},
+							{
+								"name": "usdDecimals",
+								"type": "uint8",
+								"internalType": "uint8"
+							}
+						]
+					},
+					{
+						"name": "finalized",
+						"type": "bool",
+						"internalType": "bool"
+					}
+				]
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "getAuctionExt",
+		"inputs": [
+			{
+				"name": "_lot",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"outputs": [
+			{
+				"name": "auction",
+				"type": "tuple",
+				"internalType": "struct Auction",
+				"components": [
+					{
+						"name": "lot",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "day",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "name",
+						"type": "string",
+						"internalType": "string"
+					},
+					{
+						"name": "isPrivate",
+						"type": "bool",
+						"internalType": "bool"
+					},
+					{
+						"name": "unlockTimestamp",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "runes",
+						"type": "tuple[]",
+						"internalType": "struct BidRune[]",
+						"components": [
+							{
+								"name": "runeSymbol",
+								"type": "uint8",
+								"internalType": "uint8"
+							},
+							{
+								"name": "bids",
+								"type": "uint256",
+								"internalType": "uint256"
+							},
+							{
+								"name": "users",
+								"type": "uint256",
+								"internalType": "uint256"
+							}
+						]
+					},
+					{
+						"name": "windows",
+						"type": "tuple[]",
+						"internalType": "struct BidWindow[]",
+						"components": [
+							{
+								"name": "windowType",
+								"type": "uint8",
+								"internalType": "enum BidWindowType"
+							},
+							{
+								"name": "windowOpenTimestamp",
+								"type": "uint256",
+								"internalType": "uint256"
+							},
+							{
+								"name": "windowCloseTimestamp",
+								"type": "uint256",
+								"internalType": "uint256"
+							},
+							{
+								"name": "timer",
+								"type": "uint256",
+								"internalType": "uint256"
+							}
+						]
+					},
+					{
+						"name": "emissions",
+						"type": "tuple",
+						"internalType": "struct AuctionEmissions",
+						"components": [
+							{
+								"name": "bp",
+								"type": "uint256",
+								"internalType": "uint256"
+							},
+							{
+								"name": "biddersEmission",
+								"type": "uint256",
+								"internalType": "uint256"
+							},
+							{
+								"name": "treasuryEmission",
+								"type": "uint256",
+								"internalType": "uint256"
+							}
+						]
+					},
+					{
+						"name": "rewards",
+						"type": "tuple",
+						"internalType": "struct AuctionLot",
+						"components": [
+							{
+								"name": "estimatedValue",
+								"type": "uint256",
+								"internalType": "uint256"
+							},
+							{
+								"name": "tokens",
+								"type": "tuple[]",
+								"internalType": "struct TokenData[]",
+								"components": [
+									{
+										"name": "amount",
+										"type": "uint256",
+										"internalType": "uint256"
+									},
+									{
+										"name": "token",
+										"type": "address",
+										"internalType": "address"
+									}
+								]
+							},
+							{
+								"name": "nfts",
+								"type": "tuple[]",
+								"internalType": "struct NftData[]",
+								"components": [
+									{
+										"name": "id",
+										"type": "uint256",
+										"internalType": "uint256"
+									},
+									{
+										"name": "nft",
+										"type": "address",
+										"internalType": "address"
+									}
+								]
+							}
+						]
+					},
+					{
+						"name": "bidData",
+						"type": "tuple",
+						"internalType": "struct AuctionBidData",
+						"components": [
+							{
+								"name": "revenue",
+								"type": "uint256",
+								"internalType": "uint256"
+							},
+							{
+								"name": "bid",
+								"type": "uint256",
+								"internalType": "uint256"
+							},
+							{
+								"name": "bidTimestamp",
+								"type": "uint256",
+								"internalType": "uint256"
+							},
+							{
+								"name": "nextBidBy",
+								"type": "uint256",
+								"internalType": "uint256"
+							},
+							{
+								"name": "bidUser",
+								"type": "address",
+								"internalType": "address"
+							},
+							{
+								"name": "bidRune",
+								"type": "uint8",
+								"internalType": "uint8"
+							},
+							{
+								"name": "bids",
+								"type": "uint256",
+								"internalType": "uint256"
+							},
+							{
+								"name": "bidCost",
+								"type": "uint256",
+								"internalType": "uint256"
+							},
+							{
+								"name": "usdDecimals",
+								"type": "uint8",
+								"internalType": "uint8"
+							}
+						]
+					},
+					{
+						"name": "finalized",
+						"type": "bool",
+						"internalType": "bool"
+					}
+				]
+			},
+			{
+				"name": "ext",
+				"type": "tuple",
+				"internalType": "struct AuctionExt",
+				"components": [
+					{
+						"name": "lot",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "blockTimestamp",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "isBiddingOpen",
+						"type": "bool",
+						"internalType": "bool"
+					},
+					{
+						"name": "isEnded",
+						"type": "bool",
+						"internalType": "bool"
+					},
+					{
+						"name": "activeWindow",
+						"type": "uint256",
+						"internalType": "uint256"
+					}
+				]
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "getAuctionsOnDay",
+		"inputs": [
+			{
+				"name": "_day",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256[]",
+				"internalType": "uint256[]"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "getAuctionsPerDay",
+		"inputs": [
+			{
+				"name": "_day",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "getDailyAuctionsMinimalData",
+		"inputs": [
+			{
+				"name": "lookBackDays",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "lookForwardDays",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"outputs": [
+			{
+				"name": "data",
+				"type": "tuple[]",
+				"internalType": "struct DailyAuctionsMinimalData[]",
+				"components": [
+					{
+						"name": "day",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "auctions",
+						"type": "tuple[]",
+						"internalType": "struct AuctionMinimalData[]",
+						"components": [
+							{
+								"name": "lot",
+								"type": "uint256",
+								"internalType": "uint256"
+							},
+							{
+								"name": "fastPolling",
+								"type": "bool",
+								"internalType": "bool"
+							}
+						]
+					}
+				]
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "getUserPrivateAuctionsPermitted",
+		"inputs": [
+			{
+				"name": "_user",
+				"type": "address",
+				"internalType": "address"
+			}
+		],
+		"outputs": [
+			{
+				"name": "",
+				"type": "bool",
+				"internalType": "bool"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "harvestAuctionsEmissions",
+		"inputs": [
+			{
+				"name": "_lots",
+				"type": "uint256[]",
+				"internalType": "uint256[]"
+			}
+		],
+		"outputs": [],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "function",
+		"name": "initializeBlast",
+		"inputs": [],
+		"outputs": [],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "function",
+		"name": "link",
+		"inputs": [
+			{
+				"name": "_auctioneerUser",
+				"type": "address",
+				"internalType": "address"
+			},
+			{
+				"name": "_auctioneerEmissions",
+				"type": "address",
+				"internalType": "address"
+			}
+		],
+		"outputs": [],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "function",
+		"name": "lotCount",
+		"inputs": [],
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "onERC721Received",
+		"inputs": [
+			{
+				"name": "",
+				"type": "address",
+				"internalType": "address"
+			},
+			{
+				"name": "",
+				"type": "address",
+				"internalType": "address"
+			},
+			{
+				"name": "",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "",
+				"type": "bytes",
+				"internalType": "bytes"
+			}
+		],
+		"outputs": [
+			{
+				"name": "",
+				"type": "bytes4",
+				"internalType": "bytes4"
+			}
+		],
+		"stateMutability": "pure"
+	},
+	{
+		"type": "function",
+		"name": "owner",
+		"inputs": [],
+		"outputs": [
+			{
+				"name": "",
+				"type": "address",
+				"internalType": "address"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "privateAuctionRequirement",
+		"inputs": [],
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "renounceOwnership",
+		"inputs": [],
+		"outputs": [],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "function",
+		"name": "startingBid",
+		"inputs": [],
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "transferOwnership",
+		"inputs": [
+			{
+				"name": "newOwner",
+				"type": "address",
+				"internalType": "address"
+			}
+		],
+		"outputs": [],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "function",
+		"name": "treasury",
+		"inputs": [],
+		"outputs": [
+			{
+				"name": "",
+				"type": "address",
+				"internalType": "address"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "treasurySplit",
+		"inputs": [],
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "updateBidCost",
+		"inputs": [
+			{
+				"name": "_bidCost",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"outputs": [],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "function",
+		"name": "updateFarm",
+		"inputs": [
+			{
+				"name": "_farm",
+				"type": "address",
+				"internalType": "address"
+			}
+		],
+		"outputs": [],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "function",
+		"name": "updatePrivateAuctionRequirement",
+		"inputs": [
+			{
+				"name": "_requirement",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"outputs": [],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "function",
+		"name": "updateStartingBid",
+		"inputs": [
+			{
+				"name": "_startingBid",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"outputs": [],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "function",
+		"name": "updateTreasury",
+		"inputs": [
+			{
+				"name": "_treasury",
+				"type": "address",
+				"internalType": "address"
+			}
+		],
+		"outputs": [],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "function",
+		"name": "updateTreasurySplit",
+		"inputs": [
+			{
+				"name": "_treasurySplit",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"outputs": [],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "event",
+		"name": "AddedFunds",
+		"inputs": [
+			{
+				"name": "_user",
+				"type": "address",
+				"indexed": false,
+				"internalType": "address"
+			},
+			{
+				"name": "_amount",
+				"type": "uint256",
+				"indexed": false,
+				"internalType": "uint256"
+			}
+		],
+		"anonymous": false
+	},
+	{
+		"type": "event",
+		"name": "AuctionCancelled",
+		"inputs": [
+			{
+				"name": "_lot",
+				"type": "uint256",
+				"indexed": true,
+				"internalType": "uint256"
+			}
+		],
+		"anonymous": false
+	},
+	{
+		"type": "event",
+		"name": "AuctionCreated",
+		"inputs": [
+			{
+				"name": "_lot",
+				"type": "uint256",
+				"indexed": true,
+				"internalType": "uint256"
+			}
+		],
+		"anonymous": false
+	},
+	{
+		"type": "event",
+		"name": "AuctionFinalized",
+		"inputs": [
+			{
+				"name": "_lot",
+				"type": "uint256",
+				"indexed": true,
+				"internalType": "uint256"
+			}
+		],
+		"anonymous": false
+	},
+	{
+		"type": "event",
+		"name": "Bid",
+		"inputs": [
+			{
+				"name": "_lot",
+				"type": "uint256",
+				"indexed": true,
+				"internalType": "uint256"
+			},
+			{
+				"name": "_user",
+				"type": "address",
+				"indexed": true,
+				"internalType": "address"
+			},
+			{
+				"name": "_bid",
+				"type": "uint256",
+				"indexed": false,
+				"internalType": "uint256"
+			},
+			{
+				"name": "_alias",
+				"type": "string",
+				"indexed": false,
+				"internalType": "string"
+			},
+			{
+				"name": "_options",
+				"type": "tuple",
+				"indexed": false,
+				"internalType": "struct BidOptions",
+				"components": [
+					{
+						"name": "paymentType",
+						"type": "uint8",
+						"internalType": "enum BidPaymentType"
+					},
+					{
+						"name": "multibid",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "message",
+						"type": "string",
+						"internalType": "string"
+					},
+					{
+						"name": "rune",
+						"type": "uint8",
+						"internalType": "uint8"
+					}
+				]
+			}
+		],
+		"anonymous": false
+	},
+	{
+		"type": "event",
+		"name": "ClaimYieldAll",
+		"inputs": [
+			{
+				"name": "recipient",
+				"type": "address",
+				"indexed": true,
+				"internalType": "address"
+			},
+			{
+				"name": "amountWETH",
+				"type": "uint256",
+				"indexed": false,
+				"internalType": "uint256"
+			},
+			{
+				"name": "amountUSDB",
+				"type": "uint256",
+				"indexed": false,
+				"internalType": "uint256"
+			},
+			{
+				"name": "amountGas",
+				"type": "uint256",
+				"indexed": false,
+				"internalType": "uint256"
+			}
+		],
+		"anonymous": false
+	},
+	{
+		"type": "event",
+		"name": "Initialized",
+		"inputs": [],
+		"anonymous": false
+	},
+	{
+		"type": "event",
+		"name": "InitializedAuctions",
+		"inputs": [],
+		"anonymous": false
+	},
+	{
+		"type": "event",
+		"name": "InitializedEmissions",
+		"inputs": [],
+		"anonymous": false
+	},
+	{
+		"type": "event",
+		"name": "Linked",
+		"inputs": [
+			{
+				"name": "_auctioneer",
+				"type": "address",
+				"indexed": true,
+				"internalType": "address"
+			},
+			{
+				"name": "_auctioneerUser",
+				"type": "address",
+				"indexed": true,
+				"internalType": "address"
+			},
+			{
+				"name": "_auctioneerEmissions",
+				"type": "address",
+				"indexed": true,
+				"internalType": "address"
+			}
+		],
+		"anonymous": false
+	},
+	{
+		"type": "event",
+		"name": "OwnershipTransferred",
+		"inputs": [
+			{
+				"name": "previousOwner",
+				"type": "address",
+				"indexed": true,
+				"internalType": "address"
+			},
+			{
+				"name": "newOwner",
+				"type": "address",
+				"indexed": true,
+				"internalType": "address"
+			}
+		],
+		"anonymous": false
+	},
+	{
+		"type": "event",
+		"name": "PreselectedRune",
+		"inputs": [
+			{
+				"name": "_lot",
+				"type": "uint256",
+				"indexed": true,
+				"internalType": "uint256"
+			},
+			{
+				"name": "_user",
+				"type": "address",
+				"indexed": true,
+				"internalType": "address"
+			},
+			{
+				"name": "_rune",
+				"type": "uint8",
+				"indexed": false,
+				"internalType": "uint8"
+			}
+		],
+		"anonymous": false
+	},
+	{
+		"type": "event",
+		"name": "UpdatedAlias",
+		"inputs": [
+			{
+				"name": "_user",
+				"type": "address",
+				"indexed": false,
+				"internalType": "address"
+			},
+			{
+				"name": "_alias",
+				"type": "string",
+				"indexed": false,
+				"internalType": "string"
+			}
+		],
+		"anonymous": false
+	},
+	{
+		"type": "event",
+		"name": "UpdatedBidCost",
+		"inputs": [
+			{
+				"name": "_bidCost",
+				"type": "uint256",
+				"indexed": false,
+				"internalType": "uint256"
+			}
+		],
+		"anonymous": false
+	},
+	{
+		"type": "event",
+		"name": "UpdatedEarlyHarvestTax",
+		"inputs": [
+			{
+				"name": "_earlyHarvestTax",
+				"type": "uint256",
+				"indexed": false,
+				"internalType": "uint256"
+			}
+		],
+		"anonymous": false
+	},
+	{
+		"type": "event",
+		"name": "UpdatedEmissionTaxDuration",
+		"inputs": [
+			{
+				"name": "_emissionTax",
+				"type": "uint256",
+				"indexed": false,
+				"internalType": "uint256"
+			}
+		],
+		"anonymous": false
+	},
+	{
+		"type": "event",
+		"name": "UpdatedFarm",
+		"inputs": [
+			{
+				"name": "_farm",
+				"type": "address",
+				"indexed": true,
+				"internalType": "address"
+			}
+		],
+		"anonymous": false
+	},
+	{
+		"type": "event",
+		"name": "UpdatedPrivateAuctionRequirement",
+		"inputs": [
+			{
+				"name": "_requirement",
+				"type": "uint256",
+				"indexed": false,
+				"internalType": "uint256"
+			}
+		],
+		"anonymous": false
+	},
+	{
+		"type": "event",
+		"name": "UpdatedStartingBid",
+		"inputs": [
+			{
+				"name": "_startingBid",
+				"type": "uint256",
+				"indexed": false,
+				"internalType": "uint256"
+			}
+		],
+		"anonymous": false
+	},
+	{
+		"type": "event",
+		"name": "UpdatedTreasury",
+		"inputs": [
+			{
+				"name": "_treasury",
+				"type": "address",
+				"indexed": true,
+				"internalType": "address"
+			}
+		],
+		"anonymous": false
+	},
+	{
+		"type": "event",
+		"name": "UpdatedTreasurySplit",
+		"inputs": [
+			{
+				"name": "_split",
+				"type": "uint256",
+				"indexed": false,
+				"internalType": "uint256"
+			}
+		],
+		"anonymous": false
+	},
+	{
+		"type": "event",
+		"name": "ClaimedLot",
+		"inputs": [
+			{
+				"name": "_lot",
+				"type": "uint256",
+				"indexed": true,
+				"internalType": "uint256"
+			},
+			{
+				"name": "_user",
+				"type": "address",
+				"indexed": true,
+				"internalType": "address"
+			},
+			{
+				"name": "_rune",
+				"type": "uint8",
+				"indexed": false,
+				"internalType": "uint8"
+			},
+			{
+				"name": "_userShareOfLot",
+				"type": "uint256",
+				"indexed": false,
+				"internalType": "uint256"
+			},
+			{
+				"name": "_tokens",
+				"type": "tuple[]",
+				"indexed": false,
+				"internalType": "struct TokenData[]",
+				"components": [
+					{
+						"name": "amount",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "token",
+						"type": "address",
+						"internalType": "address"
+					}
+				]
+			},
+			{
+				"name": "_nfts",
+				"type": "tuple[]",
+				"indexed": false,
+				"internalType": "struct NftData[]",
+				"components": [
+					{
+						"name": "id",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "nft",
+						"type": "address",
+						"internalType": "address"
+					}
+				]
+			}
+		],
+		"anonymous": false
+	},
+	{
+		"type": "event",
+		"name": "UserHarvestedLotEmissions",
+		"inputs": [
+			{
+				"name": "_lot",
+				"type": "uint256",
+				"indexed": false,
+				"internalType": "uint256"
+			},
+			{
+				"name": "_user",
+				"type": "address",
+				"indexed": true,
+				"internalType": "address"
+			},
+			{
+				"name": "_userEmissions",
+				"type": "uint256",
+				"indexed": false,
+				"internalType": "uint256"
+			},
+			{
+				"name": "_burnEmissions",
+				"type": "uint256",
+				"indexed": false,
+				"internalType": "uint256"
+			}
+		],
+		"anonymous": false
+	},
+	{
+		"type": "event",
+		"name": "WithdrewFunds",
+		"inputs": [
+			{
+				"name": "_user",
+				"type": "address",
+				"indexed": false,
+				"internalType": "address"
+			},
+			{
+				"name": "_amount",
+				"type": "uint256",
+				"indexed": false,
+				"internalType": "uint256"
+			}
+		],
+		"anonymous": false
+	},
+	{
+		"type": "error",
+		"name": "AddressEmptyCode",
+		"inputs": [
+			{
+				"name": "target",
+				"type": "address",
+				"internalType": "address"
+			}
+		]
+	},
+	{
+		"type": "error",
+		"name": "AddressInsufficientBalance",
+		"inputs": [
+			{
+				"name": "account",
+				"type": "address",
+				"internalType": "address"
+			}
+		]
+	},
+	{
+		"type": "error",
+		"name": "AlreadyLinked",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "AuctionEnded",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "AuctionNotYetOpen",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "AuctionStillRunning",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "CannotHaveNFTsWithRunes",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "DuplicateRuneSymbols",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "ETHTransferFailed",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "EmissionsNotInitialized",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "FailedInnerCall",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "Invalid",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "InvalidAuctionLot",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "InvalidBidWindowCount",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "InvalidBidWindowTimer",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "InvalidDailyEmissionBP",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "InvalidRune",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "InvalidRuneSymbol",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "InvalidRunesCount",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "InvalidWindowOrder",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "LastWindowNotInfinite",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "MultipleInfiniteWindows",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "NoRewards",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "NotAuctioneerUser",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "NotCancellable",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "NotWinner",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "OwnableInvalidOwner",
+		"inputs": [
+			{
+				"name": "owner",
+				"type": "address",
+				"internalType": "address"
+			}
+		]
+	},
+	{
+		"type": "error",
+		"name": "OwnableUnauthorizedAccount",
+		"inputs": [
+			{
+				"name": "account",
+				"type": "address",
+				"internalType": "address"
+			}
+		]
+	},
+	{
+		"type": "error",
+		"name": "PrivateAuction",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "ReentrancyGuardReentrantCall",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "SafeERC20FailedOperation",
+		"inputs": [
+			{
+				"name": "token",
+				"type": "address",
+				"internalType": "address"
+			}
+		]
+	},
+	{
+		"type": "error",
+		"name": "TooManyAuctionsPerDay",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "TooManyNFTs",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "TooManyTokens",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "TooSteep",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "TreasuryNotSet",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "UnlockAlreadyPassed",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "WindowTooShort",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "ZeroAddress",
+		"inputs": []
+	}
 ]
