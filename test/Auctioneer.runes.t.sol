@@ -394,37 +394,21 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		_multibidWithRune(user3, lot, user3Bids, 2);
 		_multibidWithRune(user4, lot, user4Bids, 2);
 
-		assertEq(auctioneerUser.getUserLotInfo(lot, user1).bidCounts.user, user1Bids, "User1 bids should match");
-		assertEq(auctioneerUser.getUserLotInfo(lot, user1).bidCounts.rune, rune1Bids, "Rune1 bids should match (user1)");
-		assertEq(
-			auctioneerUser.getUserLotInfo(lot, user1).bidCounts.auction,
-			auctionBids,
-			"Auction bids should match (user1)"
-		);
+		assertEq(getUserLotInfo(lot, user1).bidCounts.user, user1Bids, "User1 bids should match");
+		assertEq(getUserLotInfo(lot, user1).bidCounts.rune, rune1Bids, "Rune1 bids should match (user1)");
+		assertEq(getUserLotInfo(lot, user1).bidCounts.auction, auctionBids, "Auction bids should match (user1)");
 
-		assertEq(auctioneerUser.getUserLotInfo(lot, user2).bidCounts.user, user2Bids, "User2 bids should match");
-		assertEq(auctioneerUser.getUserLotInfo(lot, user2).bidCounts.rune, rune1Bids, "Rune1 bids should match (user2)");
-		assertEq(
-			auctioneerUser.getUserLotInfo(lot, user2).bidCounts.auction,
-			auctionBids,
-			"Auction bids should match (user2)"
-		);
+		assertEq(getUserLotInfo(lot, user2).bidCounts.user, user2Bids, "User2 bids should match");
+		assertEq(getUserLotInfo(lot, user2).bidCounts.rune, rune1Bids, "Rune1 bids should match (user2)");
+		assertEq(getUserLotInfo(lot, user2).bidCounts.auction, auctionBids, "Auction bids should match (user2)");
 
-		assertEq(auctioneerUser.getUserLotInfo(lot, user3).bidCounts.user, user3Bids, "User3 bids should match");
-		assertEq(auctioneerUser.getUserLotInfo(lot, user3).bidCounts.rune, rune2Bids, "Rune2 bids should match (user3)");
-		assertEq(
-			auctioneerUser.getUserLotInfo(lot, user3).bidCounts.auction,
-			auctionBids,
-			"Auction bids should match (user3)"
-		);
+		assertEq(getUserLotInfo(lot, user3).bidCounts.user, user3Bids, "User3 bids should match");
+		assertEq(getUserLotInfo(lot, user3).bidCounts.rune, rune2Bids, "Rune2 bids should match (user3)");
+		assertEq(getUserLotInfo(lot, user3).bidCounts.auction, auctionBids, "Auction bids should match (user3)");
 
-		assertEq(auctioneerUser.getUserLotInfo(lot, user4).bidCounts.user, user4Bids, "User4 bids should match");
-		assertEq(auctioneerUser.getUserLotInfo(lot, user4).bidCounts.rune, rune2Bids, "Rune2 bids should match (user4)");
-		assertEq(
-			auctioneerUser.getUserLotInfo(lot, user4).bidCounts.auction,
-			auctionBids,
-			"Auction bids should match (user4)"
-		);
+		assertEq(getUserLotInfo(lot, user4).bidCounts.user, user4Bids, "User4 bids should match");
+		assertEq(getUserLotInfo(lot, user4).bidCounts.rune, rune2Bids, "Rune2 bids should match (user4)");
+		assertEq(getUserLotInfo(lot, user4).bidCounts.auction, auctionBids, "Auction bids should match (user4)");
 	}
 
 	// PRESELECT
@@ -432,7 +416,7 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 	function test_runes_preselectRune_ExpectEmit_PreselectedRune() public {
 		uint256 lot = _createDailyAuctionWithRunes(2, true);
 
-		assertEq(auctioneerUser.getUserLotInfo(lot, user1).rune, 0, "User1 no rune");
+		assertEq(getUserLotInfo(lot, user1).rune, 0, "User1 no rune");
 
 		vm.expectEmit(true, true, true, true);
 		emit PreselectedRune(lot, user1, 1);
@@ -440,7 +424,7 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		vm.prank(user1);
 		auctioneer.preselectRune(lot, 1);
 
-		assertEq(auctioneerUser.getUserLotInfo(lot, user1).rune, 1, "User1 rune selected");
+		assertEq(getUserLotInfo(lot, user1).rune, 1, "User1 rune selected");
 	}
 
 	function test_runes_preselectRune_ExpectRevert_CantCallOnRunelessAuction() public {

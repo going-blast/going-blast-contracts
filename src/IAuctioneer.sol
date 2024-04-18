@@ -168,9 +168,9 @@ struct AuctionMinimalData {
 	uint256 lot;
 	bool fastPolling;
 }
-struct DailyAuctionsMinimalData {
+struct DailyAuctions {
 	uint256 day;
-	AuctionMinimalData[] auctions;
+	uint256[] lots;
 }
 
 error NotAuctioneer();

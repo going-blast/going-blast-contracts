@@ -430,26 +430,22 @@ contract AuctioneerAuction is
 		return auctionsOnDay[_day].values();
 	}
 
-	function getDailyAuctionsMinimalData(
+	function getDailyAuctions(
 		uint256 lookBackDays,
 		uint256 lookForwardDays
-	) public view returns (DailyAuctionsMinimalData[] memory data) {
+	) public view returns (DailyAuctions[] memory data) {
 		uint256 currentDay = block.timestamp / 1 days;
 		uint256[] memory dayLots;
 		uint256 day = currentDay - lookBackDays;
-		data = new DailyAuctionsMinimalData[](lookBackDays + 1 + lookForwardDays);
+		data = new DailyAuctions[](lookBackDays + 1 + lookForwardDays);
 		for (uint256 dayIndex = 0; dayIndex < (lookBackDays + 1 + lookForwardDays); dayIndex++) {
 			dayLots = auctionsOnDay[day].values();
 			data[dayIndex].day = day;
-			data[dayIndex].auctions = new AuctionMinimalData[](dayLots.length);
+			data[dayIndex].lots = new uint256[](dayLots.length);
 
 			for (uint256 dayLotIndex = 0; dayLotIndex < dayLots.length; dayLotIndex++) {
-				data[dayIndex].auctions[dayLotIndex] = AuctionMinimalData({
-					lot: dayLots[dayLotIndex],
-					fastPolling: day == currentDay || !auctions[dayLots[dayLotIndex]].isEnded()
-				});
+				data[dayIndex].lots[dayLotIndex] = dayLots[dayLotIndex];
 			}
-
 			day++;
 		}
 	}
@@ -465,5 +461,25 @@ contract AuctioneerAuction is
 			isBiddingOpen: auctions[_lot].isBiddingOpen(),
 			isEnded: auctions[_lot].isEnded()
 		});
+	}
+
+	function getAuctionExts(
+		uint256[] memory _lots
+	) public view returns (Auction[] memory auctionBases, AuctionExt[] memory auctionExts) {
+		auctionBases = new Auction[](_lots.length);
+		auctionExts = new AuctionExt[](_lots.length);
+
+		uint256 lot;
+		for (uint256 i = 0; i < _lots.length; i++) {
+			lot = _lots[i];
+			auctionBases[i] = auctions[lot];
+			auctionExts[i] = AuctionExt({
+				lot: lot,
+				blockTimestamp: block.timestamp,
+				activeWindow: auctions[lot].activeWindow(),
+				isBiddingOpen: auctions[lot].isBiddingOpen(),
+				isEnded: auctions[lot].isEnded()
+			});
+		}
 	}
 }

@@ -137,7 +137,33 @@
         ]
       }
     ],
-    "stateMutability": "nonpayable"
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "auctioneer",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "auctioneerAuction",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -185,6 +211,29 @@
         "name": "to",
         "type": "address",
         "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "depositLockedGo",
+    "inputs": [
+      {
+        "name": "_amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "_depositUnlockTimestamp",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "outputs": [],
@@ -267,6 +316,127 @@
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "getAllPools",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "pools",
+        "type": "tuple[]",
+        "internalType": "struct PoolInfo[]",
+        "components": [
+          {
+            "name": "pid",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "token",
+            "type": "address",
+            "internalType": "contract IERC20"
+          },
+          {
+            "name": "supply",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "allocPoint",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "lastRewardTimestamp",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "accGoPerShare",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "accVoucherPerShare",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "accUsdPerShare",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      },
+      {
+        "name": "decimals",
+        "type": "uint8[]",
+        "internalType": "uint8[]"
+      },
+      {
+        "name": "symbol",
+        "type": "string[]",
+        "internalType": "string[]"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getAllPoolsUser",
+    "inputs": [
+      {
+        "name": "_user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "poolsUser",
+        "type": "tuple[]",
+        "internalType": "struct UserInfo[]",
+        "components": [
+          {
+            "name": "amount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "goDebt",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "voucherDebt",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "usdDebt",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "goUnlockTimestamp",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      },
+      {
+        "name": "balance",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "allowance",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -456,7 +626,7 @@
         ]
       }
     ],
-    "stateMutability": "nonpayable"
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -498,6 +668,11 @@
             "name": "usdDebt",
             "type": "uint256",
             "internalType": "uint256"
+          },
+          {
+            "name": "goUnlockTimestamp",
+            "type": "uint256",
+            "internalType": "uint256"
           }
         ]
       }
@@ -521,6 +696,19 @@
       },
       {
         "name": "endTimestamp",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "goPid",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -591,6 +779,32 @@
   },
   {
     "type": "function",
+    "name": "link",
+    "inputs": [
+      {
+        "name": "_auctioneerAuction",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "linked",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "massUpdatePools",
     "inputs": [],
     "outputs": [],
@@ -648,7 +862,7 @@
         ]
       }
     ],
-    "stateMutability": "nonpayable"
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -727,13 +941,7 @@
         "internalType": "uint256"
       }
     ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool",
-        "internalType": "bool"
-      }
-    ],
+    "outputs": [],
     "stateMutability": "nonpayable"
   },
   {
@@ -826,6 +1034,19 @@
   },
   {
     "type": "function",
+    "name": "usdDistributionReceivable",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "usdEmission",
     "inputs": [],
     "outputs": [
@@ -880,6 +1101,11 @@
       },
       {
         "name": "usdDebt",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "goUnlockTimestamp",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -1239,6 +1465,11 @@
   },
   {
     "type": "error",
+    "name": "AlreadyLinked",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "BadDeposit",
     "inputs": []
   },
@@ -1254,7 +1485,22 @@
   },
   {
     "type": "error",
+    "name": "GoLocked",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InvalidPid",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotAuctioneer",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotAuctioneerAuction",
     "inputs": []
   },
   {

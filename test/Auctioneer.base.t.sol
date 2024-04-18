@@ -504,4 +504,11 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		vm.prank(user);
 		auctioneerUser.setAlias(userAlias);
 	}
+
+	// User Lot Info
+	function getUserLotInfo(uint256 _lot, address _user) public view returns (UserLotInfo memory info) {
+		uint256[] memory lots = new uint256[](1);
+		lots[0] = _lot;
+		return auctioneerUser.getUserLotInfos(lots, _user)[0];
+	}
 }

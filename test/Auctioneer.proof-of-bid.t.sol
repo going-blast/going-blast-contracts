@@ -437,7 +437,7 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 
 		_bid(user1);
 
-		UserLotInfo memory user1LotInfo = auctioneerUser.getUserLotInfo(0, user1);
+		UserLotInfo memory user1LotInfo = getUserLotInfo(0, user1);
 		assertGt(user1LotInfo.timeUntilMature, 0, "Emissions immature, incurs tax");
 
 		vm.warp(block.timestamp + 1 days);
@@ -469,12 +469,12 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 
 		_bid(user1);
 
-		UserLotInfo memory user1LotInfo = auctioneerUser.getUserLotInfo(0, user1);
+		UserLotInfo memory user1LotInfo = getUserLotInfo(0, user1);
 		assertGt(user1LotInfo.timeUntilMature, 0, "Emissions immature, incurs tax");
 
 		// Warp to mature time
 		vm.warp(block.timestamp + user1LotInfo.timeUntilMature);
-		user1LotInfo = auctioneerUser.getUserLotInfo(0, user1);
+		user1LotInfo = getUserLotInfo(0, user1);
 		assertEq(user1LotInfo.timeUntilMature, 0, "Emissions mature, no tax");
 
 		// Initial status
@@ -495,7 +495,7 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 		assertEq(deadGOFinal - deadGOInit, 0, "Emission not taxed");
 
 		// LotEmissionInfo checks
-		user1LotInfo = auctioneerUser.getUserLotInfo(0, user1);
+		user1LotInfo = getUserLotInfo(0, user1);
 		assertEq(user1LotInfo.emissionsHarvested, true, "Emissions are marked as harvested in lotEmissionInfo");
 	}
 
@@ -516,7 +516,7 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 		auctionsToHarvest[0] = lot;
 
 		// USER 1
-		BidCounts memory user1BidCounts = auctioneerUser.getUserLotInfo(lot, user1).bidCounts;
+		BidCounts memory user1BidCounts = getUserLotInfo(lot, user1).bidCounts;
 		uint256 user1EmissionsTotal = (auctionEmissions * user1BidCounts.user) / user1BidCounts.auction;
 		uint256 user1Harvestable = user1EmissionsTotal / 2;
 		uint256 user1Burnable = user1EmissionsTotal - user1Harvestable;
@@ -527,7 +527,7 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 		auctioneer.harvestAuctionsEmissions(auctionsToHarvest, false);
 
 		// USER 2
-		BidCounts memory user2BidCounts = auctioneerUser.getUserLotInfo(lot, user2).bidCounts;
+		BidCounts memory user2BidCounts = getUserLotInfo(lot, user2).bidCounts;
 		uint256 user2EmissionsTotal = (auctionEmissions * user2BidCounts.user) / user2BidCounts.auction;
 		uint256 user2Harvestable = user2EmissionsTotal / 2;
 		uint256 user2Burnable = user2EmissionsTotal - user2Harvestable;
@@ -549,14 +549,14 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 		uint256 auctionEmissions = auctioneerAuction.getAuction(lot).emissions.biddersEmission;
 
 		vm.warp(block.timestamp + 1 days);
-		vm.warp(block.timestamp + auctioneerUser.getUserLotInfo(0, user1).timeUntilMature);
+		vm.warp(block.timestamp + getUserLotInfo(0, user1).timeUntilMature);
 
 		// Initial status
 		uint256[] memory auctionsToHarvest = new uint256[](1);
 		auctionsToHarvest[0] = lot;
 
 		// USER 1
-		BidCounts memory user1BidCounts = auctioneerUser.getUserLotInfo(lot, user1).bidCounts;
+		BidCounts memory user1BidCounts = getUserLotInfo(lot, user1).bidCounts;
 		_expectTokenTransfer(
 			GO,
 			address(auctioneerEmissions),
@@ -568,7 +568,7 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 		auctioneer.harvestAuctionsEmissions(auctionsToHarvest, false);
 
 		// USER 2
-		BidCounts memory user2BidCounts = auctioneerUser.getUserLotInfo(lot, user2).bidCounts;
+		BidCounts memory user2BidCounts = getUserLotInfo(lot, user2).bidCounts;
 		_expectTokenTransfer(
 			GO,
 			address(auctioneerEmissions),

@@ -6,6 +6,7 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "./IAuctioneerFarm.sol";
 import { PermitData, AlreadyLinked, NotAuctioneer, NotAuctioneerAuction } from "./IAuctioneer.sol";
 import { BlastYield } from "./BlastYield.sol";
@@ -390,17 +391,31 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 		if (_token == address(USD)) emission = usdEmission;
 	}
 
-	function getAllPools() public view returns (PoolInfo[] memory pools) {
+	function getAllPools()
+		public
+		view
+		returns (PoolInfo[] memory pools, uint8[] memory decimals, string[] memory symbol)
+	{
 		pools = new PoolInfo[](poolInfo.length);
+		decimals = new uint8[](poolInfo.length);
+		symbol = new string[](poolInfo.length);
 		for (uint256 i = 0; i < poolInfo.length; i++) {
 			pools[i] = _getUpdatedEmissions(poolInfo[i]);
+			decimals[i] = IERC20Metadata(address(poolInfo[i].token)).decimals();
+			symbol[i] = IERC20Metadata(address(poolInfo[i].token)).symbol();
 		}
 	}
 
-	function getAllPoolsUser(address _user) public view returns (UserInfo[] memory poolsUser) {
+	function getAllPoolsUser(
+		address _user
+	) public view returns (UserInfo[] memory poolsUser, uint256[] memory balance, uint256[] memory allowance) {
 		poolsUser = new UserInfo[](poolInfo.length);
+		balance = new uint256[](poolInfo.length);
+		allowance = new uint256[](poolInfo.length);
 		for (uint256 i = 0; i < poolInfo.length; i++) {
 			poolsUser[i] = userInfo[i][_user];
+			balance[i] = poolInfo[i].token.balanceOf(_user);
+			allowance[i] = poolInfo[i].token.allowance(_user, address(this));
 		}
 	}
 }

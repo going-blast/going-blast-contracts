@@ -156,8 +156,8 @@ contract GBScripts is GBScriptUtils {
 		writeFreezeContracts();
 	}
 
-	function treasuryApproveAuctioneer() public broadcastTreasury loadChain loadContracts {
-		WETH.approve(address(auctioneer), UINT256_MAX);
+	function treasuryApproveAuctioneerAuction() public broadcastTreasury loadChain loadContracts {
+		WETH.approve(address(auctioneerAuction), UINT256_MAX);
 	}
 	function ANVIL_treasuryWrapETH() public broadcastTreasury loadChain loadContracts {
 		WETH.deposit{ value: 5e18 }();

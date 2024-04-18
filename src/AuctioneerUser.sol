@@ -263,31 +263,41 @@ contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, Auctioneer
 		return userUnharvestedLots[_user].values();
 	}
 
-	function getUserLotInfo(uint256 _lot, address _user) public view returns (UserLotInfo memory info) {
-		Auction memory auction = auctioneerAuction.getAuction(_lot);
-		AuctionUser memory user = auctionUsers[_lot][_user];
+	function getUserLotInfos(uint256[] memory _lots, address _user) public view returns (UserLotInfo[] memory infos) {
+		infos = new UserLotInfo[](_lots.length);
 
-		info.lot = auction.lot;
-		info.rune = user.rune;
+		uint256 lot;
+		for (uint256 i = 0; i < _lots.length; i++) {
+			lot = _lots[i];
+			Auction memory auction = auctioneerAuction.getAuction(lot);
+			AuctionUser memory user = auctionUsers[lot][_user];
 
-		// Bids
-		info.bidCounts.user = user.bids;
-		info.bidCounts.rune = auction.runes.length == 0 || user.rune == 0 ? 0 : auction.runes[user.rune].bids;
-		info.bidCounts.auction = auction.bidData.bids;
+			infos[i].lot = auction.lot;
+			infos[i].rune = user.rune;
 
-		// Emissions
-		info.matureTimestamp = (auction.day * 1 days) + auctioneerEmissions.emissionTaxDuration();
-		info.timeUntilMature = block.timestamp >= info.matureTimestamp ? 0 : info.matureTimestamp - block.timestamp;
-		info.emissionsEarned = user.bids == 0 || auction.bidData.bids == 0
-			? 0
-			: (user.bids * auction.emissions.biddersEmission) / auction.bidData.bids;
+			// Bids
+			infos[i].bidCounts.user = user.bids;
+			infos[i].bidCounts.rune = auction.runes.length == 0 || user.rune == 0 ? 0 : auction.runes[user.rune].bids;
+			infos[i].bidCounts.auction = auction.bidData.bids;
 
-		info.emissionsHarvested = user.emissionsHarvested;
-		info.harvestedEmissions = user.harvestedEmissions;
-		info.burnedEmissions = user.burnedEmissions;
+			// Emissions
+			infos[i].matureTimestamp = (auction.day * 1 days) + auctioneerEmissions.emissionTaxDuration();
+			infos[i].timeUntilMature = block.timestamp >= infos[i].matureTimestamp
+				? 0
+				: infos[i].matureTimestamp - block.timestamp;
+			infos[i].emissionsEarned = user.bids == 0 || auction.bidData.bids == 0
+				? 0
+				: (user.bids * auction.emissions.biddersEmission) / auction.bidData.bids;
 
-		// Winning bid
-		info.isWinner = auction.runes.length > 0 ? user.rune == auction.bidData.bidRune : _user == auction.bidData.bidUser;
-		info.lotClaimed = user.lotClaimed;
+			infos[i].emissionsHarvested = user.emissionsHarvested;
+			infos[i].harvestedEmissions = user.harvestedEmissions;
+			infos[i].burnedEmissions = user.burnedEmissions;
+
+			// Winning bid
+			infos[i].isWinner =
+				user.bids > 0 &&
+				(auction.runes.length > 0 ? user.rune == auction.bidData.bidRune : _user == auction.bidData.bidUser);
+			infos[i].lotClaimed = user.lotClaimed;
+		}
 	}
 }

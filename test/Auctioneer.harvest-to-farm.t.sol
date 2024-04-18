@@ -77,7 +77,7 @@ contract AuctioneerHarvestToFarmTest is AuctioneerHelper, AuctioneerFarmEvents {
 		assertEq(staked, 0, "User has not staked any GO");
 
 		uint256[] memory auctionsToHarvest = new uint256[](1);
-		uint256 harvestableEmissions = auctioneerUser.getUserLotInfo(0, user1).emissionsEarned;
+		uint256 harvestableEmissions = getUserLotInfo(0, user1).emissionsEarned;
 		auctionsToHarvest[0] = 0;
 		vm.prank(user1);
 		auctioneer.harvestAuctionsEmissions(auctionsToHarvest, true);
@@ -97,7 +97,7 @@ contract AuctioneerHarvestToFarmTest is AuctioneerHelper, AuctioneerFarmEvents {
 		assertEq(goUnlockTimestamp, 0, "User has no GO lock");
 
 		uint256[] memory auctionsToHarvest = new uint256[](1);
-		uint256 matureTimestamp = auctioneerUser.getUserLotInfo(0, user1).matureTimestamp;
+		uint256 matureTimestamp = getUserLotInfo(0, user1).matureTimestamp;
 		auctionsToHarvest[0] = 0;
 		vm.prank(user1);
 		auctioneer.harvestAuctionsEmissions(auctionsToHarvest, true);
@@ -150,7 +150,7 @@ contract AuctioneerHarvestToFarmTest is AuctioneerHelper, AuctioneerFarmEvents {
 
 		vm.warp(block.timestamp + 1 days);
 
-		uint256 harvestableEmissions = auctioneerUser.getUserLotInfo(0, user1).emissionsEarned;
+		uint256 harvestableEmissions = getUserLotInfo(0, user1).emissionsEarned;
 		uint256[] memory auctionsToHarvest = new uint256[](1);
 		auctionsToHarvest[0] = 0;
 
