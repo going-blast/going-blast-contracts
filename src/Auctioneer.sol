@@ -186,13 +186,14 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 		if (_options.multibid == 0) _options.multibid = 1;
 
 		// User bid
-		(bool isUsersFirstBid, string memory userAlias) = auctioneerUser.bid(_lot, msg.sender, _options);
+		(uint256 prevUserBids, uint8 prevRune, string memory userAlias) = auctioneerUser.bid(_lot, msg.sender, _options);
 
 		// Auction bid
 		(uint256 userBid, uint256 bidCost, bool auctionHasEmissions) = auctioneerAuction.markBid(
 			_lot,
 			msg.sender,
-			isUsersFirstBid,
+			prevUserBids,
+			prevRune,
 			_userGOBalance(msg.sender),
 			_options
 		);
@@ -205,12 +206,12 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 		// Payment
 		_takeUserPayment(msg.sender, _options.paymentType, bidCost * _options.multibid, _options.multibid * 1e18);
 
-		emit Bid(_lot, msg.sender, userBid, userAlias, _options);
+		emit Bid(_lot, msg.sender, userBid, userAlias, _options, block.timestamp);
 	}
 
-	function preselectRune(uint256 _lot, uint8 _rune) public nonReentrant {
-		auctioneerAuction.validatePreselectLotAndRune(_lot, _rune);
-		auctioneerUser.preselectRune(_lot, msg.sender, _rune);
+	function selectRune(uint256 _lot, uint8 _rune) public nonReentrant {
+		(uint256 userBids, uint8 prevRune) = auctioneerUser.selectRune(_lot, msg.sender, _rune);
+		auctioneerAuction.selectRune(_lot, userBids, prevRune, _rune);
 
 		emit PreselectedRune(_lot, msg.sender, _rune);
 	}

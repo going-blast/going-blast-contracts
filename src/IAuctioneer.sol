@@ -109,6 +109,7 @@ struct Auction {
 	string name;
 	bool isPrivate; // whether the auction requires wallet / staked Gavel
 	uint256 unlockTimestamp;
+	uint256 users;
 	BidRune[] runes;
 	BidWindow[] windows;
 	AuctionEmissions emissions;
@@ -233,8 +234,16 @@ interface AuctioneerEvents {
 	event UpdatedBidCost(uint256 _bidCost);
 	event UpdatedEarlyHarvestTax(uint256 _earlyHarvestTax);
 	event UpdatedEmissionTaxDuration(uint256 _emissionTax);
+	event UpdatedRuneSwitchPenalty(uint256 _penalty);
 	event AuctionCreated(uint256 indexed _lot);
-	event Bid(uint256 indexed _lot, address indexed _user, uint256 _bid, string _alias, BidOptions _options);
+	event Bid(
+		uint256 indexed _lot,
+		address indexed _user,
+		uint256 _bid,
+		string _alias,
+		BidOptions _options,
+		uint256 _timestamp
+	);
 	event PreselectedRune(uint256 indexed _lot, address indexed _user, uint8 _rune);
 	event AuctionFinalized(uint256 indexed _lot);
 	event ClaimedLot(

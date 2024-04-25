@@ -589,6 +589,12 @@
             "internalType": "uint8"
           }
         ]
+      },
+      {
+        "name": "_timestamp",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
       }
     ],
     "anonymous": false
@@ -830,6 +836,19 @@
     "inputs": [
       {
         "name": "_requirement",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "UpdatedRuneSwitchPenalty",
+    "inputs": [
+      {
+        "name": "_penalty",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"

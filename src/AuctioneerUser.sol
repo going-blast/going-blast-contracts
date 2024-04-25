@@ -19,8 +19,8 @@ interface IAuctioneerUser {
 		uint256 _lot,
 		address _user,
 		BidOptions memory _options
-	) external returns (bool isUsersFirstBid, string memory userAlias);
-	function preselectRune(uint256 _lot, address _user, uint8 _rune) external;
+	) external returns (uint256 prevUserBids, uint8 prevRune, string memory userAlias);
+	function selectRune(uint256 _lot, address _user, uint8 _rune) external returns (uint256 userBids, uint8 prevRune);
 	function claimLot(uint256 _lot, address _user) external returns (uint8 rune, uint256 bids);
 	function harvestAuctionEmissions(
 		uint256 _lot,
@@ -77,15 +77,6 @@ contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, Auctioneer
 		_;
 	}
 
-	modifier validUserRuneSelection(
-		uint256 _lot,
-		address _user,
-		uint8 _rune
-	) {
-		if (auctionUsers[_lot][_user].rune != 0 && auctionUsers[_lot][_user].rune != _rune) revert CantSwitchRune();
-		_;
-	}
-
 	///////////////////
 	// BID
 	///////////////////
@@ -94,18 +85,19 @@ contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, Auctioneer
 		uint256 _lot,
 		address _user,
 		BidOptions memory _options
-	)
-		public
-		onlyAuctioneer
-		validUserRuneSelection(_lot, _user, _options.rune)
-		returns (bool isUsersFirstBid, string memory userAliasRet)
-	{
+	) public onlyAuctioneer returns (uint256 prevUserBids, uint8 prevRune, string memory userAliasRet) {
 		AuctionUser storage user = auctionUsers[_lot][_user];
-		isUsersFirstBid = user.bids == 0;
+		prevUserBids = user.bids;
+		prevRune = user.rune;
 		userAliasRet = userAlias[_user];
 
 		// Force bid count to be at least one
 		if (_options.multibid == 0) _options.multibid = 1;
+
+		// Incur rune switch penalty
+		if (user.rune != _options.rune && user.rune != 0) {
+			user.bids = user.bids.scaleByBP(10000 - auctioneerAuction.runeSwitchPenalty());
+		}
 
 		// Mark users bids
 		user.bids += _options.multibid;
@@ -123,13 +115,20 @@ contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, Auctioneer
 		userUnharvestedLots[_user].add(_lot);
 	}
 
-	function preselectRune(
+	function selectRune(
 		uint256 _lot,
 		address _user,
 		uint8 _rune
-	) public onlyAuctioneer validUserRuneSelection(_lot, _user, _rune) {
+	) public onlyAuctioneer returns (uint256 userBids, uint8 prevRune) {
 		AuctionUser storage user = auctionUsers[_lot][_user];
+		userBids = user.bids;
+		prevRune = user.rune;
 		user.rune = _rune;
+
+		// Incur rune switch penalty
+		if (prevRune != _rune) {
+			user.bids = user.bids.scaleByBP(10000 - auctioneerAuction.runeSwitchPenalty());
+		}
 	}
 
 	///////////////////

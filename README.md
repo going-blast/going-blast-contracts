@@ -8,6 +8,11 @@ ToDos:
 [x] Change min timer duration to 30s
 [x] Allow rune preselection
 [x] Add permit option to bidding (self permit + overloaded bid param w/ permit options)
+[x] Add timestamp to Bid emit event
+[x] Change bid event timestamp to _timestamp
+[x] Separate selecting rune from bidding process
+  [x] Allow users to switch their rune ? Maybe this is a setting, yuck
+  [x] Add rune switch penalty
 
 Tests:
 
@@ -164,7 +169,27 @@ Tests:
   [x] GO_LP permit farm
   [x] USD permit auctioneerUser (funds)
 
-[x] Auctioneer - PreselectRune
+[ ] Auctioneer - selectRune
+  [ ] SelectRune reverts on auctions without rune
+  [ ] Update runeSwitchPenalty
+    [ ] 100% penalty
+  [ ] Switching rune allowed, but incurs penalty (selectRune / bid)
+    [ ] No bids cast
+    [ ] X% (< 100%) bids cast
+    [ ] 100% of bids cast
+  [ ] Switching rune data:
+    [ ] auction bids updated correctly
+    [ ] user bids updated correctly
+    [ ] prev rune bids updated correctly
+    [ ] prev rune users decremented
+    [ ] new rune users incremented
+  [ ] Same rune
+    [ ] no penalty
+    [ ] auction / user / rune bids correct
+    [ ] rune users count doesnt change
+  [ ] validity
+    [ ] reverts on invalid rune
+
 
 [x] Auctioneer - Harvest to farm
   [x] Marked as harvested correctly

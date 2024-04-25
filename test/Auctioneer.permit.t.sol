@@ -99,7 +99,7 @@ contract AuctioneerPermitTest is AuctioneerHelper, AuctioneerFarmEvents {
 		_expectTokenTransfer(USD, user1, address(auctioneer), 1e18);
 
 		vm.expectEmit(true, true, true, true);
-		emit Bid(0, user1, expectedBid, "", options);
+		emit Bid(0, user1, expectedBid, "", options, block.timestamp);
 
 		vm.prank(user1);
 		auctioneer.bidWithPermit(0, options, permitData);
@@ -127,7 +127,7 @@ contract AuctioneerPermitTest is AuctioneerHelper, AuctioneerFarmEvents {
 		_expectTokenTransfer(VOUCHER, user1, dead, 1e18);
 
 		vm.expectEmit(true, true, true, true);
-		emit Bid(0, user1, expectedBid, "", options);
+		emit Bid(0, user1, expectedBid, "", options, block.timestamp);
 
 		vm.prank(user1);
 		auctioneer.bidWithPermit(0, options, permitData);

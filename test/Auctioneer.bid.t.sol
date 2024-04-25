@@ -81,7 +81,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 			message: "Hello World",
 			rune: 0
 		});
-		emit Bid(0, user1, expectedBid, "XXXX", options);
+		emit Bid(0, user1, expectedBid, "XXXX", options, block.timestamp);
 
 		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
 		vm.prank(user1);
@@ -212,7 +212,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 			message: "Hello World",
 			rune: 0
 		});
-		emit Bid(0, user1, expectedBid, "", options);
+		emit Bid(0, user1, expectedBid, "", options, block.timestamp);
 
 		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
 		vm.prank(user1);
@@ -254,7 +254,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		uint256 expectedBid = auctioneerAuction.startingBid() + auctioneerAuction.bidIncrement();
 		vm.expectEmit(true, true, true, true);
 		BidOptions memory options = BidOptions({ paymentType: PaymentType.WALLET, multibid: 1, message: "", rune: 0 });
-		emit Bid(1, user1, expectedBid, "", options);
+		emit Bid(1, user1, expectedBid, "", options, block.timestamp);
 
 		vm.prank(user1);
 		auctioneer.bid(1, options);
@@ -289,7 +289,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		expectedBid = auctioneerAuction.getAuction(1).bidData.bid + auctioneerAuction.bidIncrement();
 		vm.expectEmit(true, true, true, true);
 		options = BidOptions({ paymentType: PaymentType.WALLET, multibid: 1, message: "", rune: 0 });
-		emit Bid(1, user3, expectedBid, "", options);
+		emit Bid(1, user3, expectedBid, "", options, block.timestamp);
 
 		vm.prank(user3);
 		auctioneer.bid(1, options);
@@ -346,7 +346,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		vm.expectEmit(true, true, true, true);
 
 		BidOptions memory options = BidOptions({ paymentType: PaymentType.VOUCHER, multibid: 1, message: "", rune: 0 });
-		emit Bid(0, user1, expectedBid, "", options);
+		emit Bid(0, user1, expectedBid, "", options, block.timestamp);
 
 		vm.prank(user1);
 		auctioneer.bid(0, options);
@@ -369,7 +369,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 			message: "",
 			rune: 0
 		});
-		emit Bid(0, user1, expectedBid, "", options);
+		emit Bid(0, user1, expectedBid, "", options, block.timestamp);
 
 		vm.prank(user1);
 		auctioneer.bid(0, options);

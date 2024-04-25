@@ -444,7 +444,7 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		uint256 expectedBid = auctioneerAuction.getAuction(0).bidData.bid + auctioneerAuction.bidIncrement();
 		vm.expectEmit(true, true, true, true);
 		BidOptions memory options = BidOptions({ paymentType: PaymentType.WALLET, multibid: 1, message: "", rune: 0 });
-		emit Bid(0, user, expectedBid, "", options);
+		emit Bid(0, user, expectedBid, "", options, block.timestamp);
 		_bid(user);
 	}
 	function _bid(address user) public {

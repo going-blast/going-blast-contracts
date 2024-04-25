@@ -175,7 +175,8 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 					user1,
 					expectedBid,
 					"",
-					BidOptions({ paymentType: PaymentType.WALLET, multibid: 1, message: "", rune: i })
+					BidOptions({ paymentType: PaymentType.WALLET, multibid: 1, message: "", rune: i }),
+					block.timestamp
 				);
 			} else {
 				vm.expectRevert(InvalidRune.selector);
@@ -413,7 +414,7 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 
 	// PRESELECT
 
-	function test_runes_preselectRune_ExpectEmit_PreselectedRune() public {
+	function test_runes_selectRune_ExpectEmit_PreselectedRune() public {
 		uint256 lot = _createDailyAuctionWithRunes(2, true);
 
 		assertEq(getUserLotInfo(lot, user1).rune, 0, "User1 no rune");
@@ -422,38 +423,38 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		emit PreselectedRune(lot, user1, 1);
 
 		vm.prank(user1);
-		auctioneer.preselectRune(lot, 1);
+		auctioneer.selectRune(lot, 1);
 
 		assertEq(getUserLotInfo(lot, user1).rune, 1, "User1 rune selected");
 	}
 
-	function test_runes_preselectRune_ExpectRevert_CantCallOnRunelessAuction() public {
+	function test_runes_selectRune_ExpectRevert_CantCallOnRunelessAuction() public {
 		uint256 lot = _createDailyAuctionWithRunes(0, true);
 
 		vm.expectRevert(InvalidRune.selector);
 
 		vm.prank(user1);
-		auctioneer.preselectRune(lot, 0);
+		auctioneer.selectRune(lot, 0);
 	}
 
-	function test_runes_preselectRune_ExpectRevert_CantSwitchRune() public {
+	function test_runes_selectRune_ExpectRevert_CantSwitchRune() public {
 		uint256 lot = _createDailyAuctionWithRunes(2, true);
 
 		vm.prank(user1);
-		auctioneer.preselectRune(lot, 1);
+		auctioneer.selectRune(lot, 1);
 
 		vm.expectRevert(CantSwitchRune.selector);
 
 		vm.prank(user1);
-		auctioneer.preselectRune(lot, 2);
+		auctioneer.selectRune(lot, 2);
 	}
 
-	function test_runes_preselectRune_ExpectRevert_InvalidRune() public {
+	function test_runes_selectRune_ExpectRevert_InvalidRune() public {
 		uint256 lot = _createDailyAuctionWithRunes(2, true);
 
 		vm.expectRevert(InvalidRune.selector);
 
 		vm.prank(user1);
-		auctioneer.preselectRune(lot, 3);
+		auctioneer.selectRune(lot, 3);
 	}
 }

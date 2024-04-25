@@ -290,13 +290,19 @@ contract GBScripts is GBScriptUtils {
 
 		string memory mnemonic = vm.envString("MNEMONIC");
 		(address user, ) = deriveRememberKey(mnemonic, userIndex);
+		(address deployer, ) = deriveRememberKey(mnemonic, 0);
 
 		if (USD.balanceOf(user) == 0) {
-			(address deployer, ) = deriveRememberKey(mnemonic, 0);
-
 			vm.broadcast(deployer);
 			BasicERC20(address(USD)).mint(user, 10000e18);
+		}
 
+		if (user.balance == 0) {
+			vm.broadcast(deployer);
+			user.call{ value: 1 ether }("");
+		}
+
+		if (USD.allowance(user, address(auctioneer)) == 0) {
 			vm.broadcast(user);
 			USD.approve(address(auctioneer), UINT256_MAX);
 		}

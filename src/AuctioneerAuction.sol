@@ -16,6 +16,7 @@ import { GBMath, AuctionViewUtils, AuctionMutateUtils, AuctionParamsUtils } from
 
 interface IAuctioneerAuction {
 	function link() external;
+	function runeSwitchPenalty() external view returns (uint256);
 	function updateTreasury(address _treasury) external;
 	function updateFarm(address _farm) external;
 	function privateAuctionRequirement() external view returns (uint256);
@@ -27,11 +28,12 @@ interface IAuctioneerAuction {
 	function markBid(
 		uint256 _lot,
 		address _user,
-		bool _isUsersFirstBid,
+		uint256 _prevUserBids,
+		uint8 _prevRune,
 		uint256 _userGoBalance,
 		BidOptions memory _options
 	) external returns (uint256 userBid, uint256 bidCost, bool actionHasEmissions);
-	function validatePreselectLotAndRune(uint256 _lot, uint8 _rune) external;
+	function selectRune(uint256 _lot, uint256 _userBids, uint8 _prevRune, uint8 _rune) external;
 	function claimLot(
 		uint256 _lot,
 		address _user,
@@ -86,6 +88,7 @@ contract AuctioneerAuction is
 	uint256 public bidIncrement;
 	uint256 public startingBid;
 	uint256 public bidCost;
+	uint256 public runeSwitchPenalty = 0;
 	uint256 private onceTwiceBlastBonusTime = 9;
 	uint256 public privateAuctionRequirement;
 
@@ -177,6 +180,12 @@ contract AuctioneerAuction is
 	function updatePrivateAuctionRequirement(uint256 _requirement) public onlyOwner {
 		privateAuctionRequirement = _requirement;
 		emit UpdatedPrivateAuctionRequirement(_requirement);
+	}
+
+	function updateRuneSwitchPenalty(uint256 _penalty) public onlyOwner {
+		if (_penalty > 10000) revert Invalid();
+		runeSwitchPenalty = _penalty;
+		emit UpdatedRuneSwitchPenalty(_penalty);
 	}
 
 	// BLAST
@@ -286,10 +295,33 @@ contract AuctioneerAuction is
 
 	// BID
 
+	function _switchRuneUpdateData(uint256 _lot, uint256 _userBids, uint8 _prevRune, uint8 _newRune) internal {
+		if (_prevRune == _newRune) return;
+
+		// Remove data from prevRune
+		if (_prevRune != 0) {
+			auctions[_lot].runes[_prevRune].users -= 1;
+			if (_userBids > 0) {
+				auctions[_lot].runes[_prevRune].bids -= _userBids;
+			}
+		}
+
+		auctions[_lot].runes[_newRune].users += 1;
+
+		if (_userBids > 0) {
+			auctions[_lot].runes[_newRune].bids += _userBids.scaleByBP(10000 - runeSwitchPenalty);
+			auctions[_lot].bidData.bids =
+				auctions[_lot].bidData.bids +
+				_userBids.scaleByBP(10000 - runeSwitchPenalty) -
+				_userBids;
+		}
+	}
+
 	function markBid(
 		uint256 _lot,
 		address _user,
-		bool _isUsersFirstBid,
+		uint256 _prevUserBids,
+		uint8 _prevRune,
 		uint256 _userGoBalance,
 		BidOptions memory _options
 	)
@@ -315,17 +347,14 @@ contract AuctioneerAuction is
 		auction.bidData.bids += _options.multibid;
 		auction.bidData.nextBidBy = auction.getNextBidBy();
 
+		if (_prevUserBids == 0) {
+			auction.users += 1;
+		}
+
 		// Runes
 		if (auction.runes.length > 0) {
-			// Add user to rune if first bid in this auction
-			if (_isUsersFirstBid) {
-				auction.runes[_options.rune].users += 1;
-			}
-
-			// Add bids to rune, used for calculating emissions
+			_switchRuneUpdateData(_lot, _prevUserBids, _prevRune, _options.rune);
 			auction.runes[_options.rune].bids += _options.multibid;
-
-			// Mark bidRune
 			auction.bidData.bidRune = _options.rune;
 		}
 
@@ -334,11 +363,14 @@ contract AuctioneerAuction is
 		auctionHasEmissions = auction.emissions.biddersEmission > 0;
 	}
 
-	function validatePreselectLotAndRune(
+	function selectRune(
 		uint256 _lot,
+		uint256 _userBids,
+		uint8 _prevRune,
 		uint8 _rune
-	) external view validAuctionLot(_lot) validRune(_lot, _rune) {
+	) external onlyAuctioneer validAuctionLot(_lot) validRune(_lot, _rune) {
 		if (auctions[_lot].runes.length == 0) revert InvalidRune();
+		_switchRuneUpdateData(_lot, _userBids, _prevRune, _rune);
 	}
 
 	// CLAIM
