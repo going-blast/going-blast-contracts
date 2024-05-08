@@ -3,7 +3,7 @@
 		"name": "000",
 		"isPrivate": false,
 		"emissionBP": 10000,
-		"unlockTimestamp": 1714044415,
+		"unlockTimestamp": 1714995075,
 		"lotValue": 181e18,
 		"runeSymbols": [],
 		"tokens": [
@@ -16,7 +16,7 @@
 		"windows": [
 			{
 				"windowType": 0,
-				"duration": 3600,
+				"duration": 7200,
 				"timer": 0
 			},
 			{
@@ -33,9 +33,9 @@
 	},
 	"1": {
 		"name": "001",
-		"isPrivate": true,
+		"isPrivate": false,
 		"emissionBP": 10000,
-		"unlockTimestamp": 1714044415,
+		"unlockTimestamp": 1714995075,
 		"lotValue": 181e18,
 		"runeSymbols": [1, 2, 3],
 		"tokens": [
@@ -48,7 +48,7 @@
 		"windows": [
 			{
 				"windowType": 0,
-				"duration": 3600,
+				"duration": 7200,
 				"timer": 0
 			},
 			{
@@ -67,7 +67,7 @@
 		"name": "002",
 		"isPrivate": false,
 		"emissionBP": 10000,
-		"unlockTimestamp": 1714130815,
+		"unlockTimestamp": 1715081475,
 		"lotValue": 181e18,
 		"runeSymbols": [],
 		"tokens": [
@@ -99,7 +99,7 @@
 		"name": "003",
 		"isPrivate": true,
 		"emissionBP": 10000,
-		"unlockTimestamp": 1714130815,
+		"unlockTimestamp": 1715081475,
 		"lotValue": 181e18,
 		"runeSymbols": [],
 		"tokens": [

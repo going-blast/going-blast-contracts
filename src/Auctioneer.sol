@@ -213,7 +213,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 		(uint256 userBids, uint8 prevRune) = auctioneerUser.selectRune(_lot, msg.sender, _rune);
 		auctioneerAuction.selectRune(_lot, userBids, prevRune, _rune);
 
-		emit PreselectedRune(_lot, msg.sender, _rune);
+		emit SelectedRune(_lot, msg.sender, _rune);
 	}
 
 	// CLAIM

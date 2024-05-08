@@ -61,7 +61,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		// SETUP
 		_createAndLinkAuctioneers();
 
-		vm.prank(presale);
+		vm.prank(treasury);
 		GO.safeTransfer(address(auctioneerEmissions), 1e18);
 
 		auctioneerEmissions.initializeEmissions(_getNextDay2PMTimestamp());

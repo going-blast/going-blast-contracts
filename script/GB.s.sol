@@ -285,7 +285,12 @@ contract GBScripts is GBScriptUtils {
 		auctioneerFarm.claimYieldAll(_recipient, amountWETH, amountUSDB, 0);
 	}
 
-	function ANVIL_bid(uint32 userIndex, uint256 lot) public loadChain loadContracts loadConfigValues {
+	function ANVIL_bid(
+		uint32 userIndex,
+		uint256 lot,
+		uint8 rune,
+		string memory message
+	) public loadChain loadContracts loadConfigValues {
 		if (!isAnvil) revert OnlyAnvil();
 
 		string memory mnemonic = vm.envString("MNEMONIC");
@@ -310,6 +315,6 @@ contract GBScripts is GBScriptUtils {
 		if (block.timestamp < auctioneerAuction.getAuction(lot).unlockTimestamp) return;
 
 		vm.broadcast(user);
-		auctioneer.bid(lot, BidOptions({ multibid: 1, rune: 0, paymentType: PaymentType.WALLET, message: "I JUST BID" }));
+		auctioneer.bid(lot, BidOptions({ multibid: 1, rune: rune, paymentType: PaymentType.WALLET, message: message }));
 	}
 }

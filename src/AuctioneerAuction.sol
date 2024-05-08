@@ -88,8 +88,8 @@ contract AuctioneerAuction is
 	uint256 public bidIncrement;
 	uint256 public startingBid;
 	uint256 public bidCost;
-	uint256 public runeSwitchPenalty = 0;
-	uint256 private onceTwiceBlastBonusTime = 9;
+	uint256 public runeSwitchPenalty = 2000;
+	uint256 public onceTwiceBlastBonusTime = 9;
 	uint256 public privateAuctionRequirement;
 
 	constructor(

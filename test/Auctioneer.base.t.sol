@@ -15,6 +15,7 @@ import { Auctioneer } from "../src/Auctioneer.sol";
 import { GBMath } from "../src/AuctionUtils.sol";
 import { AuctioneerUser } from "../src/AuctioneerUser.sol";
 import { AuctioneerEmissions } from "../src/AuctioneerEmissions.sol";
+import { GoingBlastPresale, PresaleOptions } from "../src/GoingBlastPresale.sol";
 
 abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	using GBMath for uint256;
@@ -25,8 +26,6 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	address public deployer = 0xb4c79daB8f259C7Aee6E5b2Aa729821864227e84;
 	address public sender = 0x90193C961A926261B756D1E5bb255e67ff9498A1;
 	address public dead = 0x000000000000000000000000000000000000dEaD;
-
-	address public presale = address(30);
 
 	address public liquidity = address(40);
 
@@ -46,6 +45,8 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	AuctioneerUser public auctioneerUser;
 	AuctioneerEmissions public auctioneerEmissions;
 	AuctioneerFarm public farm;
+	GoingBlastPresale public presale;
+
 	uint8 usdDecimals;
 	BasicERC20WithDecimals public USD;
 	IWETH public WETH;
@@ -70,7 +71,6 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		vm.label(deployer, "deployer");
 		vm.label(sender, "sender");
 		vm.label(dead, "dead");
-		vm.label(presale, "presale");
 		vm.label(liquidity, "liquidity");
 		vm.label(treasury, "treasury");
 		vm.label(treasury2, "treasury2");
@@ -83,6 +83,7 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		vm.label(address(auctioneerUser), "auctioneerUser");
 		vm.label(address(auctioneerEmissions), "auctioneerEmissions");
 		vm.label(address(farm), "farm");
+		vm.label(address(presale), "presale");
 		vm.label(address(USD), "USD");
 		vm.label(address(WETH), "WETH");
 		vm.label(address(0), "ETH_0");
@@ -113,6 +114,8 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 
 		_createAndLinkAuctioneers();
 
+		_createPresale();
+
 		_createAndMintNFTs();
 	}
 
@@ -136,6 +139,26 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		auctioneer.link(address(auctioneerUser), address(auctioneerEmissions), address(auctioneerAuction));
 	}
 
+	function _createPresale() public {
+		PresaleOptions memory presaleOptions = PresaleOptions({
+			tokenDeposit: GO.totalSupply().scaleByBP(2000 + 500),
+			hardCap: 32e18,
+			softCap: 16e18,
+			max: 0.5e18,
+			min: 0.001e18,
+			start: uint112(block.timestamp),
+			end: uint112(block.timestamp + 2 weeks),
+			liquidityBps: 2000 // 20% of supply for presale, 5% for liquidity. 5/20 = 0.2
+		});
+
+		presale = new GoingBlastPresale(address(WETH), address(GO), address(0), presaleOptions);
+	}
+
+	function _startPresale() public {
+		IERC20(GO).approve(address(presale), GO.totalSupply().scaleByBP(2000 + 500));
+		presale.deposit();
+	}
+
 	function _setupAuctioneerTreasury() public {
 		auctioneer.updateTreasury(treasury);
 		_giveETH(treasury, 5e18);
@@ -145,10 +168,17 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	}
 
 	function _distributeGO() public {
+		// 60% to auctions for proof-of-bid emissions
 		GO.safeTransfer(address(auctioneerEmissions), GO.totalSupply().scaleByBP(6000));
-		GO.safeTransfer(presale, GO.totalSupply().scaleByBP(2000));
+
+		// 20% to presale, 5% to liquidity.
+		// To be injected into presale contract
+		GO.safeTransfer(treasury, GO.totalSupply().scaleByBP(2000 + 500));
+
+		// 10% to treasury, should set this up for vesting
 		GO.safeTransfer(treasury, GO.totalSupply().scaleByBP(1000));
-		GO.safeTransfer(liquidity, GO.totalSupply().scaleByBP(500));
+
+		// 5% to farm
 		GO.safeTransfer(address(farm), GO.totalSupply().scaleByBP(500));
 	}
 
@@ -176,7 +206,7 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	function _giveUsersTokensAndApprove() public {
 		for (uint8 i = 0; i < 4; i++) {
 			// Give tokens
-			vm.prank(presale);
+			vm.prank(treasury);
 			GO.transfer(users[i], 50e18);
 			USD.mint(users[i], 10000e18);
 			GO_LP.mint(users[i], 50e18);
@@ -226,7 +256,7 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	}
 
 	function _giveGO(address user, uint256 amount) public {
-		vm.prank(presale);
+		vm.prank(treasury);
 		GO.transfer(user, amount);
 	}
 

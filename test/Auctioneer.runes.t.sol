@@ -153,7 +153,6 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 	// BID
 
 	function _innerTest_runesAgainstLot(uint8 numRunes) public {
-		// console.log("Test bid rune selection, num runes: %s", numRunes);
 		uint256 lot = _createDailyAuctionWithRunes(numRunes, true);
 
 		uint256 snapshot = vm.snapshot();
@@ -194,16 +193,6 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 			vm.revertTo(snapshot);
 			_innerTest_runesAgainstLot(numRunesPerTest[i]);
 		}
-	}
-
-	function test_runes_bid_RevertWhen_SwitchRunes() public {
-		uint256 lot = _createDailyAuctionWithRunes(2, true);
-
-		_bidWithRune(user1, lot, 1);
-		assertEq(auctioneerUser.getAuctionUser(lot, user1).rune, 1, "Users rune should be set to 1");
-
-		vm.expectRevert(CantSwitchRune.selector);
-		_bidWithRune(user1, lot, 2);
 	}
 
 	function test_runes_bid_Expect_UsersCountOfRuneIncremented() public {
@@ -412,15 +401,37 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		assertEq(getUserLotInfo(lot, user4).bidCounts.auction, auctionBids, "Auction bids should match (user4)");
 	}
 
+	// RUNE SWITCH PENALTY
+
+	function test_runeSwitchPenalty_ExpectEmit_UpdatedRuneSwitchPenalty() public {
+		vm.expectEmit(true, true, true, true);
+		emit UpdatedRuneSwitchPenalty(5000);
+
+		auctioneerAuction.updateRuneSwitchPenalty(5000);
+	}
+
+	function test_runeSwitchPenalty_ValuesUpdated() public {
+		assertEq(auctioneerAuction.runeSwitchPenalty(), 2000, "Initial rune switch penalty = 2000");
+		auctioneerAuction.updateRuneSwitchPenalty(5000);
+		assertEq(auctioneerAuction.runeSwitchPenalty(), 5000, "Updated rune switch penalty = 5000");
+		auctioneerAuction.updateRuneSwitchPenalty(10000);
+		assertEq(auctioneerAuction.runeSwitchPenalty(), 10000, "Updated rune switch penalty = 10000");
+	}
+
+	function test_runeSwitchPenalty_ExpectRevert_Invalid() public {
+		vm.expectRevert(Invalid.selector);
+		auctioneerAuction.updateRuneSwitchPenalty(10001);
+	}
+
 	// PRESELECT
 
-	function test_runes_selectRune_ExpectEmit_PreselectedRune() public {
+	function test_runes_selectRune_ExpectEmit_SelectedRune() public {
 		uint256 lot = _createDailyAuctionWithRunes(2, true);
 
 		assertEq(getUserLotInfo(lot, user1).rune, 0, "User1 no rune");
 
 		vm.expectEmit(true, true, true, true);
-		emit PreselectedRune(lot, user1, 1);
+		emit SelectedRune(lot, user1, 1);
 
 		vm.prank(user1);
 		auctioneer.selectRune(lot, 1);
@@ -437,18 +448,6 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		auctioneer.selectRune(lot, 0);
 	}
 
-	function test_runes_selectRune_ExpectRevert_CantSwitchRune() public {
-		uint256 lot = _createDailyAuctionWithRunes(2, true);
-
-		vm.prank(user1);
-		auctioneer.selectRune(lot, 1);
-
-		vm.expectRevert(CantSwitchRune.selector);
-
-		vm.prank(user1);
-		auctioneer.selectRune(lot, 2);
-	}
-
 	function test_runes_selectRune_ExpectRevert_InvalidRune() public {
 		uint256 lot = _createDailyAuctionWithRunes(2, true);
 
@@ -456,5 +455,160 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 
 		vm.prank(user1);
 		auctioneer.selectRune(lot, 3);
+	}
+
+	// SWITCHING RUNES
+
+	function test_selectRune_Expect_ValuesUpdatedCorrectly() public {
+		uint256 lot = _createDailyAuctionWithRunes(2, true);
+
+		uint256 userBids = 100;
+		uint256[5] memory penalties = [uint256(0), 2000, 5000, 8000, 10000];
+
+		uint256 snapshot = vm.snapshot();
+
+		for (uint8 i = 0; i < penalties.length; i++) {
+			vm.revertTo(snapshot);
+
+			uint256 penalty = penalties[i];
+			uint256 expectedBidsAfterPenalty = (userBids * (10000 - penalty)) / 10000;
+
+			auctioneerAuction.updateRuneSwitchPenalty(penalty);
+			assertEq(
+				auctioneerAuction.runeSwitchPenalty(),
+				penalty,
+				string.concat("Rune switch Penalty is ", vm.toString(penalty))
+			);
+
+			// BIDS
+			_multibidWithRune(user1, lot, userBids, 1);
+			_multibidWithRune(user2, lot, userBids, 1);
+			_multibidWithRune(user3, lot, userBids, 2);
+			_multibidWithRune(user4, lot, userBids, 2);
+
+			Auction memory auctionInit = auctioneerAuction.getAuction(lot);
+			UserLotInfo memory userInfoInit = getUserLotInfo(lot, user1);
+
+			// Auction
+			assertEq(auctionInit.bidData.bids, 400, "Expect 400 Bids");
+			// User
+			assertEq(userInfoInit.bidCounts.user, 100, "User 1 has 100 Bids");
+			assertEq(userInfoInit.rune, 1, "User 1 has selected Rune 1");
+			// Runes
+			assertEq(auctionInit.runes[1].users, 2, "Rune 1 should have 2 users");
+			assertEq(auctionInit.runes[1].bids, 200, "Rune 1 should have 200 Bids");
+			assertEq(auctionInit.runes[2].users, 2, "Rune 2 should have 2 users");
+			assertEq(auctionInit.runes[2].bids, 200, "Rune 2 should have 200 Bids");
+
+			// Switch Rune
+			vm.prank(user1);
+			auctioneer.selectRune(lot, 2);
+
+			Auction memory auctionFinal = auctioneerAuction.getAuction(lot);
+			UserLotInfo memory userInfoFinal = getUserLotInfo(lot, user1);
+			string memory bidsAfterPenaltyStr = string.concat(" bids after ", vm.toString(penalty), "% penalty");
+			uint256 auctionExpectedBids = (3 * userBids) + (1 * expectedBidsAfterPenalty);
+			uint256 rune2ExpectedBids = (2 * userBids) + (1 * expectedBidsAfterPenalty);
+
+			// Auction
+			assertEq(
+				auctionFinal.bidData.bids,
+				auctionExpectedBids,
+				string.concat("Expect ", vm.toString(auctionExpectedBids), bidsAfterPenaltyStr)
+			);
+			// User
+			assertEq(
+				userInfoFinal.bidCounts.user,
+				expectedBidsAfterPenalty,
+				string.concat("User 1 has ", vm.toString(expectedBidsAfterPenalty), bidsAfterPenaltyStr)
+			);
+			assertEq(userInfoFinal.rune, 2, "User 1 has selected Rune 2");
+			// Runes
+			assertEq(auctionFinal.runes[1].users, 1, "Rune 1 should have 1 user (2 - 1)");
+			assertEq(auctionFinal.runes[1].bids, 100, "Rune 1 should have 100 Bids");
+			assertEq(auctionFinal.runes[2].users, 3, "Rune 2 should have 3 users");
+			assertEq(
+				auctionFinal.runes[2].bids,
+				rune2ExpectedBids,
+				string.concat("Rune 2 should have ", vm.toString(rune2ExpectedBids), bidsAfterPenaltyStr)
+			);
+
+			console.log("Penalty %s", penalty);
+			console.log("  Auction bids %s -> %s", auctionInit.bidData.bids, auctionFinal.bidData.bids);
+			console.log("  User bids %s -> %s", userInfoInit.bidCounts.user, userInfoFinal.bidCounts.user);
+			console.log("  User rune %s -> %s", userInfoInit.rune, userInfoFinal.rune);
+			console.log("  Rune 1 Users %s -> %s", auctionInit.runes[1].users, auctionFinal.runes[1].users);
+			console.log("  Rune 1 Bids %s -> %s", auctionInit.runes[1].bids, auctionFinal.runes[1].bids);
+			console.log("  Rune 2 Users %s -> %s", auctionInit.runes[2].users, auctionFinal.runes[2].users);
+			console.log("  Rune 2 Bids %s -> %s", auctionInit.runes[2].bids, auctionFinal.runes[2].bids);
+		}
+
+		// // Rune switch penalty
+		// assertEq(auctioneerAuction.runeSwitchPenalty(), 2000, "Rune switch Penalty is 20%");
+
+		// // Auction
+		// assertEq(auctioneerAuction.getAuction(lot).bidData.bids, 400, "Expect 400 Bids");
+		// // User
+		// assertEq(getUserLotInfo(lot, user1).bidCounts.user, 100, "User 1 has 100 Bids");
+		// assertEq(getUserLotInfo(lot, user1).rune, 1, "User 1 has selected Rune 1");
+		// // Runes
+		// assertEq(auctioneerAuction.getAuction(lot).runes[1].users, 2, "Rune 1 should have 2 users");
+		// assertEq(auctioneerAuction.getAuction(lot).runes[1].bids, 200, "Rune 1 should have 200 Bids");
+		// assertEq(auctioneerAuction.getAuction(lot).runes[2].users, 2, "Rune 2 should have 2 users");
+		// assertEq(auctioneerAuction.getAuction(lot).runes[2].bids, 200, "Rune 2 should have 200 Bids");
+
+		// vm.prank(user1);
+		// auctioneer.selectRune(lot, 2);
+
+		// // Auction
+		// assertEq(auctioneerAuction.getAuction(lot).bidData.bids, 380, "Expect 380 Bids (400 - (100 * 0.2))");
+		// // User
+		// assertEq(getUserLotInfo(lot, user1).bidCounts.user, 80, "User 1 has 80 Bids (100 * 0.8)");
+		// assertEq(getUserLotInfo(lot, user1).rune, 2, "User 1 has selected Rune 2");
+		// // Runes
+		// assertEq(auctioneerAuction.getAuction(lot).runes[1].users, 1, "Rune 1 should have 1 user (2 - 1)");
+		// assertEq(auctioneerAuction.getAuction(lot).runes[1].bids, 100, "Rune 1 should have 100 Bids (200 - 100)");
+		// assertEq(auctioneerAuction.getAuction(lot).runes[2].users, 3, "Rune 2 should have 3 users");
+		// assertEq(auctioneerAuction.getAuction(lot).runes[2].bids, 280, "Rune 2 should have 280 Bids (200 + (100 * 0.8))");
+	}
+
+	function test_selectRune_SameRune_Expect_ValuesNotChange() public {
+		uint256 lot = _createDailyAuctionWithRunes(2, true);
+
+		uint256 userBids = 100;
+
+		_multibidWithRune(user1, lot, userBids, 1);
+		_multibidWithRune(user2, lot, userBids, 1);
+		_multibidWithRune(user3, lot, userBids, 2);
+		_multibidWithRune(user4, lot, userBids, 2);
+
+		// Rune switch penalty
+		assertEq(auctioneerAuction.runeSwitchPenalty(), 2000, "Rune switch Penalty is 20%");
+
+		// Auction
+		assertEq(auctioneerAuction.getAuction(lot).bidData.bids, 400, "Expect 400 Bids");
+		// User
+		assertEq(getUserLotInfo(lot, user1).bidCounts.user, 100, "User 1 has 100 Bids");
+		assertEq(getUserLotInfo(lot, user1).rune, 1, "User 1 has selected Rune 1");
+		// Runes
+		assertEq(auctioneerAuction.getAuction(lot).runes[1].users, 2, "Rune 1 should have 2 users");
+		assertEq(auctioneerAuction.getAuction(lot).runes[1].bids, 200, "Rune 1 should have 200 Bids");
+		assertEq(auctioneerAuction.getAuction(lot).runes[2].users, 2, "Rune 2 should have 2 users");
+		assertEq(auctioneerAuction.getAuction(lot).runes[2].bids, 200, "Rune 2 should have 200 Bids");
+
+		// Switching to same rune doesn't incur penalty
+		vm.prank(user1);
+		auctioneer.selectRune(lot, 1);
+
+		// Auction
+		assertEq(auctioneerAuction.getAuction(lot).bidData.bids, 400, "Auction still has 400 Bids");
+		// User
+		assertEq(getUserLotInfo(lot, user1).bidCounts.user, 100, "User 1 still has 100 Bids");
+		assertEq(getUserLotInfo(lot, user1).rune, 1, "User 1 has still selected Rune 1");
+		// Runes
+		assertEq(auctioneerAuction.getAuction(lot).runes[1].users, 2, "Rune 1 should still have 2 users");
+		assertEq(auctioneerAuction.getAuction(lot).runes[1].bids, 200, "Rune 1 should still have 200 Bids");
+		assertEq(auctioneerAuction.getAuction(lot).runes[2].users, 2, "Rune 2 should still have 2 users");
+		assertEq(auctioneerAuction.getAuction(lot).runes[2].bids, 200, "Rune 2 should still have 200 Bids");
 	}
 }

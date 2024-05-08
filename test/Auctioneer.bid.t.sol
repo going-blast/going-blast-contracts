@@ -74,6 +74,8 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		// Set user alias
 		_setUserAlias(user1, "XXXX");
 
+		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
+
 		vm.expectEmit(true, true, true, true);
 		BidOptions memory options = BidOptions({
 			paymentType: PaymentType.WALLET,
@@ -83,7 +85,6 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		});
 		emit Bid(0, user1, expectedBid, "XXXX", options, block.timestamp);
 
-		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
 		vm.prank(user1);
 		auctioneer.bid(0, options);
 	}
@@ -205,6 +206,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 
 		uint256 userUSDInit = USD.balanceOf(user1);
 
+		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
 		vm.expectEmit(true, true, true, true);
 		BidOptions memory options = BidOptions({
 			paymentType: PaymentType.WALLET,
@@ -214,7 +216,6 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		});
 		emit Bid(0, user1, expectedBid, "", options, block.timestamp);
 
-		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
 		vm.prank(user1);
 		auctioneer.bid(0, options);
 

@@ -244,7 +244,7 @@ interface AuctioneerEvents {
 		BidOptions _options,
 		uint256 _timestamp
 	);
-	event PreselectedRune(uint256 indexed _lot, address indexed _user, uint8 _rune);
+	event SelectedRune(uint256 indexed _lot, address indexed _user, uint8 _rune);
 	event AuctionFinalized(uint256 indexed _lot);
 	event ClaimedLot(
 		uint256 indexed _lot,

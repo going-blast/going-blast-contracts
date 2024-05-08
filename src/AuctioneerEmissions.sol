@@ -229,4 +229,16 @@ contract AuctioneerEmissions is IAuctioneerEmissions, Ownable, AuctioneerEvents 
 	function getCurrentEpochData() public view returns (uint256) {
 		return _getEpochAtTimestamp(block.timestamp);
 	}
+	function getEmissionSharePerEpoch() public view returns (uint256[] memory share) {
+		share = new uint256[](8);
+		for (uint8 i = 0; i < 8; i++) {
+			share[i] = emissionSharePerEpoch[i];
+		}
+	}
+	function getEpochEmissionsRemaining() public view returns (uint256[] memory share) {
+		share = new uint256[](8);
+		for (uint8 i = 0; i < 8; i++) {
+			share[i] = epochEmissionsRemaining[i];
+		}
+	}
 }

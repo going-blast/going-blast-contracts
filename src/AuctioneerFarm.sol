@@ -18,6 +18,7 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 	address public auctioneerAuction;
 	bool public linked;
 	uint256 public goPid = 0;
+	uint256 public totalUsdDistributed = 0;
 
 	PoolInfo[] public poolInfo;
 	mapping(address => bool) public tokensWithPool;
@@ -197,6 +198,8 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 		if (msg.sender != auctioneerAuction) revert NotAuctioneerAuction();
 
 		if (getEqualizedTotalStaked() == 0) return;
+
+		totalUsdDistributed += _amount;
 
 		// Distribute USD between the pools
 		for (uint256 i = 0; i < poolInfo.length; ++i) {

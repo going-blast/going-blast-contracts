@@ -238,7 +238,7 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 	}
 
 	function _farmDeposit() public {
-		vm.prank(presale);
+		vm.prank(treasury);
 		GO.transfer(user1, 10e18);
 		vm.prank(user1);
 		GO.approve(address(farm), 10e18);

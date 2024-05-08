@@ -30,8 +30,10 @@
 		"script:blast:testnet:broadcast": "yarn script:blast:testnet --broadcast",
 		"====== UTILS ======": "",
 		"script:anvil:setup": "yarn script:anvil:broadcast --sig 'fullDeploy()' && yarn script:anvil:broadcast --sig 'ANVIL_treasuryWrapETH()' && yarn script:anvil:broadcast --sig 'treasuryApproveAuctioneerAuction()' && yarn script:anvil:broadcast --sig 'createAuctions()' && yarn inject:frontend:abi && yarn inject:frontend:anvil",
-		"script:anvil:bid": "yarn script:anvil:broadcast --sig 'ANVIL_bid(uint32, uint256)'",
-		"anvil:fund:arch": "yarn env:anvil cast send --value 1000000000000000000 --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 0x3a7679E3662bC7c2EB2B1E71FA221dA430c6f64B"
+		"script:anvil:bid": "yarn script:anvil:broadcast --sig 'ANVIL_bid(uint32, uint256, uint8, string)'",
+		"anvil:fund:arch": "yarn env:anvil cast send --value 1000000000000000000 --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 0x3a7679E3662bC7c2EB2B1E71FA221dA430c6f64B",
+		"script:anvil:auto-bid": "npx tsx ts-script/auto-bid.ts",
+		"anvil:start": "anvil --block-time 1"
 	},
 	"author": "Architect <halftonedev@gmail.com>",
 	"license": "MIT",
@@ -49,6 +51,7 @@
 		"typescript": "^5.2.2"
 	},
 	"dependencies": {
+		"@ngneat/falso": "^7.2.0",
 		"@typechain/ethers-v6": "^0.5.1",
 		"dev": "^0.1.3",
 		"global": "^4.4.0",
