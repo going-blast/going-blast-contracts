@@ -65,6 +65,14 @@ contract AuctioneerFarmEmissionsTest is AuctioneerHelper, AuctioneerFarmEvents {
 		assertApproxEqAbs(user4Emissions, user4PendingGo, 10, "User4 emissions increase proportionally");
 	}
 
+	function test_emissions_totalUsdDistributed_Increases() public {
+		_farmDeposit(user1, goPid, user1Deposited);
+
+		assertEq(farm.totalUsdDistributed(), 0, "Total USD distributed starts at 0");
+		_injectFarmUSD(100e18);
+		assertEq(farm.totalUsdDistributed(), 100e18, "Total USD distributed should increase to 100e18");
+	}
+
 	function test_emissions_PendingUSDIncreasesProportionally() public {
 		_farmDeposit(user1, goPid, user1Deposited);
 		_farmDeposit(user2, goPid, user2Deposited);
