@@ -19,6 +19,8 @@ import { VoucherToken } from "../src/VoucherToken.sol";
 import { IERC20Rebasing } from "../src/BlastYield.sol";
 import { GBMath, AuctionParamsUtils } from "../src/AuctionUtils.sol";
 import { AuctionParams, EpochData, PaymentType, BidOptions } from "../src/IAuctioneer.sol";
+import { GoingBlastPresale, PresaleOptions } from "../src/GoingBlastPresale.sol";
+import { GoingBlastAirdrop } from "../src/GoingBlastAirdrop.sol";
 
 contract GBScripts is GBScriptUtils {
 	using SafeERC20 for IERC20;
@@ -93,11 +95,15 @@ contract GBScripts is GBScriptUtils {
 	function _deployCore() internal {
 		// TODO: check if deployed bytecode matches potentially deploying bytecode?
 
+		// TOKENS
+
 		GO = new GoToken();
 		writeContractAddress("GO", address(GO));
 
 		VOUCHER = new VoucherToken();
 		writeContractAddress("VOUCHER", address(VOUCHER));
+
+		// CORE
 
 		auctioneer = new Auctioneer(GO, VOUCHER, USD, WETH);
 		writeContractAddress("Auctioneer", address(auctioneer));
@@ -118,6 +124,31 @@ contract GBScripts is GBScriptUtils {
 
 		auctioneer.updateFarm(address(auctioneerFarm));
 
+		// PRESALE
+		PresaleOptions memory presaleOptions = PresaleOptions({
+			tokenDeposit: GO.totalSupply().scaleByBP(2000 + 500),
+			hardCap: 32e18,
+			softCap: 16e18,
+			max: 0.5e18,
+			min: 0.001e18,
+			start: uint112(block.timestamp),
+			end: uint112(block.timestamp + 2 weeks),
+			liquidityBps: 2000 // 20% of supply for presale, 5% for liquidity. 5/20 = 0.2
+		});
+		presale = new GoingBlastPresale(
+			address(WETH),
+			address(GO),
+			// @Todo: Replace with real DEX V2 router address
+			address(0),
+			presaleOptions
+		);
+		writeContractAddress("GoingBlastPresale", address(presale));
+
+		// AIRDROP
+		address airdropTreasury = _getDefaultTreasuryAddress();
+		airdrop = new GoingBlastAirdrop(address(VOUCHER), airdropTreasury, 0);
+
+		// INITIALIZE BLAST STUFF
 		if (isBlast) {
 			auctioneer.initializeBlast();
 			auctioneerFarm.initializeBlast(address(WETH));
@@ -125,9 +156,14 @@ contract GBScripts is GBScriptUtils {
 		}
 	}
 
-	function _updateTreasury() internal {
+	function _getDefaultTreasuryAddress() internal returns (address) {
 		string memory mnemonic = vm.envString("MNEMONIC");
-		(treasury, ) = deriveRememberKey(mnemonic, 1);
+		(address treasuryAdd, ) = deriveRememberKey(mnemonic, 1);
+		return treasuryAdd;
+	}
+
+	function _updateTreasury() internal {
+		treasury = _getDefaultTreasuryAddress();
 
 		auctioneer.updateTreasury(treasury);
 		writeAddress(auctioneerConfigPath("treasury"), treasury);

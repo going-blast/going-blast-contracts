@@ -16,6 +16,7 @@ import { GBMath } from "../src/AuctionUtils.sol";
 import { AuctioneerUser } from "../src/AuctioneerUser.sol";
 import { AuctioneerEmissions } from "../src/AuctioneerEmissions.sol";
 import { GoingBlastPresale, PresaleOptions } from "../src/GoingBlastPresale.sol";
+import { GoingBlastAirdrop } from "../src/GoingBlastAirdrop.sol";
 
 abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	using GBMath for uint256;
@@ -46,6 +47,7 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	AuctioneerEmissions public auctioneerEmissions;
 	AuctioneerFarm public farm;
 	GoingBlastPresale public presale;
+	GoingBlastAirdrop public airdrop;
 
 	uint8 usdDecimals;
 	BasicERC20WithDecimals public USD;
@@ -84,6 +86,7 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		vm.label(address(auctioneerEmissions), "auctioneerEmissions");
 		vm.label(address(farm), "farm");
 		vm.label(address(presale), "presale");
+		vm.label(address(airdrop), "airdrop");
 		vm.label(address(USD), "USD");
 		vm.label(address(WETH), "WETH");
 		vm.label(address(0), "ETH_0");
@@ -115,6 +118,7 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		_createAndLinkAuctioneers();
 
 		_createPresale();
+		_createAirdrop();
 
 		_createAndMintNFTs();
 	}
@@ -157,6 +161,11 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	function _startPresale() public {
 		IERC20(GO).approve(address(presale), GO.totalSupply().scaleByBP(2000 + 500));
 		presale.deposit();
+	}
+
+	function _createAirdrop() public {
+		airdrop = new GoingBlastAirdrop(address(VOUCHER), deployer, 0);
+		VOUCHER.approve(address(airdrop), 100e18);
 	}
 
 	function _setupAuctioneerTreasury() public {

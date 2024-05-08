@@ -12,6 +12,8 @@ import { AuctioneerUser } from "../src/AuctioneerUser.sol";
 import { AuctioneerEmissions } from "../src/AuctioneerEmissions.sol";
 import { GoToken } from "../src/GoToken.sol";
 import { VoucherToken } from "../src/VoucherToken.sol";
+import { GoingBlastPresale } from "../src/GoingBlastPresale.sol";
+import { GoingBlastAirdrop } from "../src/GoingBlastAirdrop.sol";
 
 contract GBScriptUtils is Script, ChainJsonUtils {
 	using SafeERC20 for IERC20;
@@ -22,6 +24,8 @@ contract GBScriptUtils is Script, ChainJsonUtils {
 	AuctioneerUser public auctioneerUser;
 	AuctioneerEmissions public auctioneerEmissions;
 	AuctioneerFarm public auctioneerFarm;
+	GoingBlastPresale public presale;
+	GoingBlastAirdrop public airdrop;
 	GoToken public GO;
 	VoucherToken public VOUCHER;
 	IERC20 public USD;
