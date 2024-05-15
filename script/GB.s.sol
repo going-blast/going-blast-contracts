@@ -16,7 +16,6 @@ import { AuctioneerEmissions } from "../src/AuctioneerEmissions.sol";
 import { AuctioneerFarm } from "../src/AuctioneerFarm.sol";
 import { GoToken } from "../src/GoToken.sol";
 import { VoucherToken } from "../src/VoucherToken.sol";
-import { IERC20Rebasing } from "../src/BlastYield.sol";
 import { GBMath, AuctionParamsUtils } from "../src/AuctionUtils.sol";
 import { AuctionParams, EpochData, PaymentType, BidOptions } from "../src/IAuctioneer.sol";
 import { GoingBlastPresale, PresaleOptions } from "../src/GoingBlastPresale.sol";
@@ -30,11 +29,14 @@ contract GBScripts is GBScriptUtils {
 	error NotBlastChain();
 	error OnlyAnvil();
 
+	uint256 public GO_SUPPLY = 10000000e18;
+
 	function fullDeploy() public broadcast loadChain loadConfigValues {
 		_ANVIL_setupTokens();
 		_deployCore();
 		_updateTreasury();
 		_initializeAuctioneerEmissions();
+		_initializePresale();
 		_freezeContracts();
 		_ANVIL_initArch();
 		_ANVIL_initializeAuctioneerFarmEmissions();
@@ -67,6 +69,8 @@ contract GBScripts is GBScriptUtils {
 		}
 	}
 
+	error ETHTransferFailed();
+
 	function _ANVIL_initArch() internal {
 		if (!isAnvil) return;
 
@@ -74,14 +78,15 @@ contract GBScripts is GBScriptUtils {
 		BasicERC20(address(USD)).mint(arch, 1000e18);
 		VOUCHER.mint(arch, 100e18);
 		GO.transfer(arch, 100e18);
-		arch.call{ value: 1e18 }("");
+		(bool sent, ) = arch.call{ value: 1e18 }("");
+		if (!sent) revert ETHTransferFailed();
 	}
 
 	function _ANVIL_initializeAuctioneerFarmEmissions() internal {
 		if (!isAnvil) return;
 
 		// GO
-		uint256 farmGOEmissions = uint256(1000000e18).scaleByBP(500);
+		uint256 farmGOEmissions = uint256(GO_SUPPLY).scaleByBP(500);
 		IERC20(GO).safeTransfer(address(auctioneerFarm), farmGOEmissions);
 		auctioneerFarm.initializeEmissions(farmGOEmissions, 180 days);
 		console.log("AuctioneerFarm GO emissions", GO.balanceOf(address(auctioneerFarm)));
@@ -105,13 +110,13 @@ contract GBScripts is GBScriptUtils {
 
 		// CORE
 
-		auctioneer = new Auctioneer(GO, VOUCHER, USD, WETH);
+		auctioneer = new Auctioneer(GO, VOUCHER, WETH);
 		writeContractAddress("Auctioneer", address(auctioneer));
 
-		auctioneerAuction = new AuctioneerAuction(USD, WETH, bidCost, bidIncrement, startingBid, privateAuctionRequirement);
+		auctioneerAuction = new AuctioneerAuction(bidCost, bidIncrement, startingBid, privateAuctionRequirement);
 		writeContractAddress("AuctioneerAuction", address(auctioneerAuction));
 
-		auctioneerUser = new AuctioneerUser(USD);
+		auctioneerUser = new AuctioneerUser();
 		writeContractAddress("AuctioneerUser", address(auctioneerUser));
 
 		auctioneerEmissions = new AuctioneerEmissions(GO);
@@ -119,14 +124,14 @@ contract GBScripts is GBScriptUtils {
 
 		auctioneer.link(address(auctioneerUser), address(auctioneerEmissions), address(auctioneerAuction));
 
-		auctioneerFarm = new AuctioneerFarm(USD, GO, VOUCHER);
+		auctioneerFarm = new AuctioneerFarm(GO, VOUCHER);
 		writeContractAddress("AuctioneerFarm", address(auctioneerFarm));
 
 		auctioneer.updateFarm(address(auctioneerFarm));
 
 		// PRESALE
 		PresaleOptions memory presaleOptions = PresaleOptions({
-			tokenDeposit: GO.totalSupply().scaleByBP(2000 + 500),
+			tokenDeposit: GO_SUPPLY.scaleByBP(2000 + 500),
 			hardCap: 32e18,
 			softCap: 16e18,
 			max: 0.5e18,
@@ -136,7 +141,6 @@ contract GBScripts is GBScriptUtils {
 			liquidityBps: 2000 // 20% of supply for presale, 5% for liquidity. 5/20 = 0.2
 		});
 		presale = new GoingBlastPresale(
-			address(WETH),
 			address(GO),
 			// @Todo: Replace with real DEX V2 router address
 			address(0),
@@ -144,14 +148,17 @@ contract GBScripts is GBScriptUtils {
 		);
 		writeContractAddress("GoingBlastPresale", address(presale));
 
+		// @Todo: This shouldn't be part of the deployment script
+
 		// AIRDROP
 		address airdropTreasury = _getDefaultTreasuryAddress();
 		airdrop = new GoingBlastAirdrop(address(VOUCHER), airdropTreasury, 0);
+		writeContractAddress("GoingBlastAirdrop", address(airdrop));
 
 		// INITIALIZE BLAST STUFF
 		if (isBlast) {
 			auctioneer.initializeBlast();
-			auctioneerFarm.initializeBlast(address(WETH));
+			auctioneerFarm.initializeBlast();
 			auctioneerAuction.initializeBlast();
 		}
 	}
@@ -172,7 +179,7 @@ contract GBScripts is GBScriptUtils {
 	function _initializeAuctioneerEmissions() internal {
 		if (auctioneerEmissions.emissionsInitialized()) revert AlreadyInitialized();
 
-		uint256 proofOfBidEmissions = uint256(1000000e18).scaleByBP(6000);
+		uint256 proofOfBidEmissions = GO_SUPPLY.scaleByBP(6000);
 		IERC20(GO).safeTransfer(address(auctioneerEmissions), proofOfBidEmissions);
 
 		console.log("AuctioneerEmissions GO amount", GO.balanceOf(address(auctioneerEmissions)));
@@ -187,16 +194,18 @@ contract GBScripts is GBScriptUtils {
 		console.log("Daily emission set", currentEpochData.dailyEmission);
 	}
 
+	function _initializePresale() internal {
+		IERC20(GO).approve(address(presale), GO_SUPPLY.scaleByBP(2000 + 500));
+		presale.deposit();
+	}
+
 	function _freezeContracts() internal {
 		// This must be manually undone, will prevent contracts being overwritten
 		writeFreezeContracts();
 	}
 
 	function treasuryApproveAuctioneerAuction() public broadcastTreasury loadChain loadContracts {
-		WETH.approve(address(auctioneerAuction), UINT256_MAX);
-	}
-	function ANVIL_treasuryWrapETH() public broadcastTreasury loadChain loadContracts {
-		WETH.deposit{ value: 5e18 }();
+		// Empty, but can be used if needed
 	}
 
 	function createAuctions() public broadcast loadChain loadContracts loadConfigValues {
@@ -206,10 +215,7 @@ contract GBScripts is GBScriptUtils {
 		console.log("Auction readiness checks:");
 		console.log("    AuctioneerEmissions initialized", auctioneerEmissions.emissionsInitialized());
 		console.log("    Auctioneer treasury:", auctioneer.treasury(), treasury);
-		console.log("    WETH address", address(WETH));
 		console.log("    Treasury ETH balance:", treasury.balance);
-		console.log("    Treasury WETH balance:", WETH.balanceOf(treasury));
-		console.log("    Treasury WETH allowance:", WETH.allowance(treasury, address(auctioneer)));
 
 		AuctionParams[] memory params = new AuctionParams[](1);
 		console.log("Number of auctions to add: %s", jsonAuctionCount - lotCount);
@@ -224,11 +230,7 @@ contract GBScripts is GBScriptUtils {
 				block.timestamp,
 				params[0].unlockTimestamp
 			);
-			console.log(
-				"        WETH less than treasury allowance",
-				params[0].tokens[0].amount < WETH.allowance(treasury, address(auctioneer))
-			);
-			console.log("        WETH less than treasury balance", params[0].tokens[0].amount < WETH.balanceOf(treasury));
+			console.log("        ETH less than treasury balance", params[0].tokens[0].amount < treasury.balance);
 
 			params[0].validate();
 
@@ -240,7 +242,7 @@ contract GBScripts is GBScriptUtils {
 	}
 
 	function cancelAuction(uint256 lot) public broadcast loadChain loadContracts {
-		auctioneer.cancelAuction(lot, false);
+		auctioneer.cancelAuction(lot);
 	}
 
 	function syncConfigValues() public broadcast loadChain loadContracts loadConfigValues {
@@ -312,13 +314,8 @@ contract GBScripts is GBScriptUtils {
 	function claimYieldAll(address _recipient) public broadcast loadChain loadContracts loadConfigValues {
 		if (!isBlast) revert NotBlastChain();
 
-		uint256 amountWETH = IERC20Rebasing(address(WETH)).getClaimableAmount(address(auctioneer));
-		uint256 amountUSDB = IERC20Rebasing(address(USD)).getClaimableAmount(address(auctioneer));
-		auctioneer.claimYieldAll(_recipient, amountWETH, amountUSDB, 0);
-
-		amountWETH = IERC20Rebasing(address(WETH)).getClaimableAmount(address(auctioneerFarm));
-		amountUSDB = IERC20Rebasing(address(USD)).getClaimableAmount(address(auctioneerFarm));
-		auctioneerFarm.claimYieldAll(_recipient, amountWETH, amountUSDB, 0);
+		auctioneer.claimYieldAll(_recipient, 0);
+		auctioneerFarm.claimYieldAll(_recipient, 0);
 	}
 
 	function ANVIL_bid(
@@ -340,7 +337,7 @@ contract GBScripts is GBScriptUtils {
 
 		if (user.balance == 0) {
 			vm.broadcast(deployer);
-			user.call{ value: 1 ether }("");
+			(bool sent, ) = user.call{ value: 1 ether }("");
 		}
 
 		if (USD.allowance(user, address(auctioneer)) == 0) {

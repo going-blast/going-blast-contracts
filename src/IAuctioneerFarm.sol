@@ -7,7 +7,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol"
 struct PendingAmounts {
 	uint256 go;
 	uint256 voucher;
-	uint256 usd;
+	uint256 eth;
 }
 
 struct TokenEmission {
@@ -20,7 +20,7 @@ struct UserInfo {
 	uint256 amount;
 	uint256 goDebt;
 	uint256 voucherDebt;
-	uint256 usdDebt;
+	uint256 ethDebt;
 	uint256 goUnlockTimestamp;
 }
 
@@ -32,7 +32,7 @@ struct PoolInfo {
 	uint256 lastRewardTimestamp;
 	uint256 accGoPerShare;
 	uint256 accVoucherPerShare;
-	uint256 accUsdPerShare;
+	uint256 accEthPerShare;
 }
 
 interface AuctioneerFarmEvents {
@@ -40,7 +40,7 @@ interface AuctioneerFarmEvents {
 	event AddedPool(uint256 _pid, uint256 _allocPoint, address indexed _token);
 	event UpdatedPool(uint256 _pid, uint256 _allocPoint);
 
-	event ReceivedUsdDistribution(uint256 _amount);
+	event ReceivedDistribution(uint256 _amount);
 
 	event Deposit(address indexed _user, uint256 _pid, uint256 _amount, address _to);
 	event Withdraw(address indexed _user, uint256 _pid, uint256 _amount, address _to);
@@ -57,9 +57,9 @@ interface IAuctioneerFarm {
 	error InvalidPid();
 	error GoLocked();
 
-	function link(address _auctioneerAuction) external;
-	function depositLockedGo(uint256 amount, address user, uint256 lockDuration) external;
-	function usdDistributionReceivable() external view returns (bool);
-	function receiveUsdDistribution(uint256 _amount) external;
+	function link() external;
+	function depositLockedGo(uint256 amount, address payable user, uint256 lockDuration) external;
+	function distributionReceivable() external view returns (bool);
+	function receiveDistribution() external payable;
 	function getEqualizedUserStaked(address _user) external view returns (uint256);
 }

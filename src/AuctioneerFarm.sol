@@ -8,17 +8,16 @@ import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "./IAuctioneerFarm.sol";
-import { PermitData, AlreadyLinked, NotAuctioneer, NotAuctioneerAuction } from "./IAuctioneer.sol";
+import { PermitData, AlreadyLinked, NotAuctioneer, ETHTransferFailed } from "./IAuctioneer.sol";
 import { BlastYield } from "./BlastYield.sol";
 
 contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, AuctioneerFarmEvents, BlastYield {
 	using SafeERC20 for IERC20;
 
 	address public auctioneer;
-	address public auctioneerAuction;
 	bool public linked;
 	uint256 public goPid = 0;
-	uint256 public totalUsdDistributed = 0;
+	uint256 public totalEthDistributed = 0;
 
 	PoolInfo[] public poolInfo;
 	mapping(address => bool) public tokensWithPool;
@@ -30,28 +29,25 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 	TokenEmission public goEmission;
 	IERC20 public VOUCHER;
 	TokenEmission public voucherEmission;
-	IERC20 public USD;
-	TokenEmission public usdEmission;
+	TokenEmission public ethEmission;
 
 	bool public initializedEmissions = false;
 	uint256 public constant REWARD_PRECISION = 1e18;
 
-	constructor(IERC20 _usd, IERC20 _go, IERC20 _voucher) Ownable(msg.sender) {
+	constructor(IERC20 _go, IERC20 _voucher) Ownable(msg.sender) {
 		GO = _go;
 		goEmission.token = GO;
 		VOUCHER = _voucher;
 		voucherEmission.token = VOUCHER;
-		USD = _usd;
-		usdEmission.token = USD;
+		ethEmission.token = IERC20(address(0));
 
 		_add(10000, GO);
 	}
 
-	function link(address _auctioneerAuction) public {
+	function link() public {
 		if (linked) revert AlreadyLinked();
 		linked = true;
 		auctioneer = msg.sender;
-		auctioneerAuction = _auctioneerAuction;
 	}
 
 	modifier validPid(uint256 pid) {
@@ -61,17 +57,12 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 
 	// BLAST
 
-	function initializeBlast(address WETH) public onlyOwner {
-		_initializeBlast(address(USD), WETH);
+	function initializeBlast() public onlyOwner {
+		_initializeBlast();
 	}
 
-	function claimYieldAll(
-		address _recipient,
-		uint256 _amountWETH,
-		uint256 _amountUSDB,
-		uint256 _minClaimRateBips
-	) public onlyOwner {
-		_claimYieldAll(_recipient, _amountWETH, _amountUSDB, _minClaimRateBips);
+	function claimYieldAll(address _recipient, uint256 _minClaimRateBips) public onlyOwner {
+		_claimYieldAll(_recipient, _minClaimRateBips);
 	}
 
 	// ADMIN
@@ -122,7 +113,7 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 				lastRewardTimestamp: block.timestamp,
 				accGoPerShare: 0,
 				accVoucherPerShare: 0,
-				accUsdPerShare: 0
+				accEthPerShare: 0
 			})
 		);
 		emit AddedPool(poolInfo.length - 1, allocPoint, address(_token));
@@ -190,25 +181,25 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 
 	// AUCTIONEER
 
-	function usdDistributionReceivable() public view returns (bool) {
+	function distributionReceivable() public view returns (bool) {
 		return getEqualizedTotalStaked() > 0;
 	}
 
-	function receiveUsdDistribution(uint256 _amount) public nonReentrant {
-		if (msg.sender != auctioneerAuction) revert NotAuctioneerAuction();
+	function receiveDistribution() public payable nonReentrant {
+		if (msg.sender != auctioneer) revert NotAuctioneer();
 
 		if (getEqualizedTotalStaked() == 0) return;
 
-		totalUsdDistributed += _amount;
+		totalEthDistributed += msg.value;
 
-		// Distribute USD between the pools
+		// Spread ETH distribution between the pools
 		for (uint256 i = 0; i < poolInfo.length; ++i) {
-			poolInfo[i].accUsdPerShare +=
-				(_amount * poolInfo[i].allocPoint * REWARD_PRECISION) /
+			poolInfo[i].accEthPerShare +=
+				(msg.value * poolInfo[i].allocPoint * REWARD_PRECISION) /
 				(totalAllocPoint * poolInfo[i].supply);
 		}
 
-		emit ReceivedUsdDistribution(_amount);
+		emit ReceivedDistribution(msg.value);
 	}
 
 	function getEqualizedTotalStaked() public view returns (uint256 staked) {
@@ -230,7 +221,7 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 	function depositWithPermit(
 		uint256 pid,
 		uint256 amount,
-		address to,
+		address payable to,
 		PermitData memory _permitData
 	) public nonReentrant {
 		IERC20Permit(_permitData.token).permit(
@@ -244,10 +235,14 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 		);
 		_deposit(pid, amount, to);
 	}
-	function deposit(uint256 pid, uint256 amount, address to) public nonReentrant {
+	function deposit(uint256 pid, uint256 amount, address payable to) public nonReentrant {
 		_deposit(pid, amount, to);
 	}
-	function depositLockedGo(uint256 _amount, address _user, uint256 _depositUnlockTimestamp) public nonReentrant {
+	function depositLockedGo(
+		uint256 _amount,
+		address payable _user,
+		uint256 _depositUnlockTimestamp
+	) public nonReentrant {
 		if (msg.sender != auctioneer) revert NotAuctioneer();
 
 		// Deposit (GO already approved within auctioneer)
@@ -261,7 +256,7 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 		}
 	}
 
-	function _deposit(uint256 pid, uint256 amount, address to) internal validPid(pid) {
+	function _deposit(uint256 pid, uint256 amount, address payable to) internal validPid(pid) {
 		PoolInfo storage pool = poolInfo[pid];
 		UserInfo storage user = userInfo[pid][to];
 
@@ -280,7 +275,7 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 		emit Deposit(msg.sender, pid, amount, to);
 	}
 
-	function withdraw(uint256 pid, uint256 amount, address to) public validPid(pid) nonReentrant {
+	function withdraw(uint256 pid, uint256 amount, address payable to) public validPid(pid) nonReentrant {
 		PoolInfo storage pool = poolInfo[pid];
 		UserInfo storage user = userInfo[pid][msg.sender];
 
@@ -305,18 +300,21 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 	) internal pure returns (PendingAmounts memory pendingAmounts) {
 		pendingAmounts.go = ((user.amount * pool.accGoPerShare) / REWARD_PRECISION) - user.goDebt;
 		pendingAmounts.voucher = ((user.amount * pool.accVoucherPerShare) / REWARD_PRECISION) - user.voucherDebt;
-		pendingAmounts.usd = ((user.amount * pool.accUsdPerShare) / REWARD_PRECISION) - user.usdDebt;
+		pendingAmounts.eth = ((user.amount * pool.accEthPerShare) / REWARD_PRECISION) - user.ethDebt;
 	}
 
-	function _harvest(PoolInfo storage pool, UserInfo storage user, address to) internal {
+	function _harvest(PoolInfo storage pool, UserInfo storage user, address payable to) internal {
 		_updateEmissions(pool);
 
 		PendingAmounts memory pendingAmounts = _pending(pool, user);
 		if (pendingAmounts.go > 0) GO.safeTransfer(to, pendingAmounts.go);
 		if (pendingAmounts.voucher > 0) VOUCHER.safeTransfer(to, pendingAmounts.voucher);
-		if (pendingAmounts.usd > 0) USD.safeTransfer(to, pendingAmounts.usd);
+		if (pendingAmounts.eth > 0) {
+			(bool sent, ) = to.call{ value: pendingAmounts.eth }("");
+			if (!sent) revert ETHTransferFailed();
+		}
 
-		if (pendingAmounts.go > 0 || pendingAmounts.voucher > 0 || pendingAmounts.usd > 0) {
+		if (pendingAmounts.go > 0 || pendingAmounts.voucher > 0 || pendingAmounts.eth > 0) {
 			emit Harvest(msg.sender, pool.pid, pendingAmounts, to);
 		}
 	}
@@ -324,10 +322,10 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 	function _updateDebts(PoolInfo storage pool, UserInfo storage user) internal {
 		user.goDebt = (user.amount * pool.accGoPerShare) / REWARD_PRECISION;
 		user.voucherDebt = (user.amount * pool.accVoucherPerShare) / REWARD_PRECISION;
-		user.usdDebt = (user.amount * pool.accUsdPerShare) / REWARD_PRECISION;
+		user.ethDebt = (user.amount * pool.accEthPerShare) / REWARD_PRECISION;
 	}
 
-	function harvest(uint256 pid, address to) public validPid(pid) nonReentrant {
+	function harvest(uint256 pid, address payable to) public validPid(pid) nonReentrant {
 		PoolInfo storage pool = poolInfo[pid];
 		UserInfo storage user = userInfo[pid][msg.sender];
 
@@ -335,7 +333,7 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 		_updateDebts(pool, user);
 	}
 
-	function allHarvest(address to) public nonReentrant {
+	function allHarvest(address payable to) public nonReentrant {
 		for (uint256 i = 0; i < poolInfo.length; i++) {
 			_harvest(poolInfo[i], userInfo[i][msg.sender], to);
 			_updateDebts(poolInfo[i], userInfo[i][msg.sender]);
@@ -354,7 +352,7 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 		user.amount = 0;
 		user.goDebt = 0;
 		user.voucherDebt = 0;
-		user.usdDebt = 0;
+		user.ethDebt = 0;
 
 		pool.token.safeTransfer(to, amount);
 		emit EmergencyWithdraw(msg.sender, pid, amount, to);
@@ -375,7 +373,7 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 			PendingAmounts memory tmpPending = _pending(pool, userInfo[i][_user]);
 			pendingAmounts.go += tmpPending.go;
 			pendingAmounts.voucher += tmpPending.voucher;
-			pendingAmounts.usd += tmpPending.usd;
+			pendingAmounts.eth += tmpPending.eth;
 		}
 	}
 
@@ -391,7 +389,7 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 	function getEmission(address _token) public view returns (TokenEmission memory emission) {
 		if (_token == address(GO)) emission = goEmission;
 		if (_token == address(VOUCHER)) emission = voucherEmission;
-		if (_token == address(USD)) emission = usdEmission;
+		if (_token == address(0)) emission = ethEmission;
 	}
 
 	function getAllPools()

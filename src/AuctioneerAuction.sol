@@ -8,7 +8,6 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.s
 import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { IWETH } from "./WETH9.sol";
 import { IAuctioneerFarm } from "./IAuctioneerFarm.sol";
 import "./IAuctioneer.sol";
 import { BlastYield } from "./BlastYield.sol";
@@ -18,13 +17,9 @@ interface IAuctioneerAuction {
 	function link() external;
 	function runeSwitchPenalty() external view returns (uint256);
 	function updateTreasury(address _treasury) external;
-	function updateFarm(address _farm) external;
 	function privateAuctionRequirement() external view returns (uint256);
-	function createAuction(AuctionParams memory _params, uint256 _emissions) external returns (uint256 lot);
-	function cancelAuction(
-		uint256 _lot,
-		bool _unwrapETH
-	) external returns (uint256 unlockTimestamp, uint256 cancelledEmissions);
+	function createAuction(AuctionParams memory _params, uint256 _emissions) external payable returns (uint256 lot);
+	function cancelAuction(uint256 _lot) external returns (uint256 unlockTimestamp, uint256 cancelledEmissions);
 	function markBid(
 		uint256 _lot,
 		address _user,
@@ -38,11 +33,22 @@ interface IAuctioneerAuction {
 		uint256 _lot,
 		address _user,
 		uint256 _userBids,
-		uint8 _userRune,
-		ClaimLotOptions memory _options
+		uint8 _userRune
 	) external returns (uint256 userShareOfLot, uint256 userShareOfPayment, bool triggerFinalization);
-	function finalizeAuction(uint256 _lot) external returns (bool triggerCancellation, uint256 treasuryEmissions);
-	function distributeLotProfit(uint256 _lot, uint256 _amount) external;
+	function finalizeAuction(
+		uint256 _lot
+	)
+		external
+		returns (
+			bool triggerCancellation,
+			uint256 treasuryEmissions,
+			uint256 treasuryETHDistribution,
+			uint256 farmETHDistribution
+		);
+	function getProfitDistributions(
+		uint256 _lot,
+		uint256 _amount
+	) external view returns (uint256 treasuryDistribution, uint256 farmDistribution);
 	function validateAndGetHarvestData(
 		uint256 _lot
 	) external view returns (uint256 unlockTimestamp, uint256 bids, uint256 biddersEmissions);
@@ -69,12 +75,8 @@ contract AuctioneerAuction is
 	bool public linked;
 	address public auctioneer;
 	address public treasury;
-	address public farm;
 	uint256 public treasurySplit = 2000;
 	address public deadAddress = 0x000000000000000000000000000000000000dEaD;
-
-	// CORE
-	IWETH public WETH;
 
 	// Auctions
 	uint256 public lotCount;
@@ -83,8 +85,6 @@ contract AuctioneerAuction is
 	mapping(uint256 => uint256) public dailyCumulativeEmissionBP;
 
 	// Bid Params
-	IERC20 public USD;
-	uint8 private usdDecimals;
 	uint256 public bidIncrement;
 	uint256 public startingBid;
 	uint256 public bidCost;
@@ -93,17 +93,11 @@ contract AuctioneerAuction is
 	uint256 public privateAuctionRequirement;
 
 	constructor(
-		IERC20 _usd,
-		IWETH _weth,
 		uint256 _bidCost,
 		uint256 _bidIncrement,
 		uint256 _startingBid,
 		uint256 _privateAuctionRequirement
 	) Ownable(msg.sender) {
-		USD = _usd;
-		usdDecimals = IERC20Metadata(address(_usd)).decimals();
-		WETH = _weth;
-
 		bidCost = _bidCost;
 		bidIncrement = _bidIncrement;
 		startingBid = _startingBid;
@@ -148,10 +142,6 @@ contract AuctioneerAuction is
 		treasury = _treasury;
 	}
 
-	function updateFarm(address _farm) public onlyAuctioneer {
-		farm = _farm;
-	}
-
 	function updateTreasurySplit(uint256 _treasurySplit) public onlyOwner {
 		if (_treasurySplit > 5000) revert TooSteep();
 		treasurySplit = _treasurySplit;
@@ -159,9 +149,9 @@ contract AuctioneerAuction is
 	}
 
 	function updateStartingBid(uint256 _startingBid) public onlyOwner {
-		// Must be between 0.5 and 2 usd
-		if (_startingBid < uint256(0.5e18).transformDec(18, usdDecimals)) revert Invalid();
-		if (_startingBid > uint256(2e18).transformDec(18, usdDecimals)) revert Invalid();
+		// Difficult to set realistic limits to the starting bid
+		if (_startingBid == 0) revert Invalid();
+		if (_startingBid > 0.1e18) revert Invalid();
 
 		startingBid = _startingBid;
 		emit UpdatedStartingBid(_startingBid);
@@ -169,9 +159,9 @@ contract AuctioneerAuction is
 
 	// Will not update the bid cost of any already created auctions
 	function updateBidCost(uint256 _bidCost) public onlyOwner {
-		// Must be between 0.5 and 2 usd
-		if (_bidCost < uint256(0.5e18).transformDec(18, usdDecimals)) revert Invalid();
-		if (_bidCost > uint256(2e18).transformDec(18, usdDecimals)) revert Invalid();
+		// Difficult to set realistic limits to the bid cost
+		if (_bidCost == 0) revert Invalid();
+		if (_bidCost > 0.1e18) revert Invalid();
 
 		bidCost = _bidCost;
 		emit UpdatedBidCost(_bidCost);
@@ -191,15 +181,10 @@ contract AuctioneerAuction is
 	// BLAST
 
 	function initializeBlast() public onlyOwner {
-		_initializeBlast(address(USD), address(WETH));
+		_initializeBlast();
 	}
-	function claimYieldAll(
-		address _recipient,
-		uint256 _amountWETH,
-		uint256 _amountUSDB,
-		uint256 _minClaimRateBips
-	) public onlyOwner {
-		_claimYieldAll(_recipient, _amountWETH, _amountUSDB, _minClaimRateBips);
+	function claimYieldAll(address _recipient, uint256 _minClaimRateBips) public onlyOwner {
+		_claimYieldAll(_recipient, _minClaimRateBips);
 	}
 
 	// CREATE
@@ -207,7 +192,7 @@ contract AuctioneerAuction is
 	function createAuction(
 		AuctionParams memory _params,
 		uint256 _emissions
-	) external onlyAuctioneer returns (uint256 lot) {
+	) external payable onlyAuctioneer returns (uint256 lot) {
 		// Validate params
 		_params.validate();
 
@@ -239,7 +224,7 @@ contract AuctioneerAuction is
 
 		// Rewards
 		auction.addRewards(_params);
-		auction.transferLotFrom(treasury, address(0), address(WETH));
+		auction.transferLotFrom(treasury);
 
 		auction.emissions.bp = _params.emissionBP;
 		auction.emissions.biddersEmission = _emissions.scaleByBP(9000);
@@ -251,7 +236,6 @@ contract AuctioneerAuction is
 		auction.bidData.bid = startingBid;
 		auction.bidData.bidTimestamp = _params.unlockTimestamp;
 		auction.bidData.nextBidBy = auction.getNextBidBy();
-		auction.bidData.usdDecimals = usdDecimals;
 
 		// Runes
 		auction.addRunes(_params);
@@ -265,8 +249,7 @@ contract AuctioneerAuction is
 	// CANCEL
 
 	function cancelAuction(
-		uint256 _lot,
-		bool _unwrapETH
+		uint256 _lot
 	) external onlyAuctioneer validAuctionLot(_lot) returns (uint256 unlockTimestamp, uint256 cancelledEmissions) {
 		Auction storage auction = auctions[_lot];
 
@@ -274,7 +257,7 @@ contract AuctioneerAuction is
 		if (auction.bidData.bids > 0 || auction.finalized) revert NotCancellable();
 
 		// Transfer lot tokens and nfts back to treasury
-		auction.transferLotTo(treasury, 1e18, _unwrapETH, address(0), address(WETH));
+		auction.transferLotTo(treasury, 1e18);
 
 		// Revert day's accumulators
 		auctionsOnDay[auction.day].remove(_lot);
@@ -379,8 +362,7 @@ contract AuctioneerAuction is
 		uint256 _lot,
 		address _user,
 		uint256 _userBids,
-		uint8 _userRune,
-		ClaimLotOptions memory _options
+		uint8 _userRune
 	)
 		public
 		onlyAuctioneer
@@ -397,7 +379,7 @@ contract AuctioneerAuction is
 		userShareOfPayment = (auction.bidData.bid * userShareOfLot) / 1e18;
 
 		// Transfer lot to user
-		auction.transferLotTo(_user, userShareOfLot, _options.unwrapETH, address(0), address(WETH));
+		auction.transferLotTo(_user, userShareOfLot);
 
 		// Finalize
 		triggerFinalization = !auction.finalized;
@@ -405,28 +387,41 @@ contract AuctioneerAuction is
 		emit ClaimedLot(auction.lot, _user, _userRune, userShareOfLot, auction.rewards.tokens, auction.rewards.nfts);
 	}
 
-	function distributeLotProfit(uint256 _lot, uint256 _amount) public onlyAuctioneer validAuctionLot(_lot) {
-		auctions[_lot].distributeLotProfit(USD, _amount, auctioneer, treasury, farm, treasurySplit);
+	function getProfitDistributions(
+		uint256 _lot,
+		uint256 _amount
+	) public view onlyAuctioneer validAuctionLot(_lot) returns (uint256 treasuryDistribution, uint256 farmDistribution) {
+		return auctions[_lot].getProfitDistributions(_amount, treasurySplit);
 	}
 
 	// FINALIZE
 
 	function finalizeAuction(
 		uint256 _lot
-	) public onlyAuctioneer validAuctionLot(_lot) returns (bool triggerCancellation, uint256 treasuryEmissions) {
+	)
+		public
+		onlyAuctioneer
+		validAuctionLot(_lot)
+		returns (
+			bool triggerCancellation,
+			uint256 treasuryEmissions,
+			uint256 treasuryETHDistribution,
+			uint256 farmETHDistribution
+		)
+	{
 		Auction storage auction = auctions[_lot];
 
 		// Exit if already finalized
-		if (auction.finalized) return (false, 0);
+		if (auction.finalized) return (false, 0, 0, 0);
 
 		auction.validateEnded();
 
 		// FALLBACK: cancel auction instead of finalizing if auction has 0 bids
-		if (auction.bidData.bids == 0) return (true, 0);
+		if (auction.bidData.bids == 0) return (true, 0, 0, 0);
 		triggerCancellation = false;
 
 		// Distribute lot revenue to treasury and farm
-		auction.distributeLotRevenue(USD, auctioneer, treasury, farm, treasurySplit);
+		(treasuryETHDistribution, farmETHDistribution) = auction.getRevenueDistributions(treasurySplit);
 
 		// Send marked emissions to treasury
 		treasuryEmissions = auction.emissions.treasuryEmission;

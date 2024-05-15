@@ -28,7 +28,6 @@ struct BidOptions {
 }
 struct ClaimLotOptions {
 	PaymentType paymentType;
-	bool unwrapETH;
 }
 
 struct PermitData {
@@ -100,7 +99,6 @@ struct AuctionBidData {
 	uint8 bidRune;
 	uint256 bids; // number of bids during auction
 	uint256 bidCost; // Frozen value to prevent updating bidCost from messing with revenue calculations
-	uint8 usdDecimals;
 }
 
 struct Auction {
@@ -193,6 +191,7 @@ error LastWindowNotInfinite();
 error MultipleInfiniteWindows();
 error TooManyTokens();
 error TooManyNFTs();
+error NotEnoughETHToCoverLots();
 error AuctionEnded();
 error AuctionNotYetOpen();
 error AuctionStillRunning();
@@ -220,6 +219,8 @@ error DuplicateRuneSymbols();
 error CantSwitchRune();
 error CannotHaveNFTsWithRunes();
 error CannotPayForLotWithVouchers();
+error IncorrectETHPaymentAmount();
+error SentETHButNotWalletPayment();
 
 interface AuctioneerEvents {
 	event Linked(
@@ -270,4 +271,8 @@ interface AuctioneerEvents {
 	event AddedFunds(address _user, uint256 _amount);
 	event WithdrewFunds(address _user, uint256 _amount);
 	event UpdatedAlias(address _user, string _alias);
+}
+
+interface IAuctioneer {
+	function withdrawUserFunds(address payable _user, uint256 _amount) external;
 }

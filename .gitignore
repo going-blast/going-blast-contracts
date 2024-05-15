@@ -29,3 +29,5 @@ coverage/
 broadcast/
 .gas-*
 lcov.info
+cache_forge
+cache

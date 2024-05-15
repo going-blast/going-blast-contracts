@@ -24,11 +24,11 @@ contract AuctioneerFarmLpTest is AuctioneerHelper, AuctioneerFarmEvents {
 		_createDefaultDay1Auction();
 	}
 
-	function _farmDeposit(address user, uint256 pid, uint256 amount) public {
+	function _farmDeposit(address payable user, uint256 pid, uint256 amount) public {
 		vm.prank(user);
 		farm.deposit(pid, amount, user);
 	}
-	function _farmWithdraw(address user, uint256 pid, uint256 amount) public {
+	function _farmWithdraw(address payable user, uint256 pid, uint256 amount) public {
 		vm.prank(user);
 		farm.withdraw(pid, amount, user);
 	}
@@ -164,7 +164,7 @@ contract AuctioneerFarmLpTest is AuctioneerHelper, AuctioneerFarmEvents {
 	}
 
 	function _farmDepositTokens(
-		address user,
+		address payable user,
 		bool depositGO,
 		bool depositGO_LP,
 		bool depositXX,
@@ -176,7 +176,7 @@ contract AuctioneerFarmLpTest is AuctioneerHelper, AuctioneerFarmEvents {
 		if (depositXX) _farmDeposit(user, xxPid, userXXTokenStaked[userIndex]);
 		if (depositYY) _farmDeposit(user, yyPid, userYYTokenStaked[userIndex]);
 	}
-	function _farmDepositAllTokens(address user) internal {
+	function _farmDepositAllTokens(address payable user) internal {
 		_farmDepositTokens(user, true, true, true, true);
 	}
 

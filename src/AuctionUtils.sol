@@ -4,7 +4,6 @@ pragma solidity ^0.8.20;
 import "./IAuctioneer.sol";
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { IWETH } from "./WETH9.sol";
 import { IAuctioneerFarm } from "./IAuctioneerFarm.sol";
 
 // Dont need everything from most math libs, and nearing contract size limit
@@ -25,6 +24,8 @@ library GBMath {
 }
 
 library AuctionViewUtils {
+	using GBMath for uint256;
+
 	function hasRunes(Auction storage auction) internal view returns (bool) {
 		return auction.runes.length > 0;
 	}
@@ -95,10 +96,42 @@ library AuctionViewUtils {
 		if (auction.runes.length > 0 ? auction.bidData.bidRune != _rune : auction.bidData.bidUser != _user)
 			revert NotWinner();
 	}
+
+	function getProfitDistributions(
+		Auction storage,
+		uint256 amount,
+		uint256 treasurySplit
+	) internal pure returns (uint256 treasuryAmount, uint256 farmAmount) {
+		// Calculate distributions
+		treasuryAmount = amount.scaleByBP(treasurySplit);
+		farmAmount = amount - treasuryAmount;
+	}
+
+	function getRevenueDistributions(
+		Auction storage auction,
+		uint256 treasurySplit
+	) internal view returns (uint256 treasuryAmount, uint256 farmAmount) {
+		uint256 lotValue = auction.rewards.estimatedValue;
+		uint256 reimbursement = auction.bidData.revenue;
+		uint256 profit = 0;
+
+		// Calculate profit, reduce reimbursement
+		if (auction.bidData.revenue > lotValue.scaleByBP(11000)) {
+			reimbursement = lotValue.scaleByBP(11000);
+			profit = auction.bidData.revenue - reimbursement;
+		}
+
+		treasuryAmount = reimbursement;
+
+		if (profit > 0) {
+			(uint256 profitTreasuryAmount, uint256 profitFarmAmount) = getProfitDistributions(auction, profit, treasurySplit);
+			treasuryAmount += profitTreasuryAmount;
+			farmAmount += profitFarmAmount;
+		}
+	}
 }
 
 library AuctionMutateUtils {
-	using GBMath for uint256;
 	using SafeERC20 for IERC20;
 
 	function addBidWindows(Auction storage auction, AuctionParams memory _params, uint256 _bonusTime) internal {
@@ -144,40 +177,22 @@ library AuctionMutateUtils {
 		}
 	}
 
-	function _transferLotTokenTo(
-		TokenData memory token,
-		address to,
-		uint256 userShareOfLot,
-		bool unwrapETH,
-		address ETH,
-		address WETH
-	) internal {
-		if (token.token == ETH) {
-			if (unwrapETH) {
-				// If lot token is ETH, it is held in contract as WETH, and needs to be unwrapped before being sent to user
-				IWETH(WETH).withdraw((token.amount * userShareOfLot) / 1e18);
-				(bool sent, ) = to.call{ value: (token.amount * userShareOfLot) / 1e18 }("");
-				if (!sent) revert ETHTransferFailed();
-			} else {
-				IERC20(address(WETH)).safeTransfer(to, (token.amount * userShareOfLot) / 1e18);
-			}
+	function _transferLotTokenTo(TokenData memory token, address to, uint256 userShareOfLot) internal {
+		if (token.token == address(0)) {
+			(bool sent, ) = to.call{ value: (token.amount * userShareOfLot) / 1e18 }("");
+			if (!sent) revert ETHTransferFailed();
 		} else {
 			// Transfer as default ERC20
 			IERC20(token.token).safeTransfer(to, (token.amount * userShareOfLot) / 1e18);
 		}
 	}
 
-	function transferLotTo(
-		Auction storage auction,
-		address to,
-		uint256 userShareOfLot,
-		bool unwrapETH,
-		address ETH,
-		address WETH
-	) internal {
+	// Transfer lot (or partial lot) from AuctioneerAuction contract to user (to)
+	// Auction ETH / tokens / nfts sit in AuctioneerAuction contract during auction
+	function transferLotTo(Auction storage auction, address to, uint256 userShareOfLot) internal {
 		// Return lot tokens
 		for (uint8 i = 0; i < auction.rewards.tokens.length; i++) {
-			_transferLotTokenTo(auction.rewards.tokens[i], to, userShareOfLot, unwrapETH, ETH, WETH);
+			_transferLotTokenTo(auction.rewards.tokens[i], to, userShareOfLot);
 		}
 
 		// Transfer lot nfts
@@ -186,72 +201,21 @@ library AuctionMutateUtils {
 		}
 	}
 
-	function transferLotFrom(Auction storage auction, address from, address ETH, address WETH) internal {
+	// Transfers lot from address (treasury) to AuctioneerAuction contract
+	// ETH should already be in the contract, validate that it has been received with msg.value check
+	function transferLotFrom(Auction storage auction, address from) internal {
 		// Transfer tokens from
 		for (uint8 i = 0; i < auction.rewards.tokens.length; i++) {
-			address token = auction.rewards.tokens[i].token == ETH ? WETH : auction.rewards.tokens[i].token;
-			IERC20(token).safeTransferFrom(from, address(this), auction.rewards.tokens[i].amount);
+			address token = auction.rewards.tokens[i].token;
+			if (token == address(0)) {
+				if (msg.value != auction.rewards.tokens[i].amount) revert IncorrectETHPaymentAmount();
+			} else {
+				IERC20(token).safeTransferFrom(from, address(this), auction.rewards.tokens[i].amount);
+			}
 		}
 		// Transfer nfts from
 		for (uint8 i = 0; i < auction.rewards.nfts.length; i++) {
 			IERC721(auction.rewards.nfts[i].nft).safeTransferFrom(from, address(this), auction.rewards.nfts[i].id);
-		}
-	}
-
-	function distributeLotProfit(
-		Auction storage,
-		IERC20 USD,
-		uint256 amount,
-		address auctioneer,
-		address treasury,
-		address farm,
-		uint256 treasurySplit
-	) internal returns (uint256 farmDistribution) {
-		// Calculate distributions
-		uint256 treasuryDistribution = amount.scaleByBP(treasurySplit);
-		farmDistribution = amount - treasuryDistribution;
-
-		// Add unused farm distribution to treasury (if no farm set, send all funds to treasury)
-		if (farm == address(0) || !IAuctioneerFarm(farm).usdDistributionReceivable()) {
-			treasuryDistribution += farmDistribution;
-			farmDistribution = 0;
-		}
-
-		// If farm not set, farm distribution will be 0
-		// If farm has 0 staked, fallback to treasury
-		if (farmDistribution > 0) {
-			USD.safeTransferFrom(auctioneer, farm, farmDistribution);
-			IAuctioneerFarm(farm).receiveUsdDistribution(farmDistribution);
-		}
-
-		// Distribute
-		if (treasuryDistribution > 0) {
-			USD.safeTransferFrom(auctioneer, treasury, treasuryDistribution);
-		}
-	}
-
-	function distributeLotRevenue(
-		Auction storage auction,
-		IERC20 USD,
-		address auctioneer,
-		address treasury,
-		address farm,
-		uint256 treasurySplit
-	) internal {
-		uint256 lotValue = auction.rewards.estimatedValue.transformDec(18, auction.bidData.usdDecimals);
-		uint256 reimbursement = auction.bidData.revenue;
-		uint256 profit = 0;
-
-		// Reduce treasury amount received if revenue outstripped lot value
-		if (auction.bidData.revenue > lotValue.scaleByBP(11000)) {
-			reimbursement = lotValue.scaleByBP(11000);
-			profit = auction.bidData.revenue - reimbursement;
-		}
-
-		USD.safeTransferFrom(auctioneer, treasury, reimbursement);
-
-		if (profit > 0) {
-			distributeLotProfit(auction, USD, profit, auctioneer, treasury, farm, treasurySplit);
 		}
 	}
 }

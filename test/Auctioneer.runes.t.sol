@@ -23,11 +23,11 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		_createDefaultDay1Auction();
 	}
 
-	function _farmDeposit(address user, uint256 pid, uint256 amount) public {
+	function _farmDeposit(address payable user, uint256 pid, uint256 amount) public {
 		vm.prank(user);
 		farm.deposit(pid, amount, user);
 	}
-	function _farmWithdraw(address user, uint256 pid, uint256 amount) public {
+	function _farmWithdraw(address payable user, uint256 pid, uint256 amount) public {
 		vm.prank(user);
 		farm.withdraw(pid, amount, user);
 	}
@@ -239,11 +239,14 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 
 		assertEq(auctioneerAuction.exposed_auction_isEnded(lot), true, "Auction has ended");
 		assertEq(auctioneerAuction.getAuction(lot).bidData.bidRune, 2, "Rune 2 has won");
+		uint256 lotPrice = auctioneerAuction.getAuction(lot).bidData.bid;
+		vm.deal(user1, lotPrice);
+		vm.deal(user2, lotPrice);
 
 		vm.expectRevert(NotWinner.selector);
 
 		vm.prank(user1);
-		auctioneer.claimLot(lot, ClaimLotOptions({ paymentType: PaymentType.WALLET, unwrapETH: false }));
+		auctioneer.claimLot{ value: lotPrice }(lot, ClaimLotOptions({ paymentType: PaymentType.WALLET }));
 
 		vm.expectEmit(true, true, true, true);
 		TokenData[] memory tokens = new TokenData[](1);
@@ -252,7 +255,7 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		emit ClaimedLot(lot, user2, 2, 1e18, tokens, nfts);
 
 		vm.prank(user2);
-		auctioneer.claimLot(lot, ClaimLotOptions({ paymentType: PaymentType.WALLET, unwrapETH: false }));
+		auctioneer.claimLot{ value: lotPrice }(lot, ClaimLotOptions({ paymentType: PaymentType.WALLET }));
 	}
 
 	function test_runes_win_Expect_lotClaimedSetToTrue() public {
@@ -261,10 +264,13 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		_bidWithRune(user1, lot, 1);
 		_bidWithRune(user2, lot, 2);
 
+		uint256 lotPrice = auctioneerAuction.getAuction(lot).bidData.bid;
+		vm.deal(user2, lotPrice);
+
 		vm.warp(block.timestamp + 1 days);
 
 		vm.prank(user2);
-		auctioneer.claimLot(lot, ClaimLotOptions({ paymentType: PaymentType.WALLET, unwrapETH: false }));
+		auctioneer.claimLot{ value: lotPrice }(lot, ClaimLotOptions({ paymentType: PaymentType.WALLET }));
 
 		assertEq(auctioneerUser.getAuctionUser(lot, user2).lotClaimed, true, "User has claimed lot");
 	}
@@ -274,17 +280,21 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		_bidWithRune(user1, lot, 1);
 		_bidWithRune(user2, lot, 2);
 
+		uint256 lotPrice = auctioneerAuction.getAuction(lot).bidData.bid;
+		vm.deal(user1, lotPrice);
+		vm.deal(user2, lotPrice);
+
 		vm.warp(block.timestamp + 1 days);
 
 		vm.prank(user2);
-		auctioneer.claimLot(lot, ClaimLotOptions({ paymentType: PaymentType.WALLET, unwrapETH: false }));
+		auctioneer.claimLot{ value: lotPrice }(lot, ClaimLotOptions({ paymentType: PaymentType.WALLET }));
 
 		assertEq(auctioneerUser.getAuctionUser(lot, user2).lotClaimed, true, "User has claimed lot");
 
 		vm.expectRevert(UserAlreadyClaimedLot.selector);
 
 		vm.prank(user2);
-		auctioneer.claimLot(lot, ClaimLotOptions({ paymentType: PaymentType.WALLET, unwrapETH: false }));
+		auctioneer.claimLot{ value: lotPrice }(lot, ClaimLotOptions({ paymentType: PaymentType.WALLET }));
 	}
 
 	function test_runes_win_Expect_0RunesUserShare100Perc() public {
@@ -296,13 +306,35 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		vm.warp(block.timestamp + 1 days);
 
 		uint256 auctionETH = 1e18;
+		uint256 revenue = auctioneerAuction.getAuction(lot).bidData.revenue;
 		uint256 lotPrice = auctioneerAuction.getAuction(lot).bidData.bid;
+		vm.deal(user2, lotPrice);
 
-		_expectTokenTransfer(WETH, address(auctioneerAuction), user2, (auctionETH * 1e18) / 1e18);
-		_expectTokenTransfer(USD, user2, address(auctioneer), (lotPrice * 1e18) / 1e18);
+		_prepExpectETHBalChange(0, user2);
+		_prepExpectETHBalChange(0, treasury);
+		_prepExpectETHBalChange(0, address(auctioneerAuction));
 
 		vm.prank(user2);
-		auctioneer.claimLot(lot, ClaimLotOptions({ paymentType: PaymentType.WALLET, unwrapETH: false }));
+		auctioneer.claimLot{ value: lotPrice }(lot, ClaimLotOptions({ paymentType: PaymentType.WALLET }));
+
+		_expectETHBalChange(
+			0,
+			user2,
+			(-1 * int256(lotPrice)) + int256(auctionETH),
+			"User 3. Decrease by lot price, increase by prize"
+		);
+		_expectETHBalChange(
+			0,
+			treasury,
+			int256(lotPrice) + int256(revenue),
+			"Treasury. Increase by lot price (claim) and revenue (finalize)"
+		);
+		_expectETHBalChange(
+			0,
+			address(auctioneerAuction),
+			int256(auctionETH) * -1,
+			"AuctioneerAuction. Decrease by prize amount"
+		);
 	}
 
 	function test_runes_win_Expect_2RunesUserShareSplit() public {
@@ -328,44 +360,56 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		// Finalize auction
 		auctioneer.finalizeAuction(lot);
 
-		// USER 3
-		uint256 user3Share = (user3Bids * 1e18) / rune2Bids;
+		{
+			// USER 3
+			uint256 user3Share = (user3Bids * 1e18) / rune2Bids;
+			uint256 user3LotPrice = (lotPrice * user3Share) / 1e18;
+			vm.deal(user3, user3LotPrice);
+			uint256 user3Prize = (auctionETH * user3Share) / 1e18;
 
-		// WETH lot winnings to user3
-		_expectTokenTransfer(WETH, address(auctioneerAuction), user3, (auctionETH * user3Share) / 1e18);
-		// USD payment to auctioneer
-		_expectTokenTransfer(USD, user3, address(auctioneer), (lotPrice * user3Share) / 1e18);
-		// USD profit to treasury
-		_expectTokenTransfer(USD, address(auctioneer), treasury, (lotPrice * user3Share) / 1e18);
+			_prepExpectETHBalChange(0, user3);
+			_prepExpectETHBalChange(0, address(auctioneer));
+			_prepExpectETHBalChange(0, treasury);
 
-		vm.prank(user3);
-		auctioneer.claimLot(lot, ClaimLotOptions({ paymentType: PaymentType.WALLET, unwrapETH: false }));
+			vm.prank(user3);
+			auctioneer.claimLot{ value: user3LotPrice }(lot, ClaimLotOptions({ paymentType: PaymentType.WALLET }));
 
-		// USER 4
-		uint256 user4Share = (user4Bids * 1e18) / rune2Bids;
+			// Should go from user3 -> auctioneer -> treasury
+			_expectETHBalChange(
+				0,
+				user3,
+				(-1 * int256(user3LotPrice)) + int256(user3Prize),
+				"User 3. Increase by prize, decrease by price"
+			);
+			_expectETHBalChange(0, address(auctioneer), int256(0), "Auctioneer");
+			_expectETHBalChange(0, treasury, int256(user3LotPrice), "Treasury");
+		}
 
-		// WETH lot winnings to user4
-		_expectTokenTransfer(WETH, address(auctioneerAuction), user4, (auctionETH * user4Share) / 1e18);
-		// USD payment to auctioneer
-		_expectTokenTransfer(USD, user4, address(auctioneer), (lotPrice * user4Share) / 1e18);
-		// USD profit to treasury
-		_expectTokenTransfer(USD, address(auctioneer), treasury, (lotPrice * user4Share) / 1e18);
+		{
+			// USER 4
 
-		vm.prank(user4);
-		auctioneer.claimLot(lot, ClaimLotOptions({ paymentType: PaymentType.WALLET, unwrapETH: false }));
+			uint256 user4Share = (user4Bids * 1e18) / rune2Bids;
+			uint256 user4LotPrice = (lotPrice * user4Share) / 1e18;
+			vm.deal(user4, user4LotPrice);
+			uint256 user4Prize = (auctionETH * user4Share) / 1e18;
 
-		// Totals
-		assertEq(user3Share + user4Share, 1e18, "Shares should add up to 100%");
-		assertEq(
-			((auctionETH * user3Share) / 1e18) + ((auctionETH * user4Share) / 1e18),
-			auctionETH,
-			"Lot winnings should sum to total lot winnings"
-		);
-		assertEq(
-			((lotPrice * user3Share) / 1e18) + ((lotPrice * user4Share) / 1e18),
-			lotPrice,
-			"Lot winnings should sum to total lot winnings"
-		);
+			_prepExpectETHBalChange(1, user4);
+			_prepExpectETHBalChange(1, address(auctioneer));
+			_prepExpectETHBalChange(1, treasury);
+
+			vm.prank(user4);
+			auctioneer.claimLot{ value: user4LotPrice }(lot, ClaimLotOptions({ paymentType: PaymentType.WALLET }));
+
+			// Should go from user4 -> auctioneer -> treasury
+			_expectETHBalChange(
+				1,
+				user4,
+				(-1 * int256(user4LotPrice)) + int256(user4Prize),
+				"User 4. Increase by prize, decrease by price"
+			);
+			_expectETHBalChange(1, address(auctioneer), int256(0), "Auctioneer");
+			_expectETHBalChange(1, treasury, int256(user4LotPrice), "Treasury");
+		}
 	}
 
 	function test_runes_view_getUserLotInfo_bidCounts_AuctionWithRunes() public {

@@ -3,6 +3,7 @@ pragma solidity 0.8.20;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { IUniswapV2Router02 } from "./IUniswapV2Router02.sol";
@@ -30,7 +31,7 @@ struct PresaleOptions {
 	uint32 liquidityBps;
 }
 
-contract GoingBlastPresale is IGoingBlastPresale, Ownable {
+contract GoingBlastPresale is IGoingBlastPresale, Ownable, ReentrancyGuard {
 	using SafeERC20 for IERC20;
 	using Address for address payable;
 
@@ -45,7 +46,7 @@ contract GoingBlastPresale is IGoingBlastPresale, Ownable {
 	 * @param tokensClaimable
 	 * @param tokensLiquidity
 	 * @param weiRaised
-	 * @param weth
+	 * @param wallets Number of wallets participating in presale
 	 * @param state Current state of the presale {1: Initialized, 2: Active, 3: Canceled, 4: Finalized}.
 	 * @param options PresaleOptions struct containing configuration for the presale.
 	 */
@@ -56,7 +57,7 @@ contract GoingBlastPresale is IGoingBlastPresale, Ownable {
 		uint256 tokensClaimable;
 		uint256 tokensLiquidity;
 		uint256 weiRaised;
-		address weth;
+		uint256 wallets;
 		uint8 state;
 		PresaleOptions options;
 	}
@@ -73,30 +74,23 @@ contract GoingBlastPresale is IGoingBlastPresale, Ownable {
 	}
 
 	/**
-	 * @param _weth Address of WETH.
 	 * @param _token Address of the presale token.
 	 * @param _uniswapV2Router02 Address of the Uniswap V2 router.
 	 * @param _options Configuration options for the presale.
 	 */
-	constructor(
-		address _weth,
-		address _token,
-		address _uniswapV2Router02,
-		PresaleOptions memory _options
-	) Ownable(msg.sender) {
+	constructor(address _token, address _uniswapV2Router02, PresaleOptions memory _options) Ownable(msg.sender) {
 		_prevalidatePool(_options);
 
 		pool.uniswapV2Router02 = IUniswapV2Router02(_uniswapV2Router02);
 		pool.token = IERC20(_token);
 		pool.state = 1;
-		pool.weth = _weth;
 		pool.options = _options;
 	}
 
-	receive() external payable {
+	receive() external payable nonReentrant {
 		_purchase(msg.sender, msg.value);
 	}
-	function purchase() external payable {
+	function purchase() external payable nonReentrant {
 		_purchase(msg.sender, msg.value);
 	}
 
@@ -205,6 +199,11 @@ contract GoingBlastPresale is IGoingBlastPresale, Ownable {
 	 */
 	function _purchase(address beneficiary, uint256 amount) private {
 		_prevalidatePurchase(beneficiary, amount);
+
+		// Increment wallets if first purchase
+		if (contributions[beneficiary] == 0) {
+			pool.wallets += 1;
+		}
 
 		pool.weiRaised += amount;
 		contributions[beneficiary] += amount;

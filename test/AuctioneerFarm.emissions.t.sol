@@ -23,11 +23,11 @@ contract AuctioneerFarmEmissionsTest is AuctioneerHelper, AuctioneerFarmEvents {
 		_createDefaultDay1Auction();
 	}
 
-	function _farmDeposit(address user, uint256 pid, uint256 amount) public {
+	function _farmDeposit(address payable user, uint256 pid, uint256 amount) public {
 		vm.prank(user);
 		farm.deposit(pid, amount, user);
 	}
-	function _farmWithdraw(address user, uint256 pid, uint256 amount) public {
+	function _farmWithdraw(address payable user, uint256 pid, uint256 amount) public {
 		vm.prank(user);
 		farm.withdraw(pid, amount, user);
 	}
@@ -65,37 +65,37 @@ contract AuctioneerFarmEmissionsTest is AuctioneerHelper, AuctioneerFarmEvents {
 		assertApproxEqAbs(user4Emissions, user4PendingGo, 10, "User4 emissions increase proportionally");
 	}
 
-	function test_emissions_totalUsdDistributed_Increases() public {
+	function test_emissions_totalEthDistributed_Increases() public {
 		_farmDeposit(user1, goPid, user1Deposited);
 
-		assertEq(farm.totalUsdDistributed(), 0, "Total USD distributed starts at 0");
-		_injectFarmUSD(100e18);
-		assertEq(farm.totalUsdDistributed(), 100e18, "Total USD distributed should increase to 100e18");
+		assertEq(farm.totalEthDistributed(), 0, "Total ETH distributed starts at 0");
+		_injectFarmETH(100e18);
+		assertEq(farm.totalEthDistributed(), 100e18, "Total ETH distributed should increase to 100e18");
 	}
 
-	function test_emissions_PendingUSDIncreasesProportionally() public {
+	function test_emissions_PendingETHIncreasesProportionally() public {
 		_farmDeposit(user1, goPid, user1Deposited);
 		_farmDeposit(user2, goPid, user2Deposited);
 		_farmDeposit(user3, goPid, user3Deposited);
 		_farmDeposit(user4, goPid, user4Deposited);
 
 		uint256 emissions = 100e18;
-		_injectFarmUSD(emissions);
+		_injectFarmETH(emissions);
 
 		uint256 user1Emissions = (user1Deposited * emissions) / totalDeposited;
 		uint256 user2Emissions = (user2Deposited * emissions) / totalDeposited;
 		uint256 user3Emissions = (user3Deposited * emissions) / totalDeposited;
 		uint256 user4Emissions = (user4Deposited * emissions) / totalDeposited;
 
-		uint256 user1PendingUSD = farm.pending(goPid, user1).usd;
-		uint256 user2PendingUSD = farm.pending(goPid, user2).usd;
-		uint256 user3PendingUSD = farm.pending(goPid, user3).usd;
-		uint256 user4PendingUSD = farm.pending(goPid, user4).usd;
+		uint256 user1PendingETH = farm.pending(goPid, user1).eth;
+		uint256 user2PendingETH = farm.pending(goPid, user2).eth;
+		uint256 user3PendingETH = farm.pending(goPid, user3).eth;
+		uint256 user4PendingETH = farm.pending(goPid, user4).eth;
 
-		assertApproxEqAbs(user1Emissions, user1PendingUSD, 10, "User1 emissions increase proportionally");
-		assertApproxEqAbs(user2Emissions, user2PendingUSD, 10, "User2 emissions increase proportionally");
-		assertApproxEqAbs(user3Emissions, user3PendingUSD, 10, "User3 emissions increase proportionally");
-		assertApproxEqAbs(user4Emissions, user4PendingUSD, 10, "User4 emissions increase proportionally");
+		assertApproxEqAbs(user1Emissions, user1PendingETH, 10, "User1 emissions increase proportionally");
+		assertApproxEqAbs(user2Emissions, user2PendingETH, 10, "User2 emissions increase proportionally");
+		assertApproxEqAbs(user3Emissions, user3PendingETH, 10, "User3 emissions increase proportionally");
+		assertApproxEqAbs(user4Emissions, user4PendingETH, 10, "User4 emissions increase proportionally");
 	}
 
 	function test_emissions_EmissionsCanRunOut() public {
@@ -127,7 +127,7 @@ contract AuctioneerFarmEmissionsTest is AuctioneerHelper, AuctioneerFarmEvents {
 		}
 
 		vm.expectEmit(true, true, true, true);
-		emit Harvest(user1, goPid, PendingAmounts({ go: user1PendingGo, voucher: user1PendingVoucher, usd: 0 }), user1);
+		emit Harvest(user1, goPid, PendingAmounts({ go: user1PendingGo, voucher: user1PendingVoucher, eth: 0 }), user1);
 
 		vm.prank(user1);
 		farm.harvest(goPid, user1);

@@ -39,7 +39,7 @@ contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, Auctioneer
 	using SafeERC20 for IERC20;
 	using EnumerableSet for EnumerableSet.UintSet;
 
-	address public auctioneer;
+	address payable public auctioneer;
 	IAuctioneerEmissions public auctioneerEmissions;
 	IAuctioneerAuction public auctioneerAuction;
 	bool public linked;
@@ -52,12 +52,9 @@ contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, Auctioneer
 	mapping(string => address) public aliasUser;
 
 	// USER FUNDS
-	IERC20 public USD;
 	mapping(address => uint256) public userFunds;
 
-	constructor(IERC20 _usd) Ownable(msg.sender) {
-		USD = _usd;
-	}
+	constructor() Ownable(msg.sender) {}
 
 	function link(address _auctioneerEmissions, address _auctioneerAuction) public {
 		if (linked) revert AlreadyLinked();
@@ -206,13 +203,15 @@ contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, Auctioneer
 		);
 		_addFunds(_amount);
 	}
-	function addFunds(uint256 _amount) public nonReentrant {
-		_addFunds(_amount);
+	function addFunds() public payable nonReentrant {
+		_addFunds(msg.value);
 	}
 	function _addFunds(uint256 _amount) internal {
-		if (_amount > USD.balanceOf(msg.sender)) revert BadDeposit();
+		// Send eth to auctioneer
+		(bool sent, ) = auctioneer.call{ value: msg.value }("");
+		if (!sent) revert ETHTransferFailed();
 
-		USD.safeTransferFrom(msg.sender, auctioneer, _amount);
+		// Increase users funds
 		userFunds[msg.sender] += _amount;
 
 		emit AddedFunds(msg.sender, _amount);
@@ -221,7 +220,10 @@ contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, Auctioneer
 	function withdrawFunds(uint256 _amount) public nonReentrant {
 		if (_amount > userFunds[msg.sender]) revert BadWithdrawal();
 
-		USD.safeTransferFrom(auctioneer, msg.sender, _amount);
+		// Send eth back to user, will revert if failed
+		IAuctioneer(auctioneer).withdrawUserFunds(payable(msg.sender), _amount);
+
+		// Remove funds from user's account
 		userFunds[msg.sender] -= _amount;
 
 		emit WithdrewFunds(msg.sender, _amount);

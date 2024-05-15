@@ -10,7 +10,7 @@ import "../src/IAuctioneer.sol";
 import { AuctioneerAuction } from "../src/AuctioneerAuction.sol";
 
 contract AuctioneerHarness is Auctioneer {
-	constructor(IERC20 _go, IERC20 _voucher, IERC20 _usd, IWETH _weth) Auctioneer(_go, _voucher, _usd, _weth) {}
+	constructor(IERC20 _go, IERC20 _voucher, IWETH _weth) Auctioneer(_go, _voucher, _weth) {}
 }
 
 contract AuctioneerAuctionHarness is AuctioneerAuction {
@@ -18,13 +18,11 @@ contract AuctioneerAuctionHarness is AuctioneerAuction {
 	using AuctionMutateUtils for Auction;
 
 	constructor(
-		IERC20 _usd,
-		IWETH _weth,
 		uint256 _bidCost,
 		uint256 _bidIncrement,
 		uint256 _startingBid,
 		uint256 _privateAuctionRequirement
-	) AuctioneerAuction(_usd, _weth, _bidCost, _bidIncrement, _startingBid, _privateAuctionRequirement) {}
+	) AuctioneerAuction(_bidCost, _bidIncrement, _startingBid, _privateAuctionRequirement) {}
 
 	// AuctionUtils
 	function exposed_auction_activeWindow(uint256 _lot) public view returns (uint256) {

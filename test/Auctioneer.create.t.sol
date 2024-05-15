@@ -78,13 +78,14 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 	function test_createAuctions_createSingleAuction_RevertWhen_TokenNotApproved() public {
 		// SETUP
 		vm.prank(treasury);
-		WETH.approve(address(auctioneerAuction), 0);
+		WETH.approve(address(auctioneer), 0);
 
 		// EXECUTE
-		vm.expectRevert(abi.encodeWithSelector(ERC20InsufficientAllowance.selector, address(auctioneerAuction), 0, 1e18));
+		vm.expectRevert(abi.encodeWithSelector(ERC20InsufficientAllowance.selector, address(auctioneer), 0, 1e18));
 
 		AuctionParams[] memory params = new AuctionParams[](1);
 
+		// Auction with GO ERC20 reward
 		params[0] = _getBaseSingleAuctionParams();
 
 		auctioneer.createAuctions(params);
@@ -92,10 +93,9 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 
 	function test_createAuctions_createSingleAuction_RevertWhen_BalanceInsufficient() public {
 		// SETUP
-		uint256 treasuryBalance = WETH.balanceOf(treasury);
-
+		uint256 treasuryWethBal = WETH.balanceOf(treasury);
 		vm.prank(treasury);
-		IERC20(address(WETH)).safeTransfer(deployer, treasuryBalance);
+		WETH.transfer(address(1), treasuryWethBal);
 
 		// EXECUTE
 		vm.expectRevert(abi.encodeWithSelector(ERC20InsufficientBalance.selector, treasury, 0, 1e18));
@@ -120,6 +120,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		params[3] = singleAuctionParam;
 		params[4] = singleAuctionParam;
 
+		// 5 Auctions needs 5 times the ETH
 		auctioneer.createAuctions(params);
 	}
 
@@ -309,11 +310,11 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		uint256 auctionsTodayInit = auctioneerAuction.getAuctionsPerDay(day);
 		uint256 auctionsTodayEmissionsBP = auctioneerAuction.dailyCumulativeEmissionBP(day);
 
-		uint256 treasuryWethBal = WETH.balanceOf(treasury);
-		uint256 auctioneerAuctionWethBal = WETH.balanceOf(address(auctioneerAuction));
-
 		uint256 expectedEmission = auctioneerEmissions.epochEmissionsRemaining(0) / 90;
 		uint256 emissionsRemaining = auctioneerEmissions.epochEmissionsRemaining(0);
+
+		_prepExpectETHTransfer(0, treasury, address(auctioneerAuction));
+		_expectTokenTransfer(WETH, treasury, address(auctioneer), 1e18);
 
 		auctioneer.createAuctions(params);
 
@@ -326,14 +327,9 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 			"Daily cumulative emission bp matches"
 		);
 
-		assertEq(WETH.balanceOf(treasury), treasuryWethBal - 1e18, "Treasury weth balance updated");
-		assertEq(
-			WETH.balanceOf(address(auctioneerAuction)),
-			auctioneerAuctionWethBal + 1e18,
-			"AuctionManager weth balance updated"
-		);
-
 		assertEq(auctioneerEmissions.epochEmissionsRemaining(0), emissionsRemaining - expectedEmission);
+
+		_expectETHBalChange(0, address(auctioneerAuction), 1e18);
 	}
 
 	function test_createAuctions_createSingleAuction_SuccessfulCreationOfAuctionData() public {

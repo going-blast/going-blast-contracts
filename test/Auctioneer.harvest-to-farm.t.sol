@@ -175,7 +175,7 @@ contract AuctioneerHarvestToFarmTest is AuctioneerHelper, AuctioneerFarmEvents {
 		farm.deposit(goPid, 10e18, user2);
 
 		// Add USD
-		_injectFarmUSD(100e18);
+		_injectFarmETH(100e18);
 
 		vm.warp(block.timestamp + 1 days);
 
@@ -184,28 +184,28 @@ contract AuctioneerHarvestToFarmTest is AuctioneerHelper, AuctioneerFarmEvents {
 
 		uint256 userDebtGo = farm.getPoolUser(goPid, user1).goDebt;
 		uint256 userDebtVoucher = farm.getPoolUser(goPid, user1).voucherDebt;
-		uint256 userDebtUsd = farm.getPoolUser(goPid, user1).usdDebt;
+		uint256 userDebtEth = farm.getPoolUser(goPid, user1).ethDebt;
 
 		// Add new batch of usd
-		_injectFarmUSD(75e18);
+		_injectFarmETH(75e18);
 
 		// Warp to emit GO
 		vm.warp(block.timestamp + 1.5 days);
 
 		uint256 goRewardPerShare = farm.getPoolUpdated(goPid).accGoPerShare;
 		uint256 voucherRewardPerShare = farm.getPoolUpdated(goPid).accVoucherPerShare;
-		uint256 usdRewardPerShare = farm.getPoolUpdated(goPid).accUsdPerShare;
+		uint256 ethRewardPerShare = farm.getPoolUpdated(goPid).accEthPerShare;
 		uint256 userStaked = farm.getPoolUser(goPid, user1).amount;
 		uint256 expectedGoHarvested = ((goRewardPerShare * userStaked) / farm.REWARD_PRECISION()) - userDebtGo;
 		uint256 expectedVoucherHarvested = ((voucherRewardPerShare * userStaked) / farm.REWARD_PRECISION()) -
 			userDebtVoucher;
-		uint256 expectedUsdHarvested = ((usdRewardPerShare * userStaked) / farm.REWARD_PRECISION()) - userDebtUsd;
+		uint256 expectedEthHarvested = ((ethRewardPerShare * userStaked) / farm.REWARD_PRECISION()) - userDebtEth;
 
 		vm.expectEmit(true, true, true, true);
 		emit Harvest(
 			address(auctioneer),
 			goPid,
-			PendingAmounts({ go: expectedGoHarvested, voucher: expectedVoucherHarvested, usd: expectedUsdHarvested }),
+			PendingAmounts({ go: expectedGoHarvested, voucher: expectedVoucherHarvested, eth: expectedEthHarvested }),
 			user1
 		);
 

@@ -38,7 +38,7 @@ contract GoingBlastAirdrop is Ownable, ReentrancyGuard {
 		emit Closed(_closed);
 	}
 
-	function airdropUsers(address[] calldata addresses, uint256[] calldata amounts) external onlyOwner {
+	function addUserAirdrops(address[] calldata addresses, uint256[] calldata amounts) external onlyOwner {
 		if (addresses.length != amounts.length) revert LengthMismatch();
 		for (uint256 i = 0; i < addresses.length; i++) {
 			users[addresses[i]].amount += amounts[i];
@@ -52,7 +52,7 @@ contract GoingBlastAirdrop is Ownable, ReentrancyGuard {
 	}
 
 	function verifyClaim(address _claimer, uint256 _amount) public view {
-		uint256 availableAmount = users[_claimer].amount - users[_claimer].claimed;
+		uint256 availableAmount = users[_claimer].amount;
 
 		if (_amount == 0) revert ClaimZero();
 		if (_amount > availableAmount) revert ClaimExceeded();
@@ -63,6 +63,7 @@ contract GoingBlastAirdrop is Ownable, ReentrancyGuard {
 	function _transferClaimedTokens(address _to, uint256 _quantityBeingClaimed) internal {
 		IERC20(voucher).safeTransferFrom(voucherOwner, _to, _quantityBeingClaimed);
 		users[msg.sender].claimed += _quantityBeingClaimed;
+		users[msg.sender].amount -= _quantityBeingClaimed;
 	}
 
 	function claimable(address _claimer) public view returns (UserData memory user) {

@@ -1,1549 +1,1562 @@
 [
-  {
-    "type": "constructor",
-    "inputs": [
-      {
-        "name": "_usd",
-        "type": "address",
-        "internalType": "contract IERC20"
-      },
-      {
-        "name": "_go",
-        "type": "address",
-        "internalType": "contract IERC20"
-      },
-      {
-        "name": "_voucher",
-        "type": "address",
-        "internalType": "contract IERC20"
-      }
-    ],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "GO",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract IERC20"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "REWARD_PRECISION",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "USD",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract IERC20"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "VOUCHER",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract IERC20"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "add",
-    "inputs": [
-      {
-        "name": "allocPoint",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_token",
-        "type": "address",
-        "internalType": "contract IERC20"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "allHarvest",
-    "inputs": [
-      {
-        "name": "to",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "allPending",
-    "inputs": [
-      {
-        "name": "_user",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "pendingAmounts",
-        "type": "tuple",
-        "internalType": "struct PendingAmounts",
-        "components": [
-          {
-            "name": "go",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "voucher",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "usd",
-            "type": "uint256",
-            "internalType": "uint256"
-          }
-        ]
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "auctioneer",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "auctioneerAuction",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "claimYieldAll",
-    "inputs": [
-      {
-        "name": "_recipient",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "_amountWETH",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_amountUSDB",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_minClaimRateBips",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "deposit",
-    "inputs": [
-      {
-        "name": "pid",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "amount",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "to",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "depositLockedGo",
-    "inputs": [
-      {
-        "name": "_amount",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_user",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "_depositUnlockTimestamp",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "depositWithPermit",
-    "inputs": [
-      {
-        "name": "pid",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "amount",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "to",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "_permitData",
-        "type": "tuple",
-        "internalType": "struct PermitData",
-        "components": [
-          {
-            "name": "token",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "value",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "deadline",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "v",
-            "type": "uint8",
-            "internalType": "uint8"
-          },
-          {
-            "name": "r",
-            "type": "bytes32",
-            "internalType": "bytes32"
-          },
-          {
-            "name": "s",
-            "type": "bytes32",
-            "internalType": "bytes32"
-          }
-        ]
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "emergencyWithdraw",
-    "inputs": [
-      {
-        "name": "pid",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "to",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "getAllPools",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "pools",
-        "type": "tuple[]",
-        "internalType": "struct PoolInfo[]",
-        "components": [
-          {
-            "name": "pid",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "token",
-            "type": "address",
-            "internalType": "contract IERC20"
-          },
-          {
-            "name": "supply",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "allocPoint",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "lastRewardTimestamp",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "accGoPerShare",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "accVoucherPerShare",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "accUsdPerShare",
-            "type": "uint256",
-            "internalType": "uint256"
-          }
-        ]
-      },
-      {
-        "name": "decimals",
-        "type": "uint8[]",
-        "internalType": "uint8[]"
-      },
-      {
-        "name": "symbol",
-        "type": "string[]",
-        "internalType": "string[]"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "getAllPoolsUser",
-    "inputs": [
-      {
-        "name": "_user",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "poolsUser",
-        "type": "tuple[]",
-        "internalType": "struct UserInfo[]",
-        "components": [
-          {
-            "name": "amount",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "goDebt",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "voucherDebt",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "usdDebt",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "goUnlockTimestamp",
-            "type": "uint256",
-            "internalType": "uint256"
-          }
-        ]
-      },
-      {
-        "name": "balance",
-        "type": "uint256[]",
-        "internalType": "uint256[]"
-      },
-      {
-        "name": "allowance",
-        "type": "uint256[]",
-        "internalType": "uint256[]"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "getEmission",
-    "inputs": [
-      {
-        "name": "_token",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "emission",
-        "type": "tuple",
-        "internalType": "struct TokenEmission",
-        "components": [
-          {
-            "name": "token",
-            "type": "address",
-            "internalType": "contract IERC20"
-          },
-          {
-            "name": "perSecond",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "endTimestamp",
-            "type": "uint256",
-            "internalType": "uint256"
-          }
-        ]
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "getEqualizedTotalStaked",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "staked",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "getEqualizedUserStaked",
-    "inputs": [
-      {
-        "name": "_user",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "staked",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "getPool",
-    "inputs": [
-      {
-        "name": "pid",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "pool",
-        "type": "tuple",
-        "internalType": "struct PoolInfo",
-        "components": [
-          {
-            "name": "pid",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "token",
-            "type": "address",
-            "internalType": "contract IERC20"
-          },
-          {
-            "name": "supply",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "allocPoint",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "lastRewardTimestamp",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "accGoPerShare",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "accVoucherPerShare",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "accUsdPerShare",
-            "type": "uint256",
-            "internalType": "uint256"
-          }
-        ]
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "getPoolUpdated",
-    "inputs": [
-      {
-        "name": "pid",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "pool",
-        "type": "tuple",
-        "internalType": "struct PoolInfo",
-        "components": [
-          {
-            "name": "pid",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "token",
-            "type": "address",
-            "internalType": "contract IERC20"
-          },
-          {
-            "name": "supply",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "allocPoint",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "lastRewardTimestamp",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "accGoPerShare",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "accVoucherPerShare",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "accUsdPerShare",
-            "type": "uint256",
-            "internalType": "uint256"
-          }
-        ]
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "getPoolUser",
-    "inputs": [
-      {
-        "name": "pid",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_user",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "user",
-        "type": "tuple",
-        "internalType": "struct UserInfo",
-        "components": [
-          {
-            "name": "amount",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "goDebt",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "voucherDebt",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "usdDebt",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "goUnlockTimestamp",
-            "type": "uint256",
-            "internalType": "uint256"
-          }
-        ]
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "goEmission",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "token",
-        "type": "address",
-        "internalType": "contract IERC20"
-      },
-      {
-        "name": "perSecond",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "endTimestamp",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "goPid",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "harvest",
-    "inputs": [
-      {
-        "name": "pid",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "to",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "initializeBlast",
-    "inputs": [
-      {
-        "name": "WETH",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "initializeEmissions",
-    "inputs": [
-      {
-        "name": "_emissionAmount",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_emissionDuration",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "initializedEmissions",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool",
-        "internalType": "bool"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "link",
-    "inputs": [
-      {
-        "name": "_auctioneerAuction",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "linked",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool",
-        "internalType": "bool"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "massUpdatePools",
-    "inputs": [],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "owner",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "pending",
-    "inputs": [
-      {
-        "name": "pid",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_user",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "pendingAmounts",
-        "type": "tuple",
-        "internalType": "struct PendingAmounts",
-        "components": [
-          {
-            "name": "go",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "voucher",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "usd",
-            "type": "uint256",
-            "internalType": "uint256"
-          }
-        ]
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "poolInfo",
-    "inputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "pid",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "token",
-        "type": "address",
-        "internalType": "contract IERC20"
-      },
-      {
-        "name": "supply",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "allocPoint",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "lastRewardTimestamp",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "accGoPerShare",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "accVoucherPerShare",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "accUsdPerShare",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "poolLength",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "pools",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "receiveUsdDistribution",
-    "inputs": [
-      {
-        "name": "_amount",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "renounceOwnership",
-    "inputs": [],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "set",
-    "inputs": [
-      {
-        "name": "pid",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "allocPoint",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "setVoucherEmissions",
-    "inputs": [
-      {
-        "name": "_emissionAmount",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_emissionDuration",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "tokensWithPool",
-    "inputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool",
-        "internalType": "bool"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "totalAllocPoint",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "transferOwnership",
-    "inputs": [
-      {
-        "name": "newOwner",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "usdDistributionReceivable",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool",
-        "internalType": "bool"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "usdEmission",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "token",
-        "type": "address",
-        "internalType": "contract IERC20"
-      },
-      {
-        "name": "perSecond",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "endTimestamp",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "userInfo",
-    "inputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "amount",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "goDebt",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "voucherDebt",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "usdDebt",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "goUnlockTimestamp",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "voucherEmission",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "token",
-        "type": "address",
-        "internalType": "contract IERC20"
-      },
-      {
-        "name": "perSecond",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "endTimestamp",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "withdraw",
-    "inputs": [
-      {
-        "name": "pid",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "amount",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "to",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "event",
-    "name": "AddedPool",
-    "inputs": [
-      {
-        "name": "_pid",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "_allocPoint",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "_token",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "ClaimYieldAll",
-    "inputs": [
-      {
-        "name": "recipient",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "amountWETH",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "amountUSDB",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "amountGas",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "Deposit",
-    "inputs": [
-      {
-        "name": "_user",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "_pid",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "_amount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "_to",
-        "type": "address",
-        "indexed": false,
-        "internalType": "address"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "EmergencyWithdraw",
-    "inputs": [
-      {
-        "name": "_user",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "_pid",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "_amount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "_to",
-        "type": "address",
-        "indexed": false,
-        "internalType": "address"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "Harvest",
-    "inputs": [
-      {
-        "name": "_user",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "_pid",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "_pending",
-        "type": "tuple",
-        "indexed": false,
-        "internalType": "struct PendingAmounts",
-        "components": [
-          {
-            "name": "go",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "voucher",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "usd",
-            "type": "uint256",
-            "internalType": "uint256"
-          }
-        ]
-      },
-      {
-        "name": "_to",
-        "type": "address",
-        "indexed": false,
-        "internalType": "address"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "OwnershipTransferred",
-    "inputs": [
-      {
-        "name": "previousOwner",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "newOwner",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "ReceivedUsdDistribution",
-    "inputs": [
-      {
-        "name": "_amount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "SetEmission",
-    "inputs": [
-      {
-        "name": "_token",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "_perSecond",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "_duration",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "UpdatedPool",
-    "inputs": [
-      {
-        "name": "_pid",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "_allocPoint",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "Withdraw",
-    "inputs": [
-      {
-        "name": "_user",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "_pid",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "_amount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "_to",
-        "type": "address",
-        "indexed": false,
-        "internalType": "address"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "error",
-    "name": "AddressEmptyCode",
-    "inputs": [
-      {
-        "name": "target",
-        "type": "address",
-        "internalType": "address"
-      }
-    ]
-  },
-  {
-    "type": "error",
-    "name": "AddressInsufficientBalance",
-    "inputs": [
-      {
-        "name": "account",
-        "type": "address",
-        "internalType": "address"
-      }
-    ]
-  },
-  {
-    "type": "error",
-    "name": "AlreadyAdded",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "AlreadyInitializedEmissions",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "AlreadyLinked",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "BadDeposit",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "BadWithdrawal",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "FailedInnerCall",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "GoLocked",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "InvalidPid",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "NotAuctioneer",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "NotAuctioneerAuction",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "NotEnoughEmissionToken",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "OwnableInvalidOwner",
-    "inputs": [
-      {
-        "name": "owner",
-        "type": "address",
-        "internalType": "address"
-      }
-    ]
-  },
-  {
-    "type": "error",
-    "name": "OwnableUnauthorizedAccount",
-    "inputs": [
-      {
-        "name": "account",
-        "type": "address",
-        "internalType": "address"
-      }
-    ]
-  },
-  {
-    "type": "error",
-    "name": "ReentrancyGuardReentrantCall",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "SafeERC20FailedOperation",
-    "inputs": [
-      {
-        "name": "token",
-        "type": "address",
-        "internalType": "address"
-      }
-    ]
-  }
+	{
+		"type": "constructor",
+		"inputs": [
+			{
+				"name": "_usd",
+				"type": "address",
+				"internalType": "contract IERC20"
+			},
+			{
+				"name": "_go",
+				"type": "address",
+				"internalType": "contract IERC20"
+			},
+			{
+				"name": "_voucher",
+				"type": "address",
+				"internalType": "contract IERC20"
+			}
+		],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "function",
+		"name": "GO",
+		"inputs": [],
+		"outputs": [
+			{
+				"name": "",
+				"type": "address",
+				"internalType": "contract IERC20"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "REWARD_PRECISION",
+		"inputs": [],
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "USD",
+		"inputs": [],
+		"outputs": [
+			{
+				"name": "",
+				"type": "address",
+				"internalType": "contract IERC20"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "VOUCHER",
+		"inputs": [],
+		"outputs": [
+			{
+				"name": "",
+				"type": "address",
+				"internalType": "contract IERC20"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "add",
+		"inputs": [
+			{
+				"name": "allocPoint",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "_token",
+				"type": "address",
+				"internalType": "contract IERC20"
+			}
+		],
+		"outputs": [],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "function",
+		"name": "allHarvest",
+		"inputs": [
+			{
+				"name": "to",
+				"type": "address",
+				"internalType": "address"
+			}
+		],
+		"outputs": [],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "function",
+		"name": "allPending",
+		"inputs": [
+			{
+				"name": "_user",
+				"type": "address",
+				"internalType": "address"
+			}
+		],
+		"outputs": [
+			{
+				"name": "pendingAmounts",
+				"type": "tuple",
+				"internalType": "struct PendingAmounts",
+				"components": [
+					{
+						"name": "go",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "voucher",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "usd",
+						"type": "uint256",
+						"internalType": "uint256"
+					}
+				]
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "auctioneer",
+		"inputs": [],
+		"outputs": [
+			{
+				"name": "",
+				"type": "address",
+				"internalType": "address"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "auctioneerAuction",
+		"inputs": [],
+		"outputs": [
+			{
+				"name": "",
+				"type": "address",
+				"internalType": "address"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "claimYieldAll",
+		"inputs": [
+			{
+				"name": "_recipient",
+				"type": "address",
+				"internalType": "address"
+			},
+			{
+				"name": "_amountWETH",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "_amountUSDB",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "_minClaimRateBips",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"outputs": [],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "function",
+		"name": "deposit",
+		"inputs": [
+			{
+				"name": "pid",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "amount",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "to",
+				"type": "address",
+				"internalType": "address"
+			}
+		],
+		"outputs": [],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "function",
+		"name": "depositLockedGo",
+		"inputs": [
+			{
+				"name": "_amount",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "_user",
+				"type": "address",
+				"internalType": "address"
+			},
+			{
+				"name": "_depositUnlockTimestamp",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"outputs": [],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "function",
+		"name": "depositWithPermit",
+		"inputs": [
+			{
+				"name": "pid",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "amount",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "to",
+				"type": "address",
+				"internalType": "address"
+			},
+			{
+				"name": "_permitData",
+				"type": "tuple",
+				"internalType": "struct PermitData",
+				"components": [
+					{
+						"name": "token",
+						"type": "address",
+						"internalType": "address"
+					},
+					{
+						"name": "value",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "deadline",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "v",
+						"type": "uint8",
+						"internalType": "uint8"
+					},
+					{
+						"name": "r",
+						"type": "bytes32",
+						"internalType": "bytes32"
+					},
+					{
+						"name": "s",
+						"type": "bytes32",
+						"internalType": "bytes32"
+					}
+				]
+			}
+		],
+		"outputs": [],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "function",
+		"name": "emergencyWithdraw",
+		"inputs": [
+			{
+				"name": "pid",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "to",
+				"type": "address",
+				"internalType": "address"
+			}
+		],
+		"outputs": [],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "function",
+		"name": "getAllPools",
+		"inputs": [],
+		"outputs": [
+			{
+				"name": "pools",
+				"type": "tuple[]",
+				"internalType": "struct PoolInfo[]",
+				"components": [
+					{
+						"name": "pid",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "token",
+						"type": "address",
+						"internalType": "contract IERC20"
+					},
+					{
+						"name": "supply",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "allocPoint",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "lastRewardTimestamp",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "accGoPerShare",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "accVoucherPerShare",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "accEthPerShare",
+						"type": "uint256",
+						"internalType": "uint256"
+					}
+				]
+			},
+			{
+				"name": "decimals",
+				"type": "uint8[]",
+				"internalType": "uint8[]"
+			},
+			{
+				"name": "symbol",
+				"type": "string[]",
+				"internalType": "string[]"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "getAllPoolsUser",
+		"inputs": [
+			{
+				"name": "_user",
+				"type": "address",
+				"internalType": "address"
+			}
+		],
+		"outputs": [
+			{
+				"name": "poolsUser",
+				"type": "tuple[]",
+				"internalType": "struct UserInfo[]",
+				"components": [
+					{
+						"name": "amount",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "goDebt",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "voucherDebt",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "ethDebt",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "goUnlockTimestamp",
+						"type": "uint256",
+						"internalType": "uint256"
+					}
+				]
+			},
+			{
+				"name": "balance",
+				"type": "uint256[]",
+				"internalType": "uint256[]"
+			},
+			{
+				"name": "allowance",
+				"type": "uint256[]",
+				"internalType": "uint256[]"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "getEmission",
+		"inputs": [
+			{
+				"name": "_token",
+				"type": "address",
+				"internalType": "address"
+			}
+		],
+		"outputs": [
+			{
+				"name": "emission",
+				"type": "tuple",
+				"internalType": "struct TokenEmission",
+				"components": [
+					{
+						"name": "token",
+						"type": "address",
+						"internalType": "contract IERC20"
+					},
+					{
+						"name": "perSecond",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "endTimestamp",
+						"type": "uint256",
+						"internalType": "uint256"
+					}
+				]
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "getEqualizedTotalStaked",
+		"inputs": [],
+		"outputs": [
+			{
+				"name": "staked",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "getEqualizedUserStaked",
+		"inputs": [
+			{
+				"name": "_user",
+				"type": "address",
+				"internalType": "address"
+			}
+		],
+		"outputs": [
+			{
+				"name": "staked",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "getPool",
+		"inputs": [
+			{
+				"name": "pid",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"outputs": [
+			{
+				"name": "pool",
+				"type": "tuple",
+				"internalType": "struct PoolInfo",
+				"components": [
+					{
+						"name": "pid",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "token",
+						"type": "address",
+						"internalType": "contract IERC20"
+					},
+					{
+						"name": "supply",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "allocPoint",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "lastRewardTimestamp",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "accGoPerShare",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "accVoucherPerShare",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "accEthPerShare",
+						"type": "uint256",
+						"internalType": "uint256"
+					}
+				]
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "getPoolUpdated",
+		"inputs": [
+			{
+				"name": "pid",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"outputs": [
+			{
+				"name": "pool",
+				"type": "tuple",
+				"internalType": "struct PoolInfo",
+				"components": [
+					{
+						"name": "pid",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "token",
+						"type": "address",
+						"internalType": "contract IERC20"
+					},
+					{
+						"name": "supply",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "allocPoint",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "lastRewardTimestamp",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "accGoPerShare",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "accVoucherPerShare",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "accEthPerShare",
+						"type": "uint256",
+						"internalType": "uint256"
+					}
+				]
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "getPoolUser",
+		"inputs": [
+			{
+				"name": "pid",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "_user",
+				"type": "address",
+				"internalType": "address"
+			}
+		],
+		"outputs": [
+			{
+				"name": "user",
+				"type": "tuple",
+				"internalType": "struct UserInfo",
+				"components": [
+					{
+						"name": "amount",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "goDebt",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "voucherDebt",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "ethDebt",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "goUnlockTimestamp",
+						"type": "uint256",
+						"internalType": "uint256"
+					}
+				]
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "goEmission",
+		"inputs": [],
+		"outputs": [
+			{
+				"name": "token",
+				"type": "address",
+				"internalType": "contract IERC20"
+			},
+			{
+				"name": "perSecond",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "endTimestamp",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "goPid",
+		"inputs": [],
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "harvest",
+		"inputs": [
+			{
+				"name": "pid",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "to",
+				"type": "address",
+				"internalType": "address"
+			}
+		],
+		"outputs": [],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "function",
+		"name": "initializeBlast",
+		"inputs": [
+			{
+				"name": "WETH",
+				"type": "address",
+				"internalType": "address"
+			}
+		],
+		"outputs": [],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "function",
+		"name": "initializeEmissions",
+		"inputs": [
+			{
+				"name": "_emissionAmount",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "_emissionDuration",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"outputs": [],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "function",
+		"name": "initializedEmissions",
+		"inputs": [],
+		"outputs": [
+			{
+				"name": "",
+				"type": "bool",
+				"internalType": "bool"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "link",
+		"inputs": [
+			{
+				"name": "_auctioneerAuction",
+				"type": "address",
+				"internalType": "address"
+			}
+		],
+		"outputs": [],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "function",
+		"name": "linked",
+		"inputs": [],
+		"outputs": [
+			{
+				"name": "",
+				"type": "bool",
+				"internalType": "bool"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "massUpdatePools",
+		"inputs": [],
+		"outputs": [],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "function",
+		"name": "owner",
+		"inputs": [],
+		"outputs": [
+			{
+				"name": "",
+				"type": "address",
+				"internalType": "address"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "pending",
+		"inputs": [
+			{
+				"name": "pid",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "_user",
+				"type": "address",
+				"internalType": "address"
+			}
+		],
+		"outputs": [
+			{
+				"name": "pendingAmounts",
+				"type": "tuple",
+				"internalType": "struct PendingAmounts",
+				"components": [
+					{
+						"name": "go",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "voucher",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "usd",
+						"type": "uint256",
+						"internalType": "uint256"
+					}
+				]
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "poolInfo",
+		"inputs": [
+			{
+				"name": "",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"outputs": [
+			{
+				"name": "pid",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "token",
+				"type": "address",
+				"internalType": "contract IERC20"
+			},
+			{
+				"name": "supply",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "allocPoint",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "lastRewardTimestamp",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "accGoPerShare",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "accVoucherPerShare",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "accEthPerShare",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "poolLength",
+		"inputs": [],
+		"outputs": [
+			{
+				"name": "pools",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "receiveDistribution",
+		"inputs": [
+			{
+				"name": "_amount",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"outputs": [],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "function",
+		"name": "renounceOwnership",
+		"inputs": [],
+		"outputs": [],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "function",
+		"name": "set",
+		"inputs": [
+			{
+				"name": "pid",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "allocPoint",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"outputs": [],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "function",
+		"name": "setVoucherEmissions",
+		"inputs": [
+			{
+				"name": "_emissionAmount",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "_emissionDuration",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"outputs": [],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "function",
+		"name": "tokensWithPool",
+		"inputs": [
+			{
+				"name": "",
+				"type": "address",
+				"internalType": "address"
+			}
+		],
+		"outputs": [
+			{
+				"name": "",
+				"type": "bool",
+				"internalType": "bool"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "totalAllocPoint",
+		"inputs": [],
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "totalEthDistributed",
+		"inputs": [],
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "transferOwnership",
+		"inputs": [
+			{
+				"name": "newOwner",
+				"type": "address",
+				"internalType": "address"
+			}
+		],
+		"outputs": [],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "function",
+		"name": "distributionReceivable",
+		"inputs": [],
+		"outputs": [
+			{
+				"name": "",
+				"type": "bool",
+				"internalType": "bool"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "usdEmission",
+		"inputs": [],
+		"outputs": [
+			{
+				"name": "token",
+				"type": "address",
+				"internalType": "contract IERC20"
+			},
+			{
+				"name": "perSecond",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "endTimestamp",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "userInfo",
+		"inputs": [
+			{
+				"name": "",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "",
+				"type": "address",
+				"internalType": "address"
+			}
+		],
+		"outputs": [
+			{
+				"name": "amount",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "goDebt",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "voucherDebt",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "ethDebt",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "goUnlockTimestamp",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "voucherEmission",
+		"inputs": [],
+		"outputs": [
+			{
+				"name": "token",
+				"type": "address",
+				"internalType": "contract IERC20"
+			},
+			{
+				"name": "perSecond",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "endTimestamp",
+				"type": "uint256",
+				"internalType": "uint256"
+			}
+		],
+		"stateMutability": "view"
+	},
+	{
+		"type": "function",
+		"name": "withdraw",
+		"inputs": [
+			{
+				"name": "pid",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "amount",
+				"type": "uint256",
+				"internalType": "uint256"
+			},
+			{
+				"name": "to",
+				"type": "address",
+				"internalType": "address"
+			}
+		],
+		"outputs": [],
+		"stateMutability": "nonpayable"
+	},
+	{
+		"type": "event",
+		"name": "AddedPool",
+		"inputs": [
+			{
+				"name": "_pid",
+				"type": "uint256",
+				"indexed": false,
+				"internalType": "uint256"
+			},
+			{
+				"name": "_allocPoint",
+				"type": "uint256",
+				"indexed": false,
+				"internalType": "uint256"
+			},
+			{
+				"name": "_token",
+				"type": "address",
+				"indexed": true,
+				"internalType": "address"
+			}
+		],
+		"anonymous": false
+	},
+	{
+		"type": "event",
+		"name": "ClaimYieldAll",
+		"inputs": [
+			{
+				"name": "recipient",
+				"type": "address",
+				"indexed": true,
+				"internalType": "address"
+			},
+			{
+				"name": "amountWETH",
+				"type": "uint256",
+				"indexed": false,
+				"internalType": "uint256"
+			},
+			{
+				"name": "amountUSDB",
+				"type": "uint256",
+				"indexed": false,
+				"internalType": "uint256"
+			},
+			{
+				"name": "amountGas",
+				"type": "uint256",
+				"indexed": false,
+				"internalType": "uint256"
+			}
+		],
+		"anonymous": false
+	},
+	{
+		"type": "event",
+		"name": "Deposit",
+		"inputs": [
+			{
+				"name": "_user",
+				"type": "address",
+				"indexed": true,
+				"internalType": "address"
+			},
+			{
+				"name": "_pid",
+				"type": "uint256",
+				"indexed": false,
+				"internalType": "uint256"
+			},
+			{
+				"name": "_amount",
+				"type": "uint256",
+				"indexed": false,
+				"internalType": "uint256"
+			},
+			{
+				"name": "_to",
+				"type": "address",
+				"indexed": false,
+				"internalType": "address"
+			}
+		],
+		"anonymous": false
+	},
+	{
+		"type": "event",
+		"name": "EmergencyWithdraw",
+		"inputs": [
+			{
+				"name": "_user",
+				"type": "address",
+				"indexed": true,
+				"internalType": "address"
+			},
+			{
+				"name": "_pid",
+				"type": "uint256",
+				"indexed": false,
+				"internalType": "uint256"
+			},
+			{
+				"name": "_amount",
+				"type": "uint256",
+				"indexed": false,
+				"internalType": "uint256"
+			},
+			{
+				"name": "_to",
+				"type": "address",
+				"indexed": false,
+				"internalType": "address"
+			}
+		],
+		"anonymous": false
+	},
+	{
+		"type": "event",
+		"name": "Harvest",
+		"inputs": [
+			{
+				"name": "_user",
+				"type": "address",
+				"indexed": true,
+				"internalType": "address"
+			},
+			{
+				"name": "_pid",
+				"type": "uint256",
+				"indexed": false,
+				"internalType": "uint256"
+			},
+			{
+				"name": "_pending",
+				"type": "tuple",
+				"indexed": false,
+				"internalType": "struct PendingAmounts",
+				"components": [
+					{
+						"name": "go",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "voucher",
+						"type": "uint256",
+						"internalType": "uint256"
+					},
+					{
+						"name": "usd",
+						"type": "uint256",
+						"internalType": "uint256"
+					}
+				]
+			},
+			{
+				"name": "_to",
+				"type": "address",
+				"indexed": false,
+				"internalType": "address"
+			}
+		],
+		"anonymous": false
+	},
+	{
+		"type": "event",
+		"name": "OwnershipTransferred",
+		"inputs": [
+			{
+				"name": "previousOwner",
+				"type": "address",
+				"indexed": true,
+				"internalType": "address"
+			},
+			{
+				"name": "newOwner",
+				"type": "address",
+				"indexed": true,
+				"internalType": "address"
+			}
+		],
+		"anonymous": false
+	},
+	{
+		"type": "event",
+		"name": "ReceivedDistribution",
+		"inputs": [
+			{
+				"name": "_amount",
+				"type": "uint256",
+				"indexed": false,
+				"internalType": "uint256"
+			}
+		],
+		"anonymous": false
+	},
+	{
+		"type": "event",
+		"name": "SetEmission",
+		"inputs": [
+			{
+				"name": "_token",
+				"type": "address",
+				"indexed": true,
+				"internalType": "address"
+			},
+			{
+				"name": "_perSecond",
+				"type": "uint256",
+				"indexed": false,
+				"internalType": "uint256"
+			},
+			{
+				"name": "_duration",
+				"type": "uint256",
+				"indexed": false,
+				"internalType": "uint256"
+			}
+		],
+		"anonymous": false
+	},
+	{
+		"type": "event",
+		"name": "UpdatedPool",
+		"inputs": [
+			{
+				"name": "_pid",
+				"type": "uint256",
+				"indexed": false,
+				"internalType": "uint256"
+			},
+			{
+				"name": "_allocPoint",
+				"type": "uint256",
+				"indexed": false,
+				"internalType": "uint256"
+			}
+		],
+		"anonymous": false
+	},
+	{
+		"type": "event",
+		"name": "Withdraw",
+		"inputs": [
+			{
+				"name": "_user",
+				"type": "address",
+				"indexed": true,
+				"internalType": "address"
+			},
+			{
+				"name": "_pid",
+				"type": "uint256",
+				"indexed": false,
+				"internalType": "uint256"
+			},
+			{
+				"name": "_amount",
+				"type": "uint256",
+				"indexed": false,
+				"internalType": "uint256"
+			},
+			{
+				"name": "_to",
+				"type": "address",
+				"indexed": false,
+				"internalType": "address"
+			}
+		],
+		"anonymous": false
+	},
+	{
+		"type": "error",
+		"name": "AddressEmptyCode",
+		"inputs": [
+			{
+				"name": "target",
+				"type": "address",
+				"internalType": "address"
+			}
+		]
+	},
+	{
+		"type": "error",
+		"name": "AddressInsufficientBalance",
+		"inputs": [
+			{
+				"name": "account",
+				"type": "address",
+				"internalType": "address"
+			}
+		]
+	},
+	{
+		"type": "error",
+		"name": "AlreadyAdded",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "AlreadyInitializedEmissions",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "AlreadyLinked",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "BadDeposit",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "BadWithdrawal",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "FailedInnerCall",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "GoLocked",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "InvalidPid",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "NotAuctioneer",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "NotAuctioneerAuction",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "NotEnoughEmissionToken",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "OwnableInvalidOwner",
+		"inputs": [
+			{
+				"name": "owner",
+				"type": "address",
+				"internalType": "address"
+			}
+		]
+	},
+	{
+		"type": "error",
+		"name": "OwnableUnauthorizedAccount",
+		"inputs": [
+			{
+				"name": "account",
+				"type": "address",
+				"internalType": "address"
+			}
+		]
+	},
+	{
+		"type": "error",
+		"name": "ReentrancyGuardReentrantCall",
+		"inputs": []
+	},
+	{
+		"type": "error",
+		"name": "SafeERC20FailedOperation",
+		"inputs": [
+			{
+				"name": "token",
+				"type": "address",
+				"internalType": "address"
+			}
+		]
+	}
 ]

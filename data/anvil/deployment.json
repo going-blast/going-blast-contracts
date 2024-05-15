@@ -8,7 +8,9 @@
     "AuctioneerUser": "0x0165878A594ca255338adfa4d48449f69242Eb8F",
     "AuctioneerEmissions": "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853",
     "AuctioneerFarm": "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318",
-    "AuctioneerAuction": "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707"
+    "AuctioneerAuction": "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
+    "GoingBlastPresale": "0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e",
+    "GoingBlastAirdrop": "0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0"
   },
   "config": {
     "contractsFrozen": true,

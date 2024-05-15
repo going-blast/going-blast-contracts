@@ -44,7 +44,7 @@ Tests:
 [x] Auctioneer - Finalizing auction
   [x] Claiming treasury emissions
   [x] Revenue / profit payouts
-  [x] USD sent to farm, increases farm usdRewardPerShare
+  [x] USD sent to farm, increases farm ethRewardPerShare
 
 [x] Auctioneer - User GO emissions (proof of bid)
   [x] 50% tax on immediate harvest
@@ -159,7 +159,7 @@ Tests:
 
 [x] Auctioneer / Farm interaction
   [x] Private lot bidding unlocking on enough GO owned
-  [x] Lot profit sent to farm increases usdRewardPerShare
+  [x] Lot profit sent to farm increases ethRewardPerShare
 
 
 [x] Permits

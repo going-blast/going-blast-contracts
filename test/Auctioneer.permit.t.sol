@@ -79,35 +79,6 @@ contract AuctioneerPermitTest is AuctioneerHelper, AuctioneerFarmEvents {
 
 	// Auctioneer
 
-	function test_auctioneer_bidWithPermit_USD() public {
-		_warpToUnlockTimestamp(0);
-
-		// Remove allowance
-		vm.prank(user1);
-		USD.approve(address(auctioneer), 0);
-		assertEq(USD.allowance(user1, address(auctioneer)), 0, "User1 not approved USD for auctioneer");
-
-		uint256 expectedBid = auctioneerAuction.startingBid() + auctioneerAuction.bidIncrement();
-		BidOptions memory options = BidOptions({
-			paymentType: PaymentType.WALLET,
-			multibid: 1,
-			message: "Hello World",
-			rune: 0
-		});
-		PermitData memory permitData = getPermitData(user1, user1PK, address(auctioneer), address(USD), 100e18);
-
-		_expectTokenTransfer(USD, user1, address(auctioneer), 1e18);
-
-		vm.expectEmit(true, true, true, true);
-		emit Bid(0, user1, expectedBid, "", options, block.timestamp);
-
-		vm.prank(user1);
-		auctioneer.bidWithPermit(0, options, permitData);
-
-		assertEq(auctioneerUser.getAuctionUser(0, user1).bids, 1, "User has bid");
-		assertEq(USD.allowance(user1, address(auctioneer)), 99e18, "User1 approved USD for auctioneer");
-	}
-
 	function test_auctioneer_bidWithPermit_VOUCHER() public {
 		_warpToUnlockTimestamp(0);
 
@@ -134,52 +105,6 @@ contract AuctioneerPermitTest is AuctioneerHelper, AuctioneerFarmEvents {
 
 		assertEq(auctioneerUser.getAuctionUser(0, user1).bids, 1, "User has bid");
 		assertEq(VOUCHER.allowance(user1, address(auctioneer)), 9e18, "User1 approved VOUCHER for auctioneer");
-	}
-
-	function test_auctioneer_claimLotWithPermit() public {
-		_warpToUnlockTimestamp(0);
-		_bid(user1);
-		_warpToAuctionEndTimestamp(0);
-
-		vm.prank(user1);
-		USD.approve(address(auctioneer), 0);
-
-		uint256 lotPrice = auctioneerAuction.getAuction(0).bidData.bid;
-		vm.expectRevert(abi.encodeWithSelector(ERC20InsufficientAllowance.selector, address(auctioneer), 0, lotPrice));
-
-		vm.prank(user1);
-		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.WALLET, unwrapETH: true }));
-
-		PermitData memory permitData = getPermitData(user1, user1PK, address(auctioneer), address(USD), 100e18);
-
-		vm.expectEmit(true, true, true, true);
-		TokenData[] memory tokens = new TokenData[](1);
-		tokens[0] = TokenData({ token: ETH_ADDR, amount: 1e18 });
-		NftData[] memory nfts = new NftData[](0);
-		emit ClaimedLot(0, user1, 0, 1e18, tokens, nfts);
-
-		vm.prank(user1);
-		auctioneer.claimLotWithPermit(0, ClaimLotOptions({ paymentType: PaymentType.WALLET, unwrapETH: true }), permitData);
-	}
-
-	// AuctioneerUser
-
-	function test_auctioneerUser_addFundsWithPermit() public {
-		vm.prank(user1);
-		USD.approve(address(auctioneerUser), 0);
-
-		vm.expectRevert(abi.encodeWithSelector(ERC20InsufficientAllowance.selector, address(auctioneerUser), 0, 10e18));
-
-		vm.prank(user1);
-		auctioneerUser.addFunds(10e18);
-
-		PermitData memory permitData = getPermitData(user1, user1PK, address(auctioneerUser), address(USD), 10e18);
-
-		vm.expectEmit(true, true, true, true);
-		emit AddedFunds(user1, 10e18);
-
-		vm.prank(user1);
-		auctioneerUser.addFundsWithPermit(10e18, permitData);
 	}
 
 	// AuctioneerFarm

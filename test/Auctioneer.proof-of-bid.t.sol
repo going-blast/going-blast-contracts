@@ -234,7 +234,7 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 		);
 
 		// Cancel auction
-		auctioneer.cancelAuction(lot, false);
+		auctioneer.cancelAuction(lot);
 
 		// Day 3 should return to initial conditions
 		epochData = auctioneerEmissions.getEpochDataAtTimestamp(day3Timestamp);

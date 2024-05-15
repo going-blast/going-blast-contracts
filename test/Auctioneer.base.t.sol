@@ -22,10 +22,16 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	using GBMath for uint256;
 	using SafeERC20 for IERC20;
 
+	// CONSTS
+	uint256 public bidCost = 0.00035e18;
+	uint256 public startingBid = 0.00035e18;
+	uint256 public bidIncrement = 0.0000035e18;
+	uint256 public privateAuctionRequirement = 250e18;
+
 	// DATA
 
 	address public deployer = 0xb4c79daB8f259C7Aee6E5b2Aa729821864227e84;
-	address public sender = 0x90193C961A926261B756D1E5bb255e67ff9498A1;
+	address public sender = 0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496;
 	address public dead = 0x000000000000000000000000000000000000dEaD;
 
 	address public liquidity = address(40);
@@ -33,13 +39,13 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	address public treasury = address(50);
 	address public treasury2 = address(51);
 
-	address public user1;
+	address payable public user1;
 	uint256 public user1PK;
-	address public user2;
+	address payable public user2;
 	uint256 public user2PK;
-	address public user3 = address(102);
-	address public user4 = address(103);
-	address[4] public users;
+	address payable public user3 = payable(address(102));
+	address payable public user4 = payable(address(103));
+	address payable[4] public users;
 
 	AuctioneerHarness public auctioneer;
 	AuctioneerAuctionHarness public auctioneerAuction;
@@ -100,8 +106,12 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	}
 
 	function setUp() public virtual {
-		(user1, user1PK) = makeAddrAndKey("user1");
-		(user2, user2PK) = makeAddrAndKey("user2");
+		(address user1Temp, uint256 user1PKTemp) = makeAddrAndKey("user1");
+		(address user2Temp, uint256 user2PKTemp) = makeAddrAndKey("user2");
+		user1 = payable(user1Temp);
+		user1PK = user1PKTemp;
+		user2 = payable(user2Temp);
+		user2PK = user2PKTemp;
 		users = [user1, user2, user3, user4];
 
 		setLabels();
@@ -126,18 +136,11 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	// SETUP UTILS
 
 	function _createAndLinkAuctioneers() public {
-		auctioneer = new AuctioneerHarness(GO, VOUCHER, USD, WETH);
-		auctioneerAuction = new AuctioneerAuctionHarness(
-			USD,
-			WETH,
-			usdDecOffset(1e18),
-			usdDecOffset(0.01e18),
-			usdDecOffset(1e18),
-			20e18
-		);
-		auctioneerUser = new AuctioneerUser(USD);
+		auctioneer = new AuctioneerHarness(GO, VOUCHER, WETH);
+		auctioneerAuction = new AuctioneerAuctionHarness(bidCost, bidIncrement, startingBid, privateAuctionRequirement);
+		auctioneerUser = new AuctioneerUser();
 		auctioneerEmissions = new AuctioneerEmissions(GO);
-		farm = new AuctioneerFarm(USD, GO, VOUCHER);
+		farm = new AuctioneerFarm(GO, VOUCHER);
 
 		// LINK
 		auctioneer.link(address(auctioneerUser), address(auctioneerEmissions), address(auctioneerAuction));
@@ -155,7 +158,7 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 			liquidityBps: 2000 // 20% of supply for presale, 5% for liquidity. 5/20 = 0.2
 		});
 
-		presale = new GoingBlastPresale(address(WETH), address(GO), address(0), presaleOptions);
+		presale = new GoingBlastPresale(address(GO), address(0), presaleOptions);
 	}
 
 	function _startPresale() public {
@@ -164,7 +167,14 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	}
 
 	function _createAirdrop() public {
-		airdrop = new GoingBlastAirdrop(address(VOUCHER), deployer, 0);
+		// Create contract (expiration timestamp only for testing)
+		airdrop = new GoingBlastAirdrop(address(VOUCHER), treasury, block.timestamp + 2 weeks);
+
+		// Mint VOUCHER for treasury
+		VOUCHER.mint(treasury, 1000e18);
+
+		// Treasury approve VOUCHER for airdrop
+		vm.prank(treasury);
 		VOUCHER.approve(address(airdrop), 100e18);
 	}
 
@@ -172,7 +182,7 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		auctioneer.updateTreasury(treasury);
 		_giveETH(treasury, 5e18);
 		_giveWETH(treasury, 5e18);
-		_approveWeth(treasury, address(auctioneerAuction), UINT256_MAX);
+		_approveWeth(treasury, address(auctioneer), UINT256_MAX);
 		_treasuryApproveNFTs();
 	}
 
@@ -320,9 +330,6 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	}
 
 	// UTILS
-	function usdDecOffset(uint256 val) public view returns (uint256) {
-		return (val * 10 ** usdDecimals) / 1e18;
-	}
 	function e(uint256 coefficient, uint256 exponent) public pure returns (uint256) {
 		return coefficient * 10 ** exponent;
 	}
@@ -343,7 +350,30 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 
 	function _getBaseSingleAuctionParams() public view returns (AuctionParams memory params) {
 		TokenData[] memory tokens = new TokenData[](1);
-		tokens[0] = TokenData({ token: ETH_ADDR, amount: 1e18 });
+		uint256 value = 1e18;
+		tokens[0] = TokenData({ token: ETH_ADDR, amount: value });
+
+		BidWindowParams[] memory windows = new BidWindowParams[](3);
+		windows[0] = BidWindowParams({ windowType: BidWindowType.OPEN, duration: 6 hours, timer: 0 });
+		windows[1] = BidWindowParams({ windowType: BidWindowType.TIMED, duration: 2 hours, timer: 2 minutes });
+		windows[2] = BidWindowParams({ windowType: BidWindowType.INFINITE, duration: 0, timer: 1 minutes });
+
+		params = AuctionParams({
+			isPrivate: false,
+			lotValue: value,
+			emissionBP: 10000,
+			runeSymbols: new uint8[](0),
+			tokens: tokens,
+			nfts: new NftData[](0),
+			name: "Single Token Auction",
+			windows: windows,
+			unlockTimestamp: _getNextDay2PMTimestamp()
+		});
+	}
+
+	function _getERC20SingleAuctionParams() public view returns (AuctionParams memory params) {
+		TokenData[] memory tokens = new TokenData[](1);
+		tokens[0] = TokenData({ token: address(GO), amount: 100e18 });
 
 		BidWindowParams[] memory windows = new BidWindowParams[](3);
 		windows[0] = BidWindowParams({ windowType: BidWindowType.OPEN, duration: 6 hours, timer: 0 });
@@ -439,12 +469,10 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		}
 	}
 
-	function _injectFarmUSD(uint256 amount) public {
-		vm.prank(user1);
-		USD.transfer(address(farm), amount);
-
-		vm.prank(address(auctioneerAuction));
-		farm.receiveUsdDistribution(amount);
+	function _injectFarmETH(uint256 amount) public {
+		vm.deal(address(auctioneer), amount);
+		vm.prank(address(auctioneer));
+		farm.receiveDistribution{ value: amount }();
 	}
 
 	// EVENTS
@@ -454,6 +482,27 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	error ERC20InsufficientBalance(address sender, uint256 balance, uint256 needed);
 
 	event Transfer(address indexed from, address indexed to, uint256 value);
+
+	mapping(uint256 => mapping(address => uint256)) private ethBalances;
+
+	function _prepExpectETHBalChange(uint256 id, address add) public {
+		ethBalances[id][add] = add.balance;
+	}
+	function _expectETHBalChange(uint256 id, address add, int256 value) public {
+		_expectETHBalChange(id, add, value, "");
+	}
+	function _expectETHBalChange(uint256 id, address add, int256 value, string memory label) public {
+		assertEq(add.balance, uint256(int256(ethBalances[id][add]) + value), string.concat("ETH value changed ", label));
+	}
+
+	function _prepExpectETHTransfer(uint256 id, address from, address to) public {
+		ethBalances[id][from] = from.balance;
+		ethBalances[id][to] = to.balance;
+	}
+	function _expectETHTransfer(uint256 id, address from, address to, uint256 value) public {
+		assertEq(from.balance, ethBalances[id][from] - value, "ETH transferred from");
+		assertEq(to.balance, ethBalances[id][to] + value, "ETH transferred to");
+	}
 
 	function _expectTokenTransfer(IERC20 token, address from, address to, uint256 value) public {
 		vm.expectEmit(true, true, false, true, address(token));
@@ -486,35 +535,33 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		emit Bid(0, user, expectedBid, "", options, block.timestamp);
 		_bid(user);
 	}
-	function _bid(address user) public {
+
+	function _bidWithOptions(address user, uint256 lot, BidOptions memory options) public {
 		vm.prank(user);
-		BidOptions memory options = BidOptions({ paymentType: PaymentType.WALLET, multibid: 1, message: "", rune: 0 });
-		auctioneer.bid(0, options);
+		uint256 value = options.paymentType == PaymentType.WALLET ? bidCost * options.multibid : 0;
+		vm.deal(user, value);
+		auctioneer.bid{ value: value }(lot, options);
+	}
+	function _bidWithOptionsNoDeal(address user, uint256 lot, BidOptions memory options) public {
+		vm.prank(user);
+		uint256 value = options.paymentType == PaymentType.WALLET ? bidCost * options.multibid : 0;
+		auctioneer.bid{ value: value }(lot, options);
+	}
+	function _bid(address user) public {
+		_bidWithOptions(user, 0, BidOptions({ paymentType: PaymentType.WALLET, multibid: 1, message: "", rune: 0 }));
 	}
 	function _bidOnLot(address user, uint256 lot) public {
-		vm.prank(user);
-		BidOptions memory options = BidOptions({ paymentType: PaymentType.WALLET, multibid: 1, message: "", rune: 0 });
-		auctioneer.bid(lot, options);
+		_bidWithOptions(user, lot, BidOptions({ paymentType: PaymentType.WALLET, multibid: 1, message: "", rune: 0 }));
 	}
 	function _multibid(address user, uint256 bidCount) public {
-		vm.prank(user);
-		BidOptions memory options = BidOptions({
-			paymentType: PaymentType.WALLET,
-			multibid: bidCount,
-			message: "",
-			rune: 0
-		});
-		auctioneer.bid(0, options);
+		_bidWithOptions(user, 0, BidOptions({ paymentType: PaymentType.WALLET, multibid: bidCount, message: "", rune: 0 }));
 	}
 	function _multibidLot(address user, uint256 bidCount, uint256 lot) public {
-		vm.prank(user);
-		BidOptions memory options = BidOptions({
-			paymentType: PaymentType.WALLET,
-			multibid: bidCount,
-			message: "",
-			rune: 0
-		});
-		auctioneer.bid(lot, options);
+		_bidWithOptions(
+			user,
+			lot,
+			BidOptions({ paymentType: PaymentType.WALLET, multibid: bidCount, message: "", rune: 0 })
+		);
 	}
 	function _bidUntil(address user, uint256 timer, uint256 until) public {
 		while (true) {
@@ -524,13 +571,15 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		}
 	}
 	function _bidWithRune(address user, uint256 lot, uint8 rune) internal {
-		vm.prank(user);
-		auctioneer.bid(lot, BidOptions({ paymentType: PaymentType.WALLET, multibid: 1, message: "", rune: rune }));
+		_bidWithOptions(user, lot, BidOptions({ paymentType: PaymentType.WALLET, multibid: 1, message: "", rune: rune }));
 	}
 
 	function _multibidWithRune(address user, uint256 lot, uint256 multibid, uint8 rune) internal {
-		vm.prank(user);
-		auctioneer.bid(lot, BidOptions({ paymentType: PaymentType.WALLET, multibid: multibid, message: "", rune: rune }));
+		_bidWithOptions(
+			user,
+			lot,
+			BidOptions({ paymentType: PaymentType.WALLET, multibid: multibid, message: "", rune: rune })
+		);
 	}
 
 	// Farm helpers
@@ -549,5 +598,15 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		uint256[] memory lots = new uint256[](1);
 		lots[0] = _lot;
 		return auctioneerUser.getUserLotInfos(lots, _user)[0];
+	}
+
+	// Funds
+	function _addUserFunds(address user, uint256 amount) public {
+		vm.deal(user, amount);
+		_addUserFundsNoDeal(user, amount);
+	}
+	function _addUserFundsNoDeal(address user, uint256 amount) public {
+		vm.prank(user);
+		auctioneerUser.addFunds{ value: amount }();
 	}
 }

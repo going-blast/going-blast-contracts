@@ -24,7 +24,7 @@ contract AuctioneerFarmHarvestTest is AuctioneerHelper, AuctioneerFarmEvents {
 		_createDefaultDay1Auction();
 	}
 
-	function _farmDeposit(address user, uint256 pid, uint256 amount) public {
+	function _farmDeposit(address payable user, uint256 pid, uint256 amount) public {
 		vm.prank(user);
 		farm.deposit(pid, amount, user);
 	}
@@ -33,42 +33,44 @@ contract AuctioneerFarmHarvestTest is AuctioneerHelper, AuctioneerFarmEvents {
 		vm.prank(user1);
 		farm.deposit(goPid, 5e18, user1);
 
-		_injectFarmUSD(100e18);
+		_injectFarmETH(100e18);
 
 		vm.warp(block.timestamp + 1.5 days);
 
 		uint256 userDebtGo = farm.getPoolUser(goPid, user1).goDebt;
 		uint256 userDebtVoucher = farm.getPoolUser(goPid, user1).voucherDebt;
-		uint256 userDebtUsd = farm.getPoolUser(goPid, user1).usdDebt;
+		uint256 userDebtEth = farm.getPoolUser(goPid, user1).ethDebt;
 
 		uint256 goPerShare = farm.getPoolUpdated(goPid).accGoPerShare;
 		uint256 voucherPerShare = farm.getPoolUpdated(goPid).accVoucherPerShare;
-		uint256 usdPerShare = farm.getPoolUpdated(goPid).accUsdPerShare;
+		uint256 ethPerShare = farm.getPoolUpdated(goPid).accEthPerShare;
 		uint256 userStaked = farm.getPoolUser(goPid, user1).amount;
 		uint256 expectedGoHarvested = ((goPerShare * userStaked) / farm.REWARD_PRECISION()) - userDebtGo;
 		uint256 expectedVoucherHarvested = ((voucherPerShare * userStaked) / farm.REWARD_PRECISION()) - userDebtVoucher;
-		uint256 expectedUsdHarvested = ((usdPerShare * userStaked) / farm.REWARD_PRECISION()) - userDebtUsd;
+		uint256 expectedEthHarvested = ((ethPerShare * userStaked) / farm.REWARD_PRECISION()) - userDebtEth;
 
 		_expectTokenTransfer(GO, address(farm), user1, expectedGoHarvested);
-		_expectTokenTransfer(USD, address(farm), user1, expectedUsdHarvested);
+		_prepExpectETHTransfer(0, address(farm), user1);
 
 		vm.expectEmit(true, true, true, true);
 		emit Harvest(
 			user1,
 			goPid,
-			PendingAmounts({ usd: expectedUsdHarvested, go: expectedGoHarvested, voucher: expectedVoucherHarvested }),
+			PendingAmounts({ eth: expectedEthHarvested, go: expectedGoHarvested, voucher: expectedVoucherHarvested }),
 			user1
 		);
 
 		vm.prank(user1);
 		farm.harvest(goPid, user1);
+
+		_expectETHTransfer(0, address(farm), user1, expectedEthHarvested);
 	}
 
 	function test_harvest_Should_BringGoPerShareCurrent() public {
 		vm.prank(user1);
 		farm.deposit(goPid, 5e18, user1);
 
-		_injectFarmUSD(100e18);
+		_injectFarmETH(100e18);
 
 		vm.warp(block.timestamp + 1.5 days);
 
@@ -85,30 +87,32 @@ contract AuctioneerFarmHarvestTest is AuctioneerHelper, AuctioneerFarmEvents {
 		vm.prank(user1);
 		farm.deposit(goPid, 5e18, user1);
 
-		_injectFarmUSD(100e18);
+		_injectFarmETH(100e18);
 
 		vm.warp(block.timestamp + 1.5 days);
 
 		PendingAmounts memory pending = farm.pending(goPid, user1);
 
 		_expectTokenTransfer(GO, address(farm), user1, pending.go);
-		_expectTokenTransfer(USD, address(farm), user1, pending.usd);
+		_prepExpectETHTransfer(0, address(farm), user1);
 
 		vm.prank(user1);
 		farm.harvest(goPid, user1);
+
+		_expectETHTransfer(0, address(farm), user1, pending.eth);
 	}
 
 	function test_harvest_Should_PendingDropTo0AfterHarvest() public {
 		vm.prank(user1);
 		farm.deposit(goPid, 5e18, user1);
 
-		_injectFarmUSD(100e18);
+		_injectFarmETH(100e18);
 
 		vm.warp(block.timestamp + 1.5 days);
 
 		PendingAmounts memory pending = farm.pending(goPid, user1);
 
-		assertGt(pending.usd, 0, "Should have some pending USD");
+		assertGt(pending.eth, 0, "Should have some pending ETH");
 		assertGt(pending.go, 0, "Should have some pending GO");
 
 		vm.prank(user1);
@@ -116,7 +120,7 @@ contract AuctioneerFarmHarvestTest is AuctioneerHelper, AuctioneerFarmEvents {
 
 		pending = farm.pending(goPid, user1);
 
-		assertEq(pending.usd, 0, "Pending USD dropped to 0");
+		assertEq(pending.eth, 0, "Pending ETH dropped to 0");
 		assertEq(pending.go, 0, "Pending GO dropped to 0");
 	}
 
@@ -141,7 +145,7 @@ contract AuctioneerFarmHarvestTest is AuctioneerHelper, AuctioneerFarmEvents {
 		vm.prank(user1);
 		farm.deposit(goPid, 10e18, user1);
 
-		_injectFarmUSD(100e18);
+		_injectFarmETH(100e18);
 
 		vm.warp(block.timestamp + 1 days);
 
@@ -153,13 +157,13 @@ contract AuctioneerFarmHarvestTest is AuctioneerHelper, AuctioneerFarmEvents {
 			farm.getPool(goPid).allocPoint) / (farm.getPool(goPid).supply * farm.totalAllocPoint());
 		assertEq(updatedGoRewPerShare, expectedGoPerShare, "Go per share updated correctly");
 
-		// usdPerShare
-		uint256 expectedUsdPerShare = (100e18 * farm.REWARD_PRECISION() * farm.getPool(goPid).allocPoint) /
+		// ethPerShare
+		uint256 expectedEthPerShare = (100e18 * farm.REWARD_PRECISION() * farm.getPool(goPid).allocPoint) /
 			(farm.getPool(goPid).supply * farm.totalAllocPoint());
-		assertEq(farm.getPoolUpdated(goPid).accUsdPerShare, expectedUsdPerShare, "Usd Reward per Share matches expected");
+		assertEq(farm.getPoolUpdated(goPid).accEthPerShare, expectedEthPerShare, "Eth Reward per Share matches expected");
 
 		assertEq(farm.getPoolUser(goPid, user1).goDebt, 0, "User1 debt GO not yet initialized");
-		assertEq(farm.getPoolUser(goPid, user1).usdDebt, 0, "User1 debt USD not yet initialized");
+		assertEq(farm.getPoolUser(goPid, user1).ethDebt, 0, "User1 debt ETH not yet initialized");
 
 		vm.prank(user1);
 		farm.harvest(goPid, user1);
@@ -176,9 +180,9 @@ contract AuctioneerFarmHarvestTest is AuctioneerHelper, AuctioneerFarmEvents {
 		uint256 expectedUser1DebtGO = (expectedUser1Staked * expectedGoPerShare) / farm.REWARD_PRECISION();
 		assertEq(farm.getPoolUser(goPid, user1).goDebt, expectedUser1DebtGO, "User1 debt GO matches expected");
 
-		// USD debt
-		uint256 expectedUser1DebtUSD = (expectedUser1Staked * expectedUsdPerShare) / farm.REWARD_PRECISION();
-		assertEq(farm.getPoolUser(goPid, user1).usdDebt, expectedUser1DebtUSD, "User1 debt USD  matches expected");
+		// ETH debt
+		uint256 expectedUser1DebtETH = (expectedUser1Staked * expectedEthPerShare) / farm.REWARD_PRECISION();
+		assertEq(farm.getPoolUser(goPid, user1).ethDebt, expectedUser1DebtETH, "User1 debt ETH  matches expected");
 	}
 
 	function test_allHarvest() public {
@@ -187,7 +191,7 @@ contract AuctioneerFarmHarvestTest is AuctioneerHelper, AuctioneerFarmEvents {
 		_farmDeposit(user1, goPid, 10e18);
 		_farmDeposit(user1, goLpPid, 3e18);
 
-		_injectFarmUSD(100e18);
+		_injectFarmETH(100e18);
 
 		vm.warp(block.timestamp + 1 days);
 
@@ -195,11 +199,11 @@ contract AuctioneerFarmHarvestTest is AuctioneerHelper, AuctioneerFarmEvents {
 
 		assertGt(pending.go, 0, "Has some go to harvest");
 		assertGt(pending.voucher, 0, "Has some voucher to harvest");
-		assertGt(pending.usd, 0, "Has some usd to harvest");
+		assertGt(pending.eth, 0, "Has some eth to harvest");
 
 		uint256 goInit = GO.balanceOf(user1);
 		uint256 voucherInit = VOUCHER.balanceOf(user1);
-		uint256 usdInit = USD.balanceOf(user1);
+		uint256 ethInit = user1.balance;
 
 		// Expect 2 harvest events (goPid & goLpPid)
 		PendingAmounts memory goPoolPending = farm.pending(goPid, user1);
@@ -214,15 +218,15 @@ contract AuctioneerFarmHarvestTest is AuctioneerHelper, AuctioneerFarmEvents {
 
 		uint256 goFinal = GO.balanceOf(user1);
 		uint256 voucherFinal = VOUCHER.balanceOf(user1);
-		uint256 usdFinal = USD.balanceOf(user1);
+		uint256 ethFinal = user1.balance;
 
 		assertEq(goFinal - goInit, pending.go, "AllHarvested GO should match pending");
 		assertEq(voucherFinal - voucherInit, pending.voucher, "AllHarvested VOUCHER should match pending");
-		assertEq(usdFinal - usdInit, pending.usd, "AllHarvested USD should match pending");
+		assertEq(ethFinal - ethInit, pending.eth, "AllHarvested ETH should match pending");
 	}
 	function test_allHarvest_to() public {
 		_farmDeposit(user1, goPid, 10e18);
-		_injectFarmUSD(100e18);
+		_injectFarmETH(100e18);
 
 		vm.warp(block.timestamp + 1 days);
 
@@ -230,11 +234,11 @@ contract AuctioneerFarmHarvestTest is AuctioneerHelper, AuctioneerFarmEvents {
 
 		assertGt(pending.go, 0, "Has some go to harvest");
 		assertGt(pending.voucher, 0, "Has some voucher to harvest");
-		assertGt(pending.usd, 0, "Has some usd to harvest");
+		assertGt(pending.eth, 0, "Has some eth to harvest");
 
 		uint256 goInit = GO.balanceOf(user2);
 		uint256 voucherInit = VOUCHER.balanceOf(user2);
-		uint256 usdInit = USD.balanceOf(user2);
+		uint256 ethInit = user2.balance;
 
 		// Expect 2 harvest events (goPid & goLpPid)
 		vm.expectEmit(true, true, true, true);
@@ -245,29 +249,31 @@ contract AuctioneerFarmHarvestTest is AuctioneerHelper, AuctioneerFarmEvents {
 
 		uint256 goFinal = GO.balanceOf(user2);
 		uint256 voucherFinal = VOUCHER.balanceOf(user2);
-		uint256 usdFinal = USD.balanceOf(user2);
+		uint256 ethFinal = user2.balance;
 
 		assertEq(goFinal - goInit, pending.go, "user2 AllHarvested GO should match user1 pending");
 		assertEq(voucherFinal - voucherInit, pending.voucher, "user2 AllHarvested VOUCHER should match user1 pending");
-		assertEq(usdFinal - usdInit, pending.usd, "user2 AllHarvested USD should match user1 pending");
+		assertEq(ethFinal - ethInit, pending.eth, "user2 AllHarvested ETH should match user1 pending");
 	}
 
 	function test_harvest_to() public {
 		vm.prank(user1);
 		farm.deposit(goPid, 5e18, user1);
 
-		_injectFarmUSD(100e18);
+		_injectFarmETH(100e18);
 		vm.warp(block.timestamp + 1.5 days);
 
 		PendingAmounts memory pending = farm.pending(goPid, user1);
 		_expectTokenTransfer(GO, address(farm), user2, pending.go);
 		_expectTokenTransfer(VOUCHER, address(farm), user2, pending.voucher);
-		_expectTokenTransfer(USD, address(farm), user2, pending.usd);
+		_prepExpectETHTransfer(0, address(farm), user2);
 
 		vm.expectEmit(true, true, true, true);
 		emit Harvest(user1, goPid, pending, user2);
 
 		vm.prank(user1);
 		farm.harvest(goPid, user2);
+
+		_expectETHTransfer(0, address(farm), user2, pending.eth);
 	}
 }

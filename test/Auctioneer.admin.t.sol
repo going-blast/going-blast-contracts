@@ -11,12 +11,11 @@ contract AuctioneerAdminTest is AuctioneerHelper {
 	}
 
 	function test_initialConditions() public {
-		assertEq(address(USD), address(auctioneer.USD()));
 		assertEq(address(GO), address(auctioneer.GO()));
-		assertEq(auctioneerAuction.bidCost(), usdDecOffset(1e18));
-		assertEq(auctioneerAuction.bidIncrement(), usdDecOffset(1e16));
-		assertEq(auctioneerAuction.startingBid(), usdDecOffset(1e18));
-		assertEq(auctioneerAuction.privateAuctionRequirement(), 20e18);
+		assertEq(auctioneerAuction.bidCost(), bidCost);
+		assertEq(auctioneerAuction.bidIncrement(), bidIncrement);
+		assertEq(auctioneerAuction.startingBid(), startingBid);
+		assertEq(auctioneerAuction.privateAuctionRequirement(), privateAuctionRequirement);
 	}
 
 	// SET TREASURY
@@ -94,50 +93,50 @@ contract AuctioneerAdminTest is AuctioneerHelper {
 
 	// SET STARTING BID
 	function test_updateStartingBid() public {
-		auctioneerAuction.updateStartingBid(usdDecOffset(2e18));
-		assertEq(usdDecOffset(2e18), auctioneerAuction.startingBid());
+		auctioneerAuction.updateStartingBid(0.002e18);
+		assertEq(0.002e18, auctioneerAuction.startingBid());
 	}
 	function test_updateStartingBid_ExpectEmit_UpdatedStartingBid() public {
 		vm.expectEmit(true, true, true, true);
-		emit UpdatedStartingBid(usdDecOffset(2e18));
-		auctioneerAuction.updateStartingBid(usdDecOffset(2e18));
+		emit UpdatedStartingBid(0.002e18);
+		auctioneerAuction.updateStartingBid(0.002e18);
 	}
 	function test_updateStartingBid_RevertWhen_CallerIsNotOwner() public {
 		vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, address(0)));
 		vm.prank(address(0));
-		auctioneerAuction.updateStartingBid(usdDecOffset(2e18));
+		auctioneerAuction.updateStartingBid(0.002e18);
 	}
 	function test_updateStartingBid_RevertWhen_Invalid_TooLow() public {
 		vm.expectRevert(Invalid.selector);
-		auctioneerAuction.updateStartingBid(usdDecOffset(0.49e18));
+		auctioneerAuction.updateStartingBid(0);
 	}
 	function test_updateStartingBid_RevertWhen_Invalid_TooHigh() public {
 		vm.expectRevert(Invalid.selector);
-		auctioneerAuction.updateStartingBid(usdDecOffset(2.01e18));
+		auctioneerAuction.updateStartingBid(0.11e18);
 	}
 
 	// SET BID COST
 	function test_updateBidCost() public {
-		auctioneerAuction.updateBidCost(usdDecOffset(0.5e18));
-		assertEq(usdDecOffset(0.5e18), auctioneerAuction.bidCost());
+		auctioneerAuction.updateBidCost(0.005e18);
+		assertEq(0.005e18, auctioneerAuction.bidCost());
 	}
 	function test_updateBidCost_ExpectEmit_UpdatedBidCost() public {
 		vm.expectEmit(true, true, true, true);
-		emit UpdatedBidCost(usdDecOffset(0.5e18));
-		auctioneerAuction.updateBidCost(usdDecOffset(0.5e18));
+		emit UpdatedBidCost(0.005e18);
+		auctioneerAuction.updateBidCost(0.005e18);
 	}
 	function test_updateBidCost_RevertWhen_CallerIsNotOwner() public {
 		vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, address(0)));
 		vm.prank(address(0));
-		auctioneerAuction.updateBidCost(usdDecOffset(0.5e18));
+		auctioneerAuction.updateBidCost(0.005e18);
 	}
 	function test_updateBidCost_RevertWhen_Invalid_TooLow() public {
 		vm.expectRevert(Invalid.selector);
-		auctioneerAuction.updateBidCost(usdDecOffset(0.49e18));
+		auctioneerAuction.updateBidCost(0);
 	}
 	function test_updateBidCost_RevertWhen_Invalid_TooHigh() public {
 		vm.expectRevert(Invalid.selector);
-		auctioneerAuction.updateBidCost(usdDecOffset(2.01e18));
+		auctioneerAuction.updateBidCost(0.11e18);
 	}
 
 	// SET EARLY HARVEST TAX

@@ -70,6 +70,8 @@ contract GBScriptUtils is Script, ChainJsonUtils {
 		auctioneerUser = AuctioneerUser(readAddress(contractPath("AuctioneerUser")));
 		auctioneerEmissions = AuctioneerEmissions(readAddress(contractPath("AuctioneerEmissions")));
 		auctioneerFarm = AuctioneerFarm(readAddress(contractPath("AuctioneerFarm")));
+		presale = GoingBlastPresale(payable(readAddress(contractPath("GoingBlastPresale"))));
+		airdrop = GoingBlastAirdrop(readAddress(contractPath("GoingBlastAirdrop")));
 		GO = GoToken(readAddress(contractPath("GO")));
 		VOUCHER = VoucherToken(readAddress(contractPath("VOUCHER")));
 		USD = IERC20(readAddress(contractPath("USD")));

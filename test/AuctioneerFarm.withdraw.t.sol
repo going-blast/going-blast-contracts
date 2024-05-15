@@ -62,7 +62,7 @@ contract AuctioneerFarmWithdrawTest is AuctioneerHelper, AuctioneerFarmEvents {
 		vm.prank(user1);
 		farm.deposit(goPid, 10e18, user1);
 
-		_injectFarmUSD(100e18);
+		_injectFarmETH(100e18);
 
 		vm.warp(block.timestamp + 1 days);
 
@@ -72,13 +72,13 @@ contract AuctioneerFarmWithdrawTest is AuctioneerHelper, AuctioneerFarmEvents {
 			farm.getEqualizedTotalStaked();
 		assertEq(updatedGoPerShare, expectedGoPerShare, "Go per share updated correctly");
 
-		// usdPerShare
-		uint256 expectedUsdPerShare = (100e18 * farm.REWARD_PRECISION() * farm.getPool(goPid).allocPoint) /
+		// ethPerShare
+		uint256 expectedEthPerShare = (100e18 * farm.REWARD_PRECISION() * farm.getPool(goPid).allocPoint) /
 			(farm.totalAllocPoint() * farm.getPool(goPid).supply);
-		assertEq(farm.getPool(goPid).accUsdPerShare, expectedUsdPerShare, "Usd Reward per Share matches expected");
+		assertEq(farm.getPool(goPid).accEthPerShare, expectedEthPerShare, "Eth Reward per Share matches expected");
 
 		assertEq(farm.getPoolUser(goPid, user1).goDebt, 0, "User1 debt GO is 0");
-		assertEq(farm.getPoolUser(goPid, user1).usdDebt, 0, "User1 debt USD is 0");
+		assertEq(farm.getPoolUser(goPid, user1).ethDebt, 0, "User1 debt ETH is 0");
 
 		vm.prank(user1);
 		farm.withdraw(goPid, 5e18, user1);
@@ -94,9 +94,9 @@ contract AuctioneerFarmWithdrawTest is AuctioneerHelper, AuctioneerFarmEvents {
 		uint256 expectedUser1DebtGO = (expectedUser1Staked * expectedGoPerShare) / farm.REWARD_PRECISION();
 		assertEq(farm.getPoolUser(goPid, user1).goDebt, expectedUser1DebtGO, "User1 debt GO matches expected");
 
-		// USD debt
-		uint256 expectedUser1DebtUSD = (expectedUser1Staked * expectedUsdPerShare) / farm.REWARD_PRECISION();
-		assertEq(farm.getPoolUser(goPid, user1).usdDebt, expectedUser1DebtUSD, "User1 debt USD matches expected");
+		// ETH debt
+		uint256 expectedUser1DebtETH = (expectedUser1Staked * expectedEthPerShare) / farm.REWARD_PRECISION();
+		assertEq(farm.getPoolUser(goPid, user1).ethDebt, expectedUser1DebtETH, "User1 debt ETH matches expected");
 	}
 
 	function test_withdraw_Should_HarvestPending() public {
@@ -104,7 +104,7 @@ contract AuctioneerFarmWithdrawTest is AuctioneerHelper, AuctioneerFarmEvents {
 		vm.prank(user2);
 		farm.deposit(goPid, 10e18, user2);
 
-		_injectFarmUSD(100e18);
+		_injectFarmETH(100e18);
 
 		vm.warp(block.timestamp + 1 days);
 
@@ -113,42 +113,44 @@ contract AuctioneerFarmWithdrawTest is AuctioneerHelper, AuctioneerFarmEvents {
 
 		uint256 userDebtGo = farm.getPoolUser(goPid, user1).goDebt;
 		uint256 userDebtVoucher = farm.getPoolUser(goPid, user1).voucherDebt;
-		uint256 userDebtUsd = farm.getPoolUser(goPid, user1).usdDebt;
+		uint256 userDebtEth = farm.getPoolUser(goPid, user1).ethDebt;
 
-		// Add new batch of usd
-		_injectFarmUSD(75e18);
+		// Add new batch of eth
+		_injectFarmETH(75e18);
 
 		// Warp to emit GO
 		vm.warp(block.timestamp + 1.5 days);
 
 		uint256 goPerShare = farm.getPoolUpdated(goPid).accGoPerShare;
 		uint256 voucherPerShare = farm.getPoolUpdated(goPid).accVoucherPerShare;
-		uint256 usdPerShare = farm.getPoolUpdated(goPid).accUsdPerShare;
+		uint256 ethPerShare = farm.getPoolUpdated(goPid).accEthPerShare;
 		uint256 userStaked = farm.getPoolUser(goPid, user1).amount;
 		uint256 expectedGoHarvested = ((goPerShare * userStaked) / farm.REWARD_PRECISION()) - userDebtGo;
 		uint256 expectedBidHarvested = ((voucherPerShare * userStaked) / farm.REWARD_PRECISION()) - userDebtVoucher;
-		uint256 expectedUsdHarvested = ((usdPerShare * userStaked) / farm.REWARD_PRECISION()) - userDebtUsd;
+		uint256 expectedEthHarvested = ((ethPerShare * userStaked) / farm.REWARD_PRECISION()) - userDebtEth;
 
 		_expectTokenTransfer(GO, address(farm), user1, expectedGoHarvested);
-		_expectTokenTransfer(USD, address(farm), user1, expectedUsdHarvested);
+		_prepExpectETHTransfer(0, address(farm), user1);
 
 		vm.expectEmit(true, true, true, true);
 		emit Harvest(
 			user1,
 			goPid,
-			PendingAmounts({ go: expectedGoHarvested, voucher: expectedBidHarvested, usd: expectedUsdHarvested }),
+			PendingAmounts({ go: expectedGoHarvested, voucher: expectedBidHarvested, eth: expectedEthHarvested }),
 			user1
 		);
 
 		vm.prank(user1);
 		farm.withdraw(goPid, 1e18, user1);
+
+		_expectETHTransfer(0, address(farm), user1, expectedEthHarvested);
 	}
 	function test_withdraw_Withdraw0_Should_HarvestPending() public {
 		// Add shares
 		vm.prank(user2);
 		farm.deposit(goPid, 10e18, user2);
 
-		_injectFarmUSD(100e18);
+		_injectFarmETH(100e18);
 
 		vm.warp(block.timestamp + 1 days);
 
@@ -157,35 +159,37 @@ contract AuctioneerFarmWithdrawTest is AuctioneerHelper, AuctioneerFarmEvents {
 
 		uint256 userDebtGo = farm.getPoolUser(goPid, user1).goDebt;
 		uint256 userDebtVoucher = farm.getPoolUser(goPid, user1).voucherDebt;
-		uint256 userDebtUsd = farm.getPoolUser(goPid, user1).usdDebt;
+		uint256 userDebtEth = farm.getPoolUser(goPid, user1).ethDebt;
 
-		// Add new batch of usd
-		_injectFarmUSD(75e18);
+		// Add new batch of eth
+		_injectFarmETH(75e18);
 
 		// Warp to emit GO
 		vm.warp(block.timestamp + 1.5 days);
 
 		uint256 goPerShare = farm.getPoolUpdated(goPid).accGoPerShare;
 		uint256 voucherPerShare = farm.getPoolUpdated(goPid).accVoucherPerShare;
-		uint256 usdPerShare = farm.getPoolUpdated(goPid).accUsdPerShare;
+		uint256 ethPerShare = farm.getPoolUpdated(goPid).accEthPerShare;
 		uint256 userStaked = farm.getPoolUser(goPid, user1).amount;
 		uint256 expectedGoHarvested = ((goPerShare * userStaked) / farm.REWARD_PRECISION()) - userDebtGo;
 		uint256 expectedBidHarvested = ((voucherPerShare * userStaked) / farm.REWARD_PRECISION()) - userDebtVoucher;
-		uint256 expectedUsdHarvested = ((usdPerShare * userStaked) / farm.REWARD_PRECISION()) - userDebtUsd;
+		uint256 expectedEthHarvested = ((ethPerShare * userStaked) / farm.REWARD_PRECISION()) - userDebtEth;
 
 		_expectTokenTransfer(GO, address(farm), user1, expectedGoHarvested);
-		_expectTokenTransfer(USD, address(farm), user1, expectedUsdHarvested);
+		_prepExpectETHTransfer(0, address(farm), user1);
 
 		vm.expectEmit(true, true, true, true);
 		emit Harvest(
 			user1,
 			goPid,
-			PendingAmounts({ go: expectedGoHarvested, voucher: expectedBidHarvested, usd: expectedUsdHarvested }),
+			PendingAmounts({ go: expectedGoHarvested, voucher: expectedBidHarvested, eth: expectedEthHarvested }),
 			user1
 		);
 
 		vm.prank(user1);
 		farm.withdraw(goPid, 0, user1);
+
+		_expectETHTransfer(0, address(farm), user1, expectedEthHarvested);
 	}
 
 	function test_emergencyWithdraw() public {
@@ -193,7 +197,7 @@ contract AuctioneerFarmWithdrawTest is AuctioneerHelper, AuctioneerFarmEvents {
 		vm.prank(user1);
 		farm.deposit(goPid, 10e18, user1);
 
-		_injectFarmUSD(100e18);
+		_injectFarmETH(100e18);
 
 		vm.warp(block.timestamp + 1 days);
 
@@ -212,7 +216,7 @@ contract AuctioneerFarmWithdrawTest is AuctioneerHelper, AuctioneerFarmEvents {
 		assertEq(farm.getPoolUser(goPid, user1).amount, 0, "User's amount should be removed");
 		assertEq(farm.getPoolUser(goPid, user1).goDebt, 0, "Expect Go debt to be set to 0");
 		assertEq(farm.getPoolUser(goPid, user1).voucherDebt, 0, "Expect Voucher debt to be set to 0");
-		assertEq(farm.getPoolUser(goPid, user1).usdDebt, 0, "Expect Usd debt to be set to 0");
+		assertEq(farm.getPoolUser(goPid, user1).ethDebt, 0, "Expect Eth debt to be set to 0");
 	}
 
 	function test_emergencyWithdraw_to() public {
@@ -236,14 +240,14 @@ contract AuctioneerFarmWithdrawTest is AuctioneerHelper, AuctioneerFarmEvents {
 		farm.deposit(goPid, 5e18, user1);
 
 		// Emissions
-		_injectFarmUSD(75e18);
+		_injectFarmETH(75e18);
 		vm.warp(block.timestamp + 1.5 days);
 
 		PendingAmounts memory pending = farm.pending(goPid, user1);
 
 		_expectTokenTransfer(GO, address(farm), user2, pending.go);
 		_expectTokenTransfer(VOUCHER, address(farm), user2, pending.voucher);
-		_expectTokenTransfer(USD, address(farm), user2, pending.usd);
+		_prepExpectETHTransfer(0, address(farm), user2);
 
 		vm.expectEmit(true, true, true, true);
 		emit Harvest(user1, goPid, pending, user2);
@@ -253,5 +257,7 @@ contract AuctioneerFarmWithdrawTest is AuctioneerHelper, AuctioneerFarmEvents {
 
 		vm.prank(user1);
 		farm.withdraw(goPid, 1e18, user2);
+
+		_expectETHTransfer(0, address(farm), user2, pending.eth);
 	}
 }

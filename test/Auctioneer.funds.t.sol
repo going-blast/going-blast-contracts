@@ -22,40 +22,27 @@ contract AuctioneerFundsTest is AuctioneerHelper {
 		_createDefaultDay1Auction();
 	}
 
-	function test_addFunds_RevertWhen_InsufficientBalance() public {
-		vm.expectRevert(BadDeposit.selector);
-
+	function testFail_addFunds_RevertWhen_InsufficientBalance() public {
 		vm.prank(user1);
-		auctioneerUser.addFunds(100000e18);
-	}
-
-	function test_addFunds_RevertWhen_InsufficientAllowance() public {
-		vm.prank(user1);
-		IERC20(USD).approve(address(auctioneerUser), 0);
-
-		vm.expectRevert(abi.encodeWithSelector(ERC20InsufficientAllowance.selector, address(auctioneerUser), 0, 10e18));
-
-		vm.prank(user1);
-		auctioneerUser.addFunds(10e18);
+		auctioneerUser.addFunds{ value: 100000e18 }();
 	}
 
 	function test_addFunds_ExpectEmit_AddedFunds() public {
 		vm.expectEmit(true, true, true, true);
 		emit AddedFunds(user1, 10e18);
 
-		vm.prank(user1);
-		auctioneerUser.addFunds(10e18);
+		_addUserFunds(user1, 10e18);
 	}
 
 	function test_addFunds_Success() public {
-		uint256 userUSDInit = USD.balanceOf(user1);
+		vm.deal(user1, 10e18);
 
-		vm.prank(user1);
-		auctioneerUser.addFunds(10e18);
+		_prepExpectETHTransfer(0, user1, address(auctioneer));
 
+		_addUserFundsNoDeal(user1, 10e18);
+
+		_expectETHTransfer(0, user1, address(auctioneer), 10e18);
 		assertEq(auctioneerUser.userFunds(user1), 10e18, "User added funds marked in auctioneer");
-		assertEq(USD.balanceOf(address(auctioneer)), 10e18, "AuctionManager received USD");
-		assertEq(USD.balanceOf(user1), userUSDInit - 10e18, "User sent USD");
 	}
 
 	function test_withdrawFunds_RevertWhen_InsufficientDeposited() public {
@@ -66,8 +53,7 @@ contract AuctioneerFundsTest is AuctioneerHelper {
 	}
 
 	function test_withdrawFunds_ExpectEmit_WithdrewFunds() public {
-		vm.prank(user1);
-		auctioneerUser.addFunds(20e18);
+		_addUserFunds(user1, 20e18);
 
 		vm.expectEmit(true, true, true, true);
 		emit WithdrewFunds(user1, 10e18);
@@ -77,17 +63,14 @@ contract AuctioneerFundsTest is AuctioneerHelper {
 	}
 
 	function test_withdrawFunds_Success() public {
-		vm.prank(user1);
-		auctioneerUser.addFunds(15e18);
+		_addUserFunds(user1, 15e18);
 
-		uint256 auctioneerUSDInit = USD.balanceOf(address(auctioneer));
-		uint256 userUSDInit = USD.balanceOf(user1);
+		_prepExpectETHTransfer(0, address(auctioneer), user1);
 
 		vm.prank(user1);
 		auctioneerUser.withdrawFunds(10e18);
 
 		assertEq(auctioneerUser.userFunds(user1), 15e18 - 10e18, "User withdrawn funds marked in auctioneer");
-		assertEq(USD.balanceOf(address(auctioneer)), auctioneerUSDInit - 10e18, "AuctionManager sent USD");
-		assertEq(USD.balanceOf(user1), userUSDInit + 10e18, "User received USD");
+		_expectETHTransfer(0, address(auctioneer), user1, 10e18);
 	}
 }

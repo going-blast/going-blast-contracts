@@ -16,7 +16,7 @@ import { IAuctioneerUser } from "./AuctioneerUser.sol";
 import { IAuctioneerEmissions } from "./AuctioneerEmissions.sol";
 import { IAuctioneerAuction } from "./AuctioneerAuction.sol";
 
-contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
+contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield, IAuctioneer {
 	using GBMath for uint256;
 	using SafeERC20 for IERC20;
 
@@ -30,15 +30,13 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 	address public treasury;
 	address public deadAddress = 0x000000000000000000000000000000000000dEaD;
 
-	IERC20 public USD;
 	IERC20 public GO;
 	IERC20 public VOUCHER;
 	IWETH public WETH;
 
-	constructor(IERC20 _go, IERC20 _voucher, IERC20 _usd, IWETH _weth) Ownable(msg.sender) {
+	constructor(IERC20 _go, IERC20 _voucher, IWETH _weth) Ownable(msg.sender) {
 		GO = _go;
 		VOUCHER = _voucher;
-		USD = _usd;
 		WETH = _weth;
 	}
 
@@ -54,11 +52,9 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 
 		auctioneerUser = IAuctioneerUser(_auctioneerUser);
 		auctioneerUser.link(_auctioneerEmissions, _auctioneerAuction);
-		USD.safeIncreaseAllowance(address(auctioneerUser), type(uint256).max);
 
 		auctioneerAuction = IAuctioneerAuction(_auctioneerAuction);
 		auctioneerAuction.link();
-		USD.safeIncreaseAllowance(address(auctioneerAuction), type(uint256).max);
 
 		emit Linked(address(this), _auctioneerUser, _auctioneerEmissions, _auctioneerAuction);
 	}
@@ -77,26 +73,19 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 	}
 
 	function updateFarm(address _farm) public onlyOwner {
-		if (address(auctioneerAuction) == address(0)) revert ZeroAddress();
 		auctioneerFarm = IAuctioneerFarm(_farm);
-		auctioneerAuction.updateFarm(_farm);
-		auctioneerFarm.link(address(auctioneerAuction));
+		auctioneerFarm.link();
 		emit UpdatedFarm(address(auctioneerFarm));
 	}
 
 	// BLAST
 
 	function initializeBlast() public onlyOwner {
-		_initializeBlast(address(USD), address(WETH));
+		_initializeBlast();
 	}
 
-	function claimYieldAll(
-		address _recipient,
-		uint256 _amountWETH,
-		uint256 _amountUSDB,
-		uint256 _minClaimRateBips
-	) public onlyOwner {
-		_claimYieldAll(_recipient, _amountWETH, _amountUSDB, _minClaimRateBips);
+	function claimYieldAll(address _recipient, uint256 _minClaimRateBips) public onlyOwner {
+		_claimYieldAll(_recipient, _minClaimRateBips);
 	}
 
 	// PRIVATE AUCTION
@@ -116,6 +105,22 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 		if (!auctioneerEmissions.emissionsInitialized()) revert EmissionsNotInitialized();
 		if (treasury == address(0)) revert TreasuryNotSet();
 
+		uint256 ethAmount = 0;
+
+		// Pull WETH from treasury, must use WETH so that the owner doesn't also need to be the treasury
+		for (uint8 i = 0; i < _params.length; i++) {
+			for (uint8 j = 0; j < _params[i].tokens.length; j++) {
+				if (_params[i].tokens[j].token == address(0)) {
+					ethAmount += _params[i].tokens[j].amount;
+				}
+			}
+		}
+
+		if (ethAmount > 0) {
+			IERC20(address(WETH)).safeTransferFrom(treasury, address(this), ethAmount);
+			WETH.withdraw(ethAmount);
+		}
+
 		for (uint8 i = 0; i < _params.length; i++) {
 			// Allocate Emissions
 			uint256 auctionEmissions = auctioneerEmissions.allocateAuctionEmissions(
@@ -123,8 +128,18 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 				_params[i].emissionBP
 			);
 
+			// Reset lotETH to prevent blending
+			uint256 lotEth = 0;
+
+			// Get amount of ETH that needs to be sent
+			for (uint8 j = 0; j < _params[i].tokens.length; j++) {
+				if (_params[i].tokens[j].token == address(0)) {
+					lotEth = _params[i].tokens[j].amount;
+				}
+			}
+
 			// Create Auction
-			uint256 lot = auctioneerAuction.createAuction(_params[i], auctionEmissions);
+			uint256 lot = auctioneerAuction.createAuction{ value: lotEth }(_params[i], auctionEmissions);
 
 			emit AuctionCreated(lot);
 		}
@@ -132,8 +147,8 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 
 	// CANCEL
 
-	function cancelAuction(uint256 _lot, bool _unwrapETH) public onlyOwner {
-		(uint256 unlockTimestamp, uint256 cancelledEmissions) = auctioneerAuction.cancelAuction(_lot, _unwrapETH);
+	function cancelAuction(uint256 _lot) public onlyOwner {
+		(uint256 unlockTimestamp, uint256 cancelledEmissions) = auctioneerAuction.cancelAuction(_lot);
 
 		auctioneerEmissions.deAllocateEmissions(unlockTimestamp, cancelledEmissions);
 		emit AuctionCancelled(_lot);
@@ -156,28 +171,41 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 	function _takeUserPayment(
 		address _user,
 		PaymentType _paymentType,
-		uint256 _usdAmount,
+		uint256 _ethAmount,
 		uint256 _voucherAmount
 	) internal {
 		if (_paymentType == PaymentType.WALLET) {
-			USD.safeTransferFrom(_user, address(this), _usdAmount);
+			if (msg.value != _ethAmount) revert IncorrectETHPaymentAmount();
+		} else {
+			if (msg.value != 0) revert SentETHButNotWalletPayment();
 		}
 		if (_paymentType == PaymentType.FUNDS) {
-			auctioneerUser.payFromFunds(_user, _usdAmount);
+			auctioneerUser.payFromFunds(_user, _ethAmount);
 		}
 		if (_paymentType == PaymentType.VOUCHER) {
 			VOUCHER.safeTransferFrom(_user, deadAddress, _voucherAmount);
 		}
 	}
 
+	function withdrawUserFunds(address payable _user, uint256 _amount) external {
+		if (msg.sender != address(auctioneerUser)) revert NotAuctioneerUser();
+
+		(bool sent, ) = _user.call{ value: _amount }("");
+		if (!sent) revert ETHTransferFailed();
+	}
+
 	// BID
 
-	function bidWithPermit(uint256 _lot, BidOptions memory _options, PermitData memory _permitData) public nonReentrant {
+	function bidWithPermit(
+		uint256 _lot,
+		BidOptions memory _options,
+		PermitData memory _permitData
+	) public payable nonReentrant {
 		_selfPermit(_permitData);
 		_bid(_lot, _options);
 	}
 
-	function bid(uint256 _lot, BidOptions memory _options) public nonReentrant {
+	function bid(uint256 _lot, BidOptions memory _options) public payable nonReentrant {
 		_bid(_lot, _options);
 	}
 
@@ -227,7 +255,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 		_claimLot(_lot, _options);
 	}
 
-	function claimLot(uint256 _lot, ClaimLotOptions memory _options) public nonReentrant {
+	function claimLot(uint256 _lot, ClaimLotOptions memory _options) public payable nonReentrant {
 		_claimLot(_lot, _options);
 	}
 
@@ -241,19 +269,44 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 			_lot,
 			msg.sender,
 			userBids,
-			userRune,
-			_options
+			userRune
 		);
 
 		// Take Payment
 		_takeUserPayment(msg.sender, _options.paymentType, userShareOfPayment, 0);
 
 		// Distribute Payment
-		auctioneerAuction.distributeLotProfit(_lot, userShareOfPayment);
+		_distributeLotProfit(_lot, userShareOfPayment);
 
 		// Finalize
 		if (triggerFinalization) {
 			finalize(_lot);
+		}
+	}
+
+	function _distributeLotProfit(uint256 _lot, uint256 _userShareOfPayment) internal {
+		(uint256 treasuryDistribution, uint256 farmDistribution) = auctioneerAuction.getProfitDistributions(
+			_lot,
+			_userShareOfPayment
+		);
+
+		_sendDistributions(treasuryDistribution, farmDistribution);
+	}
+
+	function _sendDistributions(uint256 treasuryDistribution, uint256 farmDistribution) internal {
+		if (farmDistribution > 0) {
+			if (address(auctioneerFarm) != address(0) && auctioneerFarm.distributionReceivable()) {
+				// Only send farm distribution if the farm exists and can handle the distribution
+				auctioneerFarm.receiveDistribution{ value: farmDistribution }();
+			} else {
+				// If the farm not available, send the farm distribution to the treasury
+				treasuryDistribution += farmDistribution;
+			}
+		}
+
+		if (treasuryDistribution > 0) {
+			(bool sent, ) = treasury.call{ value: treasuryDistribution }("");
+			if (!sent) revert ETHTransferFailed();
 		}
 	}
 
@@ -263,15 +316,22 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 		finalize(_lot);
 	}
 	function finalize(uint256 _lot) internal {
-		(bool triggerCancellation, uint256 treasuryEmissions) = auctioneerAuction.finalizeAuction(_lot);
+		(
+			bool triggerCancellation,
+			uint256 treasuryEmissions,
+			uint256 treasuryETHDistribution,
+			uint256 farmETHDistribution
+		) = auctioneerAuction.finalizeAuction(_lot);
 
 		if (triggerCancellation) {
-			cancelAuction(_lot, true);
+			cancelAuction(_lot);
 		}
 
 		if (treasuryEmissions > 0) {
 			auctioneerEmissions.transferEmissions(treasury, treasuryEmissions);
 		}
+
+		_sendDistributions(treasuryETHDistribution, farmETHDistribution);
 	}
 
 	// HARVEST
@@ -300,7 +360,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 			GO.safeIncreaseAllowance(address(auctioneerFarm), harvested);
 			auctioneerFarm.depositLockedGo(
 				harvested,
-				msg.sender,
+				payable(msg.sender),
 				unlockTimestamp + auctioneerEmissions.emissionTaxDuration()
 			);
 		}

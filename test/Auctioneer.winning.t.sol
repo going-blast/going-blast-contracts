@@ -34,7 +34,7 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 
 	function test_winning_claimLot_RevertWhen_AuctionStillRunning() public {
 		vm.expectRevert(AuctionStillRunning.selector);
-		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.WALLET, unwrapETH: true }));
+		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.WALLET }));
 	}
 
 	function test_winning_claimLot_ExpectEmit_ClaimedLot() public {
@@ -44,9 +44,13 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 		// Not claimable up until end of auction
 		vm.warp(auctioneerAuction.getAuction(0).bidData.nextBidBy);
 
+		// Price
+		uint256 lotPrice = auctioneerAuction.getAuction(0).bidData.bid;
+		vm.deal(user1, lotPrice);
+
 		vm.expectRevert(AuctionStillRunning.selector);
 		vm.prank(user1);
-		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.WALLET, unwrapETH: true }));
+		auctioneer.claimLot{ value: lotPrice }(0, ClaimLotOptions({ paymentType: PaymentType.WALLET }));
 
 		// Claimable after next bid by
 		vm.warp(auctioneerAuction.getAuction(0).bidData.nextBidBy + 1);
@@ -62,7 +66,7 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 		);
 
 		vm.prank(user1);
-		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.WALLET, unwrapETH: true }));
+		auctioneer.claimLot{ value: lotPrice }(0, ClaimLotOptions({ paymentType: PaymentType.WALLET }));
 	}
 
 	function test_winning_claimLotWinnings_RevertWhen_NotWinner() public {
@@ -76,25 +80,29 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 		// User2 claim reverted
 		vm.expectRevert(NotWinner.selector);
 		vm.prank(user2);
-		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.WALLET, unwrapETH: true }));
+		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.WALLET }));
 	}
 
 	function test_winning_claimLotWinnings_RevertWhen_UserAlreadyClaimedLot() public {
 		vm.warp(auctioneerAuction.getAuction(0).unlockTimestamp);
 		_bid(user1);
 
+		// Price
+		uint256 lotPrice = auctioneerAuction.getAuction(0).bidData.bid;
+		vm.deal(user1, lotPrice);
+
 		// Claimable after next bid by
 		vm.warp(auctioneerAuction.getAuction(0).bidData.nextBidBy + 1);
 
 		// Claim once
 		vm.prank(user1);
-		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.WALLET, unwrapETH: true }));
+		auctioneer.claimLot{ value: lotPrice }(0, ClaimLotOptions({ paymentType: PaymentType.WALLET }));
 		assertEq(auctioneerUser.getAuctionUser(0, user1).lotClaimed, true, "AuctionUser marked as lotClaimed");
 
 		// Revert on claim again
 		vm.expectRevert(UserAlreadyClaimedLot.selector);
 		vm.prank(user1);
-		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.WALLET, unwrapETH: true }));
+		auctioneer.claimLot{ value: lotPrice }(0, ClaimLotOptions({ paymentType: PaymentType.WALLET }));
 	}
 
 	function test_winning_winnerCanPayForLotFromWallet() public {
@@ -108,15 +116,21 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 		vm.warp(auctioneerAuction.getAuction(0).bidData.nextBidBy + 1);
 
 		uint256 lotPrice = auctioneerAuction.getAuction(0).bidData.bid;
-		uint256 user1USDBalInit = USD.balanceOf(user1);
+		uint256 lotPrize = 1e18;
+		vm.deal(user1, lotPrice);
+
+		_prepExpectETHBalChange(0, user1);
 
 		// Claim
 		vm.prank(user1);
-		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.WALLET, unwrapETH: true }));
+		auctioneer.claimLot{ value: lotPrice }(0, ClaimLotOptions({ paymentType: PaymentType.WALLET }));
 
-		uint256 user1USDBalFinal = USD.balanceOf(user1);
-
-		assertEq(user1USDBalInit - lotPrice, user1USDBalFinal, "Users USD balance should decrease by lot price");
+		_expectETHBalChange(
+			0,
+			user1,
+			(int256(lotPrice) * -1) + int256(lotPrize),
+			"User1. ETH decrease by lot price, increase by prize"
+		);
 	}
 
 	function test_winning_winnerCanPayForLotFromFunds() public {
@@ -130,22 +144,24 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 		vm.warp(auctioneerAuction.getAuction(0).bidData.nextBidBy + 1);
 
 		// Deposit into funds
+		vm.deal(user1, 50e18);
 		vm.prank(user1);
-		auctioneerUser.addFunds(50e18);
+		auctioneerUser.addFunds{ value: 50e18 }();
 
 		uint256 lotPrice = auctioneerAuction.getAuction(0).bidData.bid;
-		uint256 user1USDBalInit = USD.balanceOf(user1);
+		uint256 lotPrize = 1e18;
 		uint256 user1FundsInit = auctioneerUser.userFunds(user1);
+
+		_prepExpectETHBalChange(0, user1);
 
 		// Claim
 		vm.prank(user1);
-		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.FUNDS, unwrapETH: true }));
+		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.FUNDS }));
 
-		uint256 user1USDBalFinal = USD.balanceOf(user1);
 		uint256 user1FundsFinal = auctioneerUser.userFunds(user1);
 
-		assertEq(user1USDBalInit, user1USDBalFinal, "Users USD balance should not change");
 		assertEq(user1FundsInit - lotPrice, user1FundsFinal, "Users finds should decrease by lot price");
+		_expectETHBalChange(0, user1, int256(lotPrize), "User1. ETH should only increase by lot prize");
 	}
 
 	function test_winning_ExpectRevert_PaymentFromFundsInsufficient() public {
@@ -162,13 +178,14 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 
 		// Deposit into funds
 		vm.prank(user1);
-		auctioneerUser.addFunds(lotPrice / 2);
+		vm.deal(user1, 1e18);
+		auctioneerUser.addFunds{ value: lotPrice / 2 }();
 
 		vm.expectRevert(InsufficientFunds.selector);
 
 		// Claim
 		vm.prank(user1);
-		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.FUNDS, unwrapETH: true }));
+		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.FUNDS }));
 	}
 
 	function test_winning_lotPriceIsDistributedCorrectly_Farm0StakedFallbackToTreasury() public {
@@ -188,22 +205,22 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 		auctioneer.finalizeAuction(0);
 
 		uint256 lotPrice = auctioneerAuction.getAuction(0).bidData.bid;
-		uint256 treasuryUSDInit = USD.balanceOf(treasury);
-		uint256 farmUSDInit = USD.balanceOf(address(farm));
+		vm.deal(user1, lotPrice * 5);
+
+		_prepExpectETHBalChange(0, treasury);
+		_prepExpectETHBalChange(0, address(farm));
 
 		// Claim
 		vm.prank(user1);
-		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.WALLET, unwrapETH: true }));
+		auctioneer.claimLot{ value: lotPrice }(0, ClaimLotOptions({ paymentType: PaymentType.WALLET }));
 
-		uint256 treasuryUSDFinal = USD.balanceOf(treasury);
-		uint256 farmUSDFinal = USD.balanceOf(address(farm));
-
-		assertEq(
-			treasuryUSDFinal - treasuryUSDInit,
-			lotPrice,
-			"Treasury should receive own share + farm share (farm 0 staked fallback)"
+		_expectETHBalChange(
+			0,
+			treasury,
+			int256(lotPrice),
+			"Treasury. Should increase by full price, fallback from farm cut"
 		);
-		assertEq(farmUSDFinal - farmUSDInit, 0, "Farm should receive 0 (farm 0 staked fallback)");
+		_expectETHBalChange(0, address(farm), int256(0), "Farm. Should not increase (0 staked)");
 	}
 
 	function _farmDeposit() public {
@@ -235,35 +252,29 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 		auctioneer.finalizeAuction(0);
 
 		uint256 lotPrice = auctioneerAuction.getAuction(0).bidData.bid;
-		uint256 treasuryUSDInit = USD.balanceOf(treasury);
-		uint256 farmUSDInit = USD.balanceOf(address(farm));
 		uint256 treasurySplit = auctioneerAuction.treasurySplit();
 		uint256 treasuryCut = lotPrice.scaleByBP(treasurySplit);
 		uint256 farmCut = lotPrice.scaleByBP(10000 - treasurySplit);
 
-		uint256 usdPerShareInit = farm.getPool(goPid).accUsdPerShare;
-		assertEq(usdPerShareInit, 0, "USD rew per share should start at 0");
+		_prepExpectETHBalChange(0, treasury);
+		_prepExpectETHBalChange(0, address(farm));
+
+		uint256 ethPerShareInit = farm.getPool(goPid).accEthPerShare;
+		assertEq(ethPerShareInit, 0, "ETH rew per share should start at 0");
 
 		// Claim
 		vm.prank(user1);
-		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.WALLET, unwrapETH: true }));
+		vm.deal(user1, lotPrice);
+		auctioneer.claimLot{ value: lotPrice }(0, ClaimLotOptions({ paymentType: PaymentType.WALLET }));
 
-		uint256 treasuryUSDFinal = USD.balanceOf(treasury);
-		uint256 farmUSDFinal = USD.balanceOf(address(farm));
+		_expectETHBalChange(0, treasury, int256(treasuryCut), "Treasury. Increase by cut of lot price");
+		_expectETHBalChange(0, address(farm), int256(farmCut), "Farm. Increase by cut of lot price");
 
-		assertEq(treasuryUSDFinal - treasuryUSDInit, treasuryCut, "Treasury should receive share");
-		assertEq(farmUSDFinal - farmUSDInit, farmCut, "Farm should receive share");
-		assertEq(
-			((treasuryUSDFinal - treasuryUSDInit) * 10000) / treasurySplit,
-			((farmUSDFinal - farmUSDInit) * 10000) / (10000 - treasurySplit),
-			"Farm and treasury receive correct split"
-		);
-
-		// Farm usdPerShare should increase
-		uint256 expectedUsdPerShare = (farmCut * farm.REWARD_PRECISION() * farm.getPool(goPid).allocPoint) /
+		// Farm ethPerShare should increase
+		uint256 expectedEthPerShare = (farmCut * farm.REWARD_PRECISION() * farm.getPool(goPid).allocPoint) /
 			(farm.totalAllocPoint() * farm.getPool(goPid).supply);
-		uint256 usdPerShareFinal = farm.getPool(goPid).accUsdPerShare;
-		assertEq(expectedUsdPerShare, usdPerShareFinal, "USD reward per share of farm should increase");
+		uint256 ethPerShareFinal = farm.getPool(goPid).accEthPerShare;
+		assertEq(expectedEthPerShare, ethPerShareFinal, "ETH reward per share of farm should increase");
 	}
 
 	function test_winning_auctionIsMarkedAsClaimed() public {
@@ -273,9 +284,13 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 		// Claimable after next bid by
 		vm.warp(auctioneerAuction.getAuction(0).bidData.nextBidBy + 1);
 
+		// Give ETH to pay
+		vm.deal(user1, 1e18);
+		uint256 lotPrice = auctioneerAuction.getAuction(0).bidData.bid;
+
 		// Claim
 		vm.prank(user1);
-		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.WALLET, unwrapETH: true }));
+		auctioneer.claimLot{ value: lotPrice }(0, ClaimLotOptions({ paymentType: PaymentType.WALLET }));
 		assertEq(auctioneerUser.getAuctionUser(0, user1).lotClaimed, true, "AuctionUser marked as lotClaimed");
 	}
 
@@ -286,62 +301,53 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 		// Claimable after next bid by
 		vm.warp(auctioneerAuction.getAuction(1).bidData.nextBidBy + 1);
 
+		// Give ETH to pay
+		vm.deal(user1, 1e18);
+		uint256 lotPrice = auctioneerAuction.getAuction(1).bidData.bid;
+		uint256 lotPrize = 1e18;
+
 		// Tokens init
-		uint256 userETHInit = user1.balance;
+		_prepExpectETHBalChange(0, user1);
 		uint256 userXXInit = XXToken.balanceOf(user1);
 		uint256 userYYInit = YYToken.balanceOf(user1);
 
 		// Claim
 		vm.prank(user1);
-		auctioneer.claimLot(1, ClaimLotOptions({ paymentType: PaymentType.WALLET, unwrapETH: true }));
+		auctioneer.claimLot{ value: lotPrice }(1, ClaimLotOptions({ paymentType: PaymentType.WALLET }));
 
 		// User received lot
 		Auction memory auction = auctioneerAuction.getAuction(1);
-		assertEq(user1.balance - userETHInit, auction.rewards.tokens[0].amount, "User received ETH from lot");
+		_expectETHBalChange(
+			0,
+			user1,
+			(-1 * int256(lotPrice)) + int256(lotPrize),
+			"User1. ETH decrease by price, increase by prize"
+		);
 		assertEq(XXToken.balanceOf(user1) - userXXInit, auction.rewards.tokens[1].amount, "User received XX from lot");
 		assertEq(YYToken.balanceOf(user1) - userYYInit, auction.rewards.tokens[2].amount, "User received YY from lot");
 	}
 
-	function test_winning_userCanChooseLotAsEth() public {
+	function test_winning_userReceivesETHPrize() public {
 		vm.warp(auctioneerAuction.getAuction(0).unlockTimestamp);
 		_bid(user1);
 
 		// Claimable after next bid by
 		vm.warp(auctioneerAuction.getAuction(0).bidData.nextBidBy + 1);
+		uint256 lotPrice = auctioneerAuction.getAuction(0).bidData.bid;
+		uint256 lotPrize = 1e18;
+		vm.deal(user1, lotPrice);
 
-		// ETH bal
-		uint256 userETHInit = user1.balance;
-
-		// Claim
-		vm.prank(user1);
-		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.WALLET, unwrapETH: true }));
-
-		// ETH test
-		assertEq(
-			user1.balance - userETHInit,
-			auctioneerAuction.getAuction(0).rewards.tokens[0].amount,
-			"User received ETH from lot"
-		);
-	}
-	function test_winning_userCanChooseLotAsWeth() public {
-		vm.warp(auctioneerAuction.getAuction(0).unlockTimestamp);
-		_bid(user1);
-
-		// Claimable after next bid by
-		vm.warp(auctioneerAuction.getAuction(0).bidData.nextBidBy + 1);
-
-		// ETH bal
-		uint256 userWETHInit = WETH.balanceOf(user1);
+		_prepExpectETHBalChange(0, user1);
 
 		// Claim
 		vm.prank(user1);
-		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.WALLET, unwrapETH: false }));
+		auctioneer.claimLot{ value: lotPrice }(0, ClaimLotOptions({ paymentType: PaymentType.WALLET }));
 
-		// ETH test
-		assertEq(
-			WETH.balanceOf(user1) - userWETHInit,
-			auctioneerAuction.getAuction(0).rewards.tokens[0].amount,
-			"User received WETH from lot"
+		_expectETHBalChange(
+			0,
+			user1,
+			(-1 * int256(lotPrice)) + int256(lotPrize),
+			"User 1. Decrease by price increase by prize"
 		);
 	}
 }

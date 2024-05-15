@@ -84,7 +84,7 @@ contract AuctioneerNFTsTest is AuctioneerHelper {
 		assertEq(mockNFT2.ownerOf(3), treasury, "Treasury owns NFT2-3");
 		assertEq(mockNFT2.ownerOf(4), treasury, "Treasury owns NFT2-4");
 
-		auctioneer.cancelAuction(0, false);
+		auctioneer.cancelAuction(0);
 
 		assertEq(mockNFT1.ownerOf(1), treasury, "Treasury owns NFT1-1");
 		assertEq(mockNFT1.ownerOf(2), treasury, "Treasury owns NFT1-2");
@@ -113,13 +113,15 @@ contract AuctioneerNFTsTest is AuctioneerHelper {
 		// Bid
 		vm.warp(auctioneerAuction.getAuction(0).unlockTimestamp);
 		_bid(user1);
+		uint256 lotPrice = auctioneerAuction.getAuction(0).bidData.bid;
 
 		// User 1 wins auction
 		vm.warp(block.timestamp + 1 days);
 
 		// Claim auction
+		vm.deal(user1, lotPrice);
 		vm.prank(user1);
-		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.WALLET, unwrapETH: false }));
+		auctioneer.claimLot{ value: lotPrice }(0, ClaimLotOptions({ paymentType: PaymentType.WALLET }));
 
 		assertEq(mockNFT1.ownerOf(1), treasury, "Treasury owns NFT1-1");
 		assertEq(mockNFT1.ownerOf(2), treasury, "Treasury owns NFT1-2");

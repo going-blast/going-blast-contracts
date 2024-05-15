@@ -60,7 +60,7 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 
 		vm.expectRevert(AuctionStillRunning.selector);
 		vm.prank(user1);
-		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.WALLET, unwrapETH: true }));
+		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.WALLET }));
 
 		// Claimable after next bid by
 		vm.warp(auctioneerAuction.getAuction(0).bidData.nextBidBy + 1);
@@ -86,13 +86,16 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 	function test_finalize_claimLot_ExpectEmit_AuctionFinalized() public {
 		vm.warp(auctioneerAuction.getAuction(0).unlockTimestamp);
 		_bid(user1);
+		vm.deal(user1, 1e18);
+
+		uint256 price = auctioneerAuction.getAuction(0).bidData.bid;
 
 		// Not claimable up until end of auction
 		vm.warp(auctioneerAuction.getAuction(0).bidData.nextBidBy);
 
 		vm.expectRevert(AuctionStillRunning.selector);
 		vm.prank(user1);
-		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.WALLET, unwrapETH: true }));
+		auctioneer.claimLot{ value: price }(0, ClaimLotOptions({ paymentType: PaymentType.WALLET }));
 
 		// Claimable after next bid by
 		vm.warp(auctioneerAuction.getAuction(0).bidData.nextBidBy + 1);
@@ -101,7 +104,7 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 		emit AuctionFinalized(0);
 
 		vm.prank(user1);
-		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.WALLET, unwrapETH: true }));
+		auctioneer.claimLot{ value: price }(0, ClaimLotOptions({ paymentType: PaymentType.WALLET }));
 	}
 
 	function testFail_finalize_claimLot_alreadyFinalized_NotExpectEmit_AuctionFinalized() public {
@@ -113,7 +116,7 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 
 		vm.expectRevert(AuctionStillRunning.selector);
 		vm.prank(user1);
-		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.WALLET, unwrapETH: true }));
+		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.WALLET }));
 
 		// Claimable after next bid by
 		vm.warp(auctioneerAuction.getAuction(0).bidData.nextBidBy + 1);
@@ -131,7 +134,7 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 
 		// Should revert
 		vm.prank(user1);
-		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.WALLET, unwrapETH: true }));
+		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.WALLET }));
 	}
 
 	function test_finalizeAuction_TransferEmissionsToTreasury() public {
@@ -194,47 +197,51 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 		uint256 lotValue = auctioneerAuction.getAuction(0).rewards.estimatedValue;
 		assertLt(revenue, lotValue, "Validate revenue < lotValue");
 
-		uint256 treasuryUSDInit = USD.balanceOf(treasury);
-		uint256 farmUSDInit = USD.balanceOf(address(farm));
+		_prepExpectETHBalChange(0, treasury);
+		_prepExpectETHBalChange(0, address(farm));
+		_prepExpectETHBalChange(0, address(auctioneer));
 
-		// Claim
+		// Finalize
 		auctioneer.finalizeAuction(0);
 
 		// Treasury should receive full lot value
-		uint256 treasuryUSDFinal = USD.balanceOf(treasury);
-		uint256 farmUSDFinal = USD.balanceOf(address(farm));
+		_expectETHBalChange(0, treasury, int256(revenue), "Treasury");
+		_expectETHBalChange(0, address(auctioneer), -1 * int256(revenue), "Auctioneer");
 
-		assertEq(treasuryUSDFinal - treasuryUSDInit, revenue, "Treasury should receive 100% of revenue");
-		assertEq(farmUSDFinal, farmUSDInit, "Farm should receive nothing");
+		// Farm should receive nothing
+		_expectETHBalChange(0, address(farm), 0, "Farm");
 	}
 
 	function test_finalizeAuction_Should_DistributeLotRevenue_RevenueLessThan110PercLotValue() public {
 		vm.warp(auctioneerAuction.getAuction(0).unlockTimestamp);
-		_multibid(user2, 580);
+		// 2857 bids to hit 1 ETH
+		_multibid(user2, 480);
 		_multibid(user3, 1520);
 		_multibid(user4, 960);
-		_multibid(user1, 1100);
+		_multibid(user1, 100);
 
 		// Claimable after next bid by
-		vm.warp(auctioneerAuction.getAuction(0).bidData.nextBidBy + 1);
+		Auction memory auction = auctioneerAuction.getAuction(0);
+		vm.warp(auction.bidData.nextBidBy + 1);
 
-		uint256 revenue = auctioneerAuction.getAuction(0).bidData.revenue;
-		uint256 lotValue = auctioneerAuction.getAuction(0).rewards.estimatedValue.transformDec(18, usdDecimals);
+		uint256 revenue = auction.bidData.revenue;
+		uint256 lotValue = auction.rewards.estimatedValue;
 		assertGt(revenue, lotValue, "Validate revenue > lotValue");
 		assertLt(revenue, (lotValue * 110) / 100, "Validate revenue < 110% lotValue");
 
-		uint256 treasuryUSDInit = USD.balanceOf(treasury);
-		uint256 farmUSDInit = USD.balanceOf(address(farm));
+		_prepExpectETHBalChange(0, treasury);
+		_prepExpectETHBalChange(0, address(farm));
+		_prepExpectETHBalChange(0, address(auctioneer));
 
 		// Claim
 		auctioneer.finalizeAuction(0);
 
 		// Treasury should receive full lot value
-		uint256 treasuryUSDFinal = USD.balanceOf(treasury);
-		uint256 farmUSDFinal = USD.balanceOf(address(farm));
+		_expectETHBalChange(0, treasury, int256(revenue), "Treasury");
+		_expectETHBalChange(0, address(auctioneer), -1 * int256(revenue), "Auctioneer");
 
-		assertEq(treasuryUSDFinal - treasuryUSDInit, revenue, "Treasury should receive 100% of revenue");
-		assertEq(farmUSDFinal, farmUSDInit, "Farm should receive nothing");
+		// Farm should receive nothing
+		_expectETHBalChange(0, address(farm), 0, "Farm");
 	}
 
 	function _farmDeposit() public {
@@ -260,7 +267,7 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 		vm.warp(auctioneerAuction.getAuction(0).bidData.nextBidBy + 1);
 
 		uint256 revenue = auctioneerAuction.getAuction(0).bidData.revenue;
-		uint256 lotValue = auctioneerAuction.getAuction(0).rewards.estimatedValue.transformDec(18, usdDecimals);
+		uint256 lotValue = auctioneerAuction.getAuction(0).rewards.estimatedValue;
 		uint256 lotValue110Perc = lotValue.scaleByBP(11000);
 		assertGt(revenue, lotValue110Perc, "Validate revenue > 110% lotValue");
 
@@ -269,22 +276,15 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 		uint256 treasuryExpectedDisbursement = lotValue110Perc + profit.scaleByBP(treasurySplit);
 		uint256 farmExpectedDisbursement = profit.scaleByBP(10000 - treasurySplit);
 
-		uint256 treasuryUSDInit = USD.balanceOf(treasury);
-		uint256 farmUSDInit = USD.balanceOf(address(farm));
+		_prepExpectETHBalChange(0, treasury);
+		_prepExpectETHBalChange(0, address(farm));
+		_prepExpectETHBalChange(0, address(auctioneer));
 
 		// Claim
 		auctioneer.finalizeAuction(0);
 
-		uint256 treasuryUSDFinal = USD.balanceOf(treasury);
-		uint256 farmUSDFinal = USD.balanceOf(address(farm));
-
-		uint256 treasuryUsdDelta = treasuryUSDFinal - treasuryUSDInit;
-		uint256 farmUsdDelta = farmUSDFinal - farmUSDInit;
-
-		assertEq(treasuryUsdDelta, treasuryExpectedDisbursement, "Treasury should receive share");
-		assertEq(farmUsdDelta, farmExpectedDisbursement, "Farm should receive share");
-
-		// Full revenue distributed
-		assertEq(treasuryUsdDelta + farmUsdDelta, revenue, "Distributions should sum to revenue");
+		_expectETHBalChange(0, treasury, int256(treasuryExpectedDisbursement), "Treasury");
+		_expectETHBalChange(0, address(farm), int256(farmExpectedDisbursement), "Farm");
+		_expectETHBalChange(0, address(auctioneer), -1 * int256(revenue), "Auctioneer");
 	}
 }
