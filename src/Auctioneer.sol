@@ -246,20 +246,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield, I
 
 	// CLAIM
 
-	function claimLotWithPermit(
-		uint256 _lot,
-		ClaimLotOptions memory _options,
-		PermitData memory _permitData
-	) public nonReentrant {
-		_selfPermit(_permitData);
-		_claimLot(_lot, _options);
-	}
-
 	function claimLot(uint256 _lot, ClaimLotOptions memory _options) public payable nonReentrant {
-		_claimLot(_lot, _options);
-	}
-
-	function _claimLot(uint256 _lot, ClaimLotOptions memory _options) internal {
 		if (_options.paymentType == PaymentType.VOUCHER) revert CannotPayForLotWithVouchers();
 
 		// Mark user claimed

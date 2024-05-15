@@ -191,30 +191,15 @@ contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, Auctioneer
 		userFunds[_user] -= _amount;
 	}
 
-	function addFundsWithPermit(uint256 _amount, PermitData memory _permitData) public nonReentrant {
-		IERC20Permit(_permitData.token).permit(
-			msg.sender,
-			address(this),
-			_permitData.value,
-			_permitData.deadline,
-			_permitData.v,
-			_permitData.r,
-			_permitData.s
-		);
-		_addFunds(_amount);
-	}
 	function addFunds() public payable nonReentrant {
-		_addFunds(msg.value);
-	}
-	function _addFunds(uint256 _amount) internal {
 		// Send eth to auctioneer
 		(bool sent, ) = auctioneer.call{ value: msg.value }("");
 		if (!sent) revert ETHTransferFailed();
 
 		// Increase users funds
-		userFunds[msg.sender] += _amount;
+		userFunds[msg.sender] += msg.value;
 
-		emit AddedFunds(msg.sender, _amount);
+		emit AddedFunds(msg.sender, msg.value);
 	}
 
 	function withdrawFunds(uint256 _amount) public nonReentrant {
