@@ -16,6 +16,7 @@ import { GBMath, AuctionViewUtils, AuctionMutateUtils, AuctionParamsUtils } from
 interface IAuctioneerAuction {
 	function link() external;
 	function runeSwitchPenalty() external view returns (uint256);
+	function runicLastBidderBonus() external view returns (uint256);
 	function updateTreasury(address _treasury) external;
 	function privateAuctionRequirement() external view returns (uint256);
 	function createAuction(AuctionParams memory _params, uint256 _emissions) external payable returns (uint256 lot);
@@ -91,6 +92,7 @@ contract AuctioneerAuction is
 	uint256 public runeSwitchPenalty = 2000;
 	uint256 public onceTwiceBlastBonusTime = 9;
 	uint256 public privateAuctionRequirement;
+	uint256 public runicLastBidderBonus = 2000;
 
 	constructor(
 		uint256 _bidCost,
@@ -176,6 +178,12 @@ contract AuctioneerAuction is
 		if (_penalty > 10000) revert Invalid();
 		runeSwitchPenalty = _penalty;
 		emit UpdatedRuneSwitchPenalty(_penalty);
+	}
+
+	function updateRunicLastBidderBonus(uint256 _bonus) public onlyOwner {
+		if (_bonus > 5000) revert Invalid();
+		runicLastBidderBonus = _bonus;
+		emit UpdatedRunicLastBidderBonus(_bonus);
 	}
 
 	// BLAST
@@ -375,7 +383,15 @@ contract AuctioneerAuction is
 		auction.validateWinner(_user, _userRune);
 
 		// Calculate the user's share, dependent on rune / no rune
-		userShareOfLot = auction.runes.length > 0 ? (_userBids * 1e18) / auction.runes[_userRune].bids : 1e18;
+		bool auctionHasRunes = auction.runes.length > 0;
+		bool isLastBidder = auction.bidData.bidUser == _user;
+		uint256 runicLastBidderBonusBids = isLastBidder && auctionHasRunes
+			? auction.runes[_userRune].bids.scaleByBP(runicLastBidderBonus)
+			: 0;
+		userShareOfLot = auctionHasRunes
+			? ((_userBids + runicLastBidderBonusBids) * 1e18) /
+				auction.runes[_userRune].bids.scaleByBP(10000 + runicLastBidderBonus)
+			: 1e18;
 		userShareOfPayment = (auction.bidData.bid * userShareOfLot) / 1e18;
 
 		// Transfer lot to user

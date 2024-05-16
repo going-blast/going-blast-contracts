@@ -256,14 +256,17 @@ contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, Auctioneer
 		for (uint256 i = 0; i < _lots.length; i++) {
 			lot = _lots[i];
 			Auction memory auction = auctioneerAuction.getAuction(lot);
+			uint256 runicLastBidderBonus = auctioneerAuction.runicLastBidderBonus();
 			AuctionUser memory user = auctionUsers[lot][_user];
+			bool auctionHasRunes = auction.runes.length > 0;
+			bool auctionHasBids = auction.bidData.bids > 0;
 
 			infos[i].lot = auction.lot;
 			infos[i].rune = user.rune;
 
 			// Bids
 			infos[i].bidCounts.user = user.bids;
-			infos[i].bidCounts.rune = auction.runes.length == 0 || user.rune == 0 ? 0 : auction.runes[user.rune].bids;
+			infos[i].bidCounts.rune = !auctionHasRunes || user.rune == 0 ? 0 : auction.runes[user.rune].bids;
 			infos[i].bidCounts.auction = auction.bidData.bids;
 
 			// Emissions
@@ -284,6 +287,22 @@ contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, Auctioneer
 				user.bids > 0 &&
 				(auction.runes.length > 0 ? user.rune == auction.bidData.bidRune : _user == auction.bidData.bidUser);
 			infos[i].lotClaimed = user.lotClaimed;
+
+			// Share
+			bool isLastBidder = auction.bidData.bidUser == _user;
+			uint256 runicLastBidderBonusBids = isLastBidder && auctionHasRunes
+				? auction.runes[user.rune].bids.scaleByBP(runicLastBidderBonus)
+				: 0;
+
+			infos[i].shareOfLot = auctionHasBids
+				? (
+					auctionHasRunes
+						? ((user.bids + runicLastBidderBonusBids) * 1e18) /
+							auction.runes[user.rune].bids.scaleByBP(10000 + runicLastBidderBonus)
+						: 1e18
+				)
+				: 0;
+			infos[i].price = (auction.bidData.bid * infos[i].shareOfLot) / 1e18;
 		}
 	}
 }

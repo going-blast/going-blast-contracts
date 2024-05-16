@@ -154,6 +154,8 @@ struct UserLotInfo {
 	// Winning bid
 	bool isWinner;
 	bool lotClaimed;
+	uint256 shareOfLot;
+	uint256 price;
 }
 struct AuctionExt {
 	uint256 lot;
@@ -236,6 +238,7 @@ interface AuctioneerEvents {
 	event UpdatedEarlyHarvestTax(uint256 _earlyHarvestTax);
 	event UpdatedEmissionTaxDuration(uint256 _emissionTax);
 	event UpdatedRuneSwitchPenalty(uint256 _penalty);
+	event UpdatedRunicLastBidderBonus(uint256 _bonus);
 	event AuctionCreated(uint256 indexed _lot);
 	event Bid(
 		uint256 indexed _lot,

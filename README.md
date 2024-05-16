@@ -169,26 +169,26 @@ Tests:
   [x] GO_LP permit farm
   [x] USD permit auctioneerUser (funds)
 
-[ ] Auctioneer - selectRune
-  [ ] SelectRune reverts on auctions without rune
-  [ ] Update runeSwitchPenalty
-    [ ] 100% penalty
-  [ ] Switching rune allowed, but incurs penalty (selectRune / bid)
-    [ ] No bids cast
-    [ ] X% (< 100%) bids cast
-    [ ] 100% of bids cast
-  [ ] Switching rune data:
-    [ ] auction bids updated correctly
-    [ ] user bids updated correctly
-    [ ] prev rune bids updated correctly
-    [ ] prev rune users decremented
-    [ ] new rune users incremented
-  [ ] Same rune
-    [ ] no penalty
-    [ ] auction / user / rune bids correct
-    [ ] rune users count doesnt change
-  [ ] validity
-    [ ] reverts on invalid rune
+[x] Auctioneer - selectRune
+  [x] SelectRune reverts on auctions without rune
+  [x] Update runeSwitchPenalty
+    [x] 100% penalty
+  [x] Switching rune allowed, but incurs penalty (selectRune / bid)
+    [x] No bids cast
+    [x] X% (< 100%) bids cast
+    [x] 100% of bids cast
+  [x] Switching rune data:
+    [x] auction bids updated correctly
+    [x] user bids updated correctly
+    [x] prev rune bids updated correctly
+    [x] prev rune users decremented
+    [x] new rune users incremented
+  [x] Same rune
+    [x] no penalty
+    [x] auction / user / rune bids correct
+    [x] rune users count doesnt change
+  [x] validity
+    [x] reverts on invalid rune
 
 
 [x] Auctioneer - Harvest to farm

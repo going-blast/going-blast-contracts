@@ -38,6 +38,28 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 	uint256 public user4Deposited = 2.8e18;
 	uint256 public totalDeposited = user1Deposited + user2Deposited + user3Deposited + user4Deposited;
 
+	// OPTIONS
+
+	function test_runicLastBidderBonus_RevertWhen_Invalid() public {
+		vm.expectRevert(Invalid.selector);
+		auctioneerAuction.updateRunicLastBidderBonus(5001);
+	}
+
+	function test_runicLastBidderBonus_ExpectEmit_UpdatedRunicLastBidderBonus() public {
+		vm.expectEmit(true, true, true, true);
+		emit UpdatedRunicLastBidderBonus(0);
+
+		auctioneerAuction.updateRunicLastBidderBonus(0);
+	}
+
+	function test_runicLastBidderBonus_Expect_Updated() public {
+		assertEq(auctioneerAuction.runicLastBidderBonus(), 2000, "Initial bonus set to 2000");
+
+		auctioneerAuction.updateRunicLastBidderBonus(1000);
+
+		assertEq(auctioneerAuction.runicLastBidderBonus(), 1000, "Bonus updated to 1000");
+	}
+
 	// CREATE
 
 	function test_runes_create_RevertWhen_InvalidNumberOfRuneSymbols() public {
@@ -362,53 +384,140 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 
 		{
 			// USER 3
-			uint256 user3Share = (user3Bids * 1e18) / rune2Bids;
-			uint256 user3LotPrice = (lotPrice * user3Share) / 1e18;
-			vm.deal(user3, user3LotPrice);
-			uint256 user3Prize = (auctionETH * user3Share) / 1e18;
+			UserLotInfo memory user3LotInfo = getUserLotInfo(lot, user3);
+			vm.deal(user3, user3LotInfo.price);
+			uint256 user3Prize = (auctionETH * user3LotInfo.shareOfLot) / 1e18;
 
 			_prepExpectETHBalChange(0, user3);
 			_prepExpectETHBalChange(0, address(auctioneer));
 			_prepExpectETHBalChange(0, treasury);
 
 			vm.prank(user3);
-			auctioneer.claimLot{ value: user3LotPrice }(lot, ClaimLotOptions({ paymentType: PaymentType.WALLET }));
+			auctioneer.claimLot{ value: user3LotInfo.price }(lot, ClaimLotOptions({ paymentType: PaymentType.WALLET }));
 
 			// Should go from user3 -> auctioneer -> treasury
 			_expectETHBalChange(
 				0,
 				user3,
-				(-1 * int256(user3LotPrice)) + int256(user3Prize),
+				(-1 * int256(user3LotInfo.price)) + int256(user3Prize),
 				"User 3. Increase by prize, decrease by price"
 			);
 			_expectETHBalChange(0, address(auctioneer), int256(0), "Auctioneer");
-			_expectETHBalChange(0, treasury, int256(user3LotPrice), "Treasury");
+			_expectETHBalChange(0, treasury, int256(user3LotInfo.price), "Treasury");
 		}
 
 		{
 			// USER 4
-
-			uint256 user4Share = (user4Bids * 1e18) / rune2Bids;
-			uint256 user4LotPrice = (lotPrice * user4Share) / 1e18;
-			vm.deal(user4, user4LotPrice);
-			uint256 user4Prize = (auctionETH * user4Share) / 1e18;
+			UserLotInfo memory user4LotInfo = getUserLotInfo(lot, user4);
+			vm.deal(user4, user4LotInfo.price);
+			uint256 user4Prize = (auctionETH * user4LotInfo.shareOfLot) / 1e18;
 
 			_prepExpectETHBalChange(1, user4);
 			_prepExpectETHBalChange(1, address(auctioneer));
 			_prepExpectETHBalChange(1, treasury);
 
 			vm.prank(user4);
-			auctioneer.claimLot{ value: user4LotPrice }(lot, ClaimLotOptions({ paymentType: PaymentType.WALLET }));
+			auctioneer.claimLot{ value: user4LotInfo.price }(lot, ClaimLotOptions({ paymentType: PaymentType.WALLET }));
 
 			// Should go from user4 -> auctioneer -> treasury
 			_expectETHBalChange(
 				1,
 				user4,
-				(-1 * int256(user4LotPrice)) + int256(user4Prize),
+				(-1 * int256(user4LotInfo.price)) + int256(user4Prize),
 				"User 4. Increase by prize, decrease by price"
 			);
 			_expectETHBalChange(1, address(auctioneer), int256(0), "Auctioneer");
-			_expectETHBalChange(1, treasury, int256(user4LotPrice), "Treasury");
+			_expectETHBalChange(1, treasury, int256(user4LotInfo.price), "Treasury");
+		}
+	}
+
+	function test_runes_LastBidderBonus() public {
+		uint256 lot = _createDailyAuctionWithRunes(2, true);
+		uint256 runicLastBidderBonus = auctioneerAuction.runicLastBidderBonus();
+
+		uint256 userBids = 100;
+		uint256 totalBids = 400;
+		uint256 bonusBids = (totalBids * runicLastBidderBonus) / 10000;
+		uint256 totalBidsWithBonus = (totalBids * (10000 + runicLastBidderBonus)) / 10000;
+		uint256 expectedNonLastBidderShare = (userBids * 1e18) / totalBidsWithBonus;
+		uint256 expectedLastBidderShare = ((userBids + bonusBids) * 1e18) / totalBidsWithBonus;
+
+		console.log("Bids %s, bonus bids %s, bids with bonus %s", totalBids, bonusBids, totalBidsWithBonus);
+		console.log("NonLast share %s, last share %s", expectedNonLastBidderShare, expectedLastBidderShare);
+
+		_multibidWithRune(user1, lot, userBids, 1);
+		_multibidWithRune(user2, lot, userBids, 1);
+		_multibidWithRune(user3, lot, userBids, 1);
+		_multibidWithRune(user4, lot, userBids, 1);
+
+		_warpToAuctionEndTimestamp(lot);
+
+		// SHARES
+		{
+			uint256 user1ShareOfLot = getUserLotInfo(lot, user1).shareOfLot;
+			uint256 user2ShareOfLot = getUserLotInfo(lot, user2).shareOfLot;
+			uint256 user3ShareOfLot = getUserLotInfo(lot, user3).shareOfLot;
+			uint256 user4ShareOfLot = getUserLotInfo(lot, user4).shareOfLot;
+
+			assertEq(expectedNonLastBidderShare, user1ShareOfLot, "User1 share should not have bonus");
+			assertEq(expectedNonLastBidderShare, user2ShareOfLot, "User2 share should not have bonus");
+			assertEq(expectedNonLastBidderShare, user3ShareOfLot, "User3 share should not have bonus");
+			assertEq(expectedLastBidderShare, user4ShareOfLot, "User4 share should have bonus");
+
+			assertApproxEqAbs(
+				user1ShareOfLot + user2ShareOfLot + user3ShareOfLot + user4ShareOfLot,
+				1e18,
+				10,
+				"Shares should add up to 1e18"
+			);
+		}
+
+		// PRICES
+		{
+			uint256 lotPrice = auctioneerAuction.getAuction(lot).bidData.bid;
+
+			UserLotInfo memory user1Info = getUserLotInfo(lot, user1);
+			UserLotInfo memory user2Info = getUserLotInfo(lot, user2);
+			UserLotInfo memory user3Info = getUserLotInfo(lot, user3);
+			UserLotInfo memory user4Info = getUserLotInfo(lot, user4);
+
+			assertEq((expectedNonLastBidderShare * lotPrice) / 1e18, user1Info.price, "User1 price should not include bonus");
+			assertEq((expectedNonLastBidderShare * lotPrice) / 1e18, user2Info.price, "User2 price should not include bonus");
+			assertEq((expectedNonLastBidderShare * lotPrice) / 1e18, user3Info.price, "User3 price should not include bonus");
+			assertEq((expectedLastBidderShare * lotPrice) / 1e18, user4Info.price, "User4 price should include bonus");
+
+			assertApproxEqAbs(
+				user1Info.price + user2Info.price + user3Info.price + user4Info.price,
+				lotPrice,
+				10,
+				"Prices for all users should add up to total lot price"
+			);
+		}
+
+		// CLAIMS
+		{
+			uint256 lotPrice = auctioneerAuction.getAuction(lot).bidData.bid;
+
+			UserLotInfo memory user1Info = getUserLotInfo(lot, user1);
+			UserLotInfo memory user2Info = getUserLotInfo(lot, user2);
+			UserLotInfo memory user3Info = getUserLotInfo(lot, user3);
+			UserLotInfo memory user4Info = getUserLotInfo(lot, user4);
+
+			vm.deal(user1, user1Info.price);
+			vm.prank(user1);
+			auctioneer.claimLot{ value: user1Info.price }(lot, ClaimLotOptions({ paymentType: PaymentType.WALLET }));
+
+			vm.deal(user2, user2Info.price);
+			vm.prank(user2);
+			auctioneer.claimLot{ value: user2Info.price }(lot, ClaimLotOptions({ paymentType: PaymentType.WALLET }));
+
+			vm.deal(user3, user3Info.price);
+			vm.prank(user3);
+			auctioneer.claimLot{ value: user3Info.price }(lot, ClaimLotOptions({ paymentType: PaymentType.WALLET }));
+
+			vm.deal(user4, user4Info.price);
+			vm.prank(user4);
+			auctioneer.claimLot{ value: user4Info.price }(lot, ClaimLotOptions({ paymentType: PaymentType.WALLET }));
 		}
 	}
 
