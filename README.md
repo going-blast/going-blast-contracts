@@ -1,3 +1,5 @@
+![Going Blast Logo](https://raw.githubusercontent.com/going-blast/media-kit/master/Logo%20Large%20-%20Chromatic.png)
+
 Contracts, tests, coverage, and deployment scripts of the Going Blast ecosystem.
 
 -- Architect --
