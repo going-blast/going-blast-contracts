@@ -8,7 +8,6 @@ enum BidWindowType {
 }
 enum PaymentType {
 	WALLET,
-	FUNDS,
 	VOUCHER
 }
 
@@ -207,7 +206,6 @@ error PrivateAuction();
 error UnlockAlreadyPassed();
 error BadDeposit();
 error BadWithdrawal();
-error InsufficientFunds();
 error InvalidAlias();
 error AliasTaken();
 error ETHTransferFailed();
@@ -271,11 +269,5 @@ interface AuctioneerEvents {
 	event UpdatedTreasurySplit(uint256 _split);
 	event UpdatedPrivateAuctionRequirement(uint256 _requirement);
 	event InitializedAuctions();
-	event AddedFunds(address _user, uint256 _amount);
-	event WithdrewFunds(address _user, uint256 _amount);
 	event UpdatedAlias(address _user, string _alias);
-}
-
-interface IAuctioneer {
-	function withdrawUserFunds(address payable _user, uint256 _amount) external;
 }

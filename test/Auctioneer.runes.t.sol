@@ -366,8 +366,6 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		uint256 user2Bids = 6;
 		uint256 user3Bids = 37;
 		uint256 user4Bids = 123;
-		// uint256 rune1Bids = user1Bids + user2Bids;
-		uint256 rune2Bids = user3Bids + user4Bids;
 
 		_multibidWithRune(user1, lot, user1Bids, 1);
 		_multibidWithRune(user2, lot, user2Bids, 1);
@@ -377,7 +375,6 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		vm.warp(block.timestamp + 1 days);
 
 		uint256 auctionETH = 1e18;
-		uint256 lotPrice = auctioneerAuction.getAuction(lot).bidData.bid;
 
 		// Finalize auction
 		auctioneer.finalizeAuction(lot);
@@ -496,8 +493,6 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 
 		// CLAIMS
 		{
-			uint256 lotPrice = auctioneerAuction.getAuction(lot).bidData.bid;
-
 			UserLotInfo memory user1Info = getUserLotInfo(lot, user1);
 			UserLotInfo memory user2Info = getUserLotInfo(lot, user2);
 			UserLotInfo memory user3Info = getUserLotInfo(lot, user3);

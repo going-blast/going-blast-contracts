@@ -28,20 +28,19 @@ contract GBScriptUtils is Script, ChainJsonUtils {
 	GoingBlastAirdrop public airdrop;
 	GoToken public GO;
 	VoucherToken public VOUCHER;
-	IERC20 public USD;
 	IWETH public WETH;
 
 	// Config
 	bool public isBlast;
 	bool public isAnvil;
 
-	// Default bidding values for a 18 decimal USD
-	uint256 public bidCost = 0.6e18;
-	uint256 public bidIncrement = 0.01e18;
-	uint256 public startingBid = 1e18;
+	// Default bidding values for a 18 decimal ETH
+	uint256 public bidCost = 0.00035e18;
+	uint256 public startingBid = 0.00035e18;
+	uint256 public bidIncrement = 0.0000035e18;
 
 	// Config values
-	uint256 public privateAuctionRequirement = 20e18;
+	uint256 public privateAuctionRequirement = 250e18;
 	uint256 public earlyHarvestTax = 5000;
 	uint256 public emissionTaxDuration = 30 days;
 	address public treasury;
@@ -74,7 +73,6 @@ contract GBScriptUtils is Script, ChainJsonUtils {
 		airdrop = GoingBlastAirdrop(readAddress(contractPath("GoingBlastAirdrop")));
 		GO = GoToken(readAddress(contractPath("GO")));
 		VOUCHER = VoucherToken(readAddress(contractPath("VOUCHER")));
-		USD = IERC20(readAddress(contractPath("USD")));
 		WETH = IWETH(readAddress(contractPath("WETH")));
 		_;
 	}

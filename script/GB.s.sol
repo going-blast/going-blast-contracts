@@ -59,12 +59,9 @@ contract GBScripts is GBScriptUtils {
 			// Anvil resets contracts frozen
 			writeBool(configPath("contractsFrozen"), false);
 
-			USD = IERC20(address(new BasicERC20("USD", "USD")));
-			writeContractAddress("USD", address(USD));
 			WETH = IWETH(address(new WETH9()));
 			writeContractAddress("WETH", address(WETH));
 		} else {
-			USD = IERC20(readAddress(contractPath("USD")));
 			WETH = IWETH(readAddress(contractPath("WETH")));
 		}
 	}
@@ -75,7 +72,6 @@ contract GBScripts is GBScriptUtils {
 		if (!isAnvil) return;
 
 		address arch = 0x3a7679E3662bC7c2EB2B1E71FA221dA430c6f64B;
-		BasicERC20(address(USD)).mint(arch, 1000e18);
 		VOUCHER.mint(arch, 100e18);
 		GO.transfer(arch, 100e18);
 		(bool sent, ) = arch.call{ value: 1e18 }("");
@@ -98,8 +94,6 @@ contract GBScripts is GBScriptUtils {
 	}
 
 	function _deployCore() internal {
-		// TODO: check if deployed bytecode matches potentially deploying bytecode?
-
 		// TOKENS
 
 		GO = new GoToken();
@@ -112,6 +106,8 @@ contract GBScripts is GBScriptUtils {
 
 		auctioneer = new Auctioneer(GO, VOUCHER, WETH);
 		writeContractAddress("Auctioneer", address(auctioneer));
+
+		console.log("Bid Cost %s, increment %s, starting %s", bidCost, bidIncrement, startingBid);
 
 		auctioneerAuction = new AuctioneerAuction(bidCost, bidIncrement, startingBid, privateAuctionRequirement);
 		writeContractAddress("AuctioneerAuction", address(auctioneerAuction));
@@ -204,8 +200,12 @@ contract GBScripts is GBScriptUtils {
 		writeFreezeContracts();
 	}
 
-	function treasuryApproveAuctioneerAuction() public broadcastTreasury loadChain loadContracts {
-		// Empty, but can be used if needed
+	function ANVIL_treasuryWrapETH() public broadcastTreasury loadChain loadContracts {
+		WETH.deposit{ value: 5e18 }();
+	}
+
+	function treasuryApproveAuctioneer() public broadcastTreasury loadChain loadContracts {
+		WETH.approve(address(auctioneer), UINT256_MAX);
 	}
 
 	function createAuctions() public broadcast loadChain loadContracts loadConfigValues {
@@ -318,6 +318,8 @@ contract GBScripts is GBScriptUtils {
 		auctioneerFarm.claimYieldAll(_recipient, 0);
 	}
 
+	error SendingETHFailed();
+
 	function ANVIL_bid(
 		uint32 userIndex,
 		uint256 lot,
@@ -330,24 +332,18 @@ contract GBScripts is GBScriptUtils {
 		(address user, ) = deriveRememberKey(mnemonic, userIndex);
 		(address deployer, ) = deriveRememberKey(mnemonic, 0);
 
-		if (USD.balanceOf(user) == 0) {
-			vm.broadcast(deployer);
-			BasicERC20(address(USD)).mint(user, 10000e18);
-		}
-
 		if (user.balance == 0) {
 			vm.broadcast(deployer);
 			(bool sent, ) = user.call{ value: 1 ether }("");
-		}
-
-		if (USD.allowance(user, address(auctioneer)) == 0) {
-			vm.broadcast(user);
-			USD.approve(address(auctioneer), UINT256_MAX);
+			if (!sent) revert SendingETHFailed();
 		}
 
 		if (block.timestamp < auctioneerAuction.getAuction(lot).unlockTimestamp) return;
 
 		vm.broadcast(user);
-		auctioneer.bid(lot, BidOptions({ multibid: 1, rune: rune, paymentType: PaymentType.WALLET, message: message }));
+		auctioneer.bid{ value: bidCost }(
+			lot,
+			BidOptions({ multibid: 1, rune: rune, paymentType: PaymentType.WALLET, message: message })
+		);
 	}
 }

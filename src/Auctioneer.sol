@@ -16,7 +16,7 @@ import { IAuctioneerUser } from "./AuctioneerUser.sol";
 import { IAuctioneerEmissions } from "./AuctioneerEmissions.sol";
 import { IAuctioneerAuction } from "./AuctioneerAuction.sol";
 
-contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield, IAuctioneer {
+contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 	using GBMath for uint256;
 	using SafeERC20 for IERC20;
 
@@ -179,19 +179,9 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield, I
 		} else {
 			if (msg.value != 0) revert SentETHButNotWalletPayment();
 		}
-		if (_paymentType == PaymentType.FUNDS) {
-			auctioneerUser.payFromFunds(_user, _ethAmount);
-		}
 		if (_paymentType == PaymentType.VOUCHER) {
 			VOUCHER.safeTransferFrom(_user, deadAddress, _voucherAmount);
 		}
-	}
-
-	function withdrawUserFunds(address payable _user, uint256 _amount) external {
-		if (msg.sender != address(auctioneerUser)) revert NotAuctioneerUser();
-
-		(bool sent, ) = _user.call{ value: _amount }("");
-		if (!sent) revert ETHTransferFailed();
 	}
 
 	// BID

@@ -13,11 +13,6 @@
         "internalType": "contract IERC20"
       },
       {
-        "name": "_usd",
-        "type": "address",
-        "internalType": "contract IERC20"
-      },
-      {
         "name": "_weth",
         "type": "address",
         "internalType": "contract IWETH"
@@ -31,20 +26,20 @@
   },
   {
     "type": "function",
-    "name": "GO",
+    "name": "BLAST",
     "inputs": [],
     "outputs": [
       {
         "name": "",
         "type": "address",
-        "internalType": "contract IERC20"
+        "internalType": "contract IBlast"
       }
     ],
     "stateMutability": "view"
   },
   {
     "type": "function",
-    "name": "USD",
+    "name": "GO",
     "inputs": [],
     "outputs": [
       {
@@ -171,7 +166,7 @@
       }
     ],
     "outputs": [],
-    "stateMutability": "nonpayable"
+    "stateMutability": "payable"
   },
   {
     "type": "function",
@@ -248,7 +243,7 @@
       }
     ],
     "outputs": [],
-    "stateMutability": "nonpayable"
+    "stateMutability": "payable"
   },
   {
     "type": "function",
@@ -258,11 +253,6 @@
         "name": "_lot",
         "type": "uint256",
         "internalType": "uint256"
-      },
-      {
-        "name": "_unwrapETH",
-        "type": "bool",
-        "internalType": "bool"
       }
     ],
     "outputs": [],
@@ -286,84 +276,12 @@
             "name": "paymentType",
             "type": "uint8",
             "internalType": "enum PaymentType"
-          },
-          {
-            "name": "unwrapETH",
-            "type": "bool",
-            "internalType": "bool"
           }
         ]
       }
     ],
     "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "claimLotWithPermit",
-    "inputs": [
-      {
-        "name": "_lot",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_options",
-        "type": "tuple",
-        "internalType": "struct ClaimLotOptions",
-        "components": [
-          {
-            "name": "paymentType",
-            "type": "uint8",
-            "internalType": "enum PaymentType"
-          },
-          {
-            "name": "unwrapETH",
-            "type": "bool",
-            "internalType": "bool"
-          }
-        ]
-      },
-      {
-        "name": "_permitData",
-        "type": "tuple",
-        "internalType": "struct PermitData",
-        "components": [
-          {
-            "name": "token",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "value",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "deadline",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "v",
-            "type": "uint8",
-            "internalType": "uint8"
-          },
-          {
-            "name": "r",
-            "type": "bytes32",
-            "internalType": "bytes32"
-          },
-          {
-            "name": "s",
-            "type": "bytes32",
-            "internalType": "bytes32"
-          }
-        ]
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    "stateMutability": "payable"
   },
   {
     "type": "function",
@@ -373,16 +291,6 @@
         "name": "_recipient",
         "type": "address",
         "internalType": "address"
-      },
-      {
-        "name": "_amountWETH",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_amountUSDB",
-        "type": "uint256",
-        "internalType": "uint256"
       },
       {
         "name": "_minClaimRateBips",
@@ -689,25 +597,6 @@
   },
   {
     "type": "event",
-    "name": "AddedFunds",
-    "inputs": [
-      {
-        "name": "_user",
-        "type": "address",
-        "indexed": false,
-        "internalType": "address"
-      },
-      {
-        "name": "_amount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
     "name": "AuctionCancelled",
     "inputs": [
       {
@@ -821,13 +710,7 @@
         "internalType": "address"
       },
       {
-        "name": "amountWETH",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "amountUSDB",
+        "name": "amountETH",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
@@ -1100,6 +983,19 @@
   },
   {
     "type": "event",
+    "name": "UpdatedRunicLastBidderBonus",
+    "inputs": [
+      {
+        "name": "_bonus",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "UpdatedStartingBid",
     "inputs": [
       {
@@ -1175,25 +1071,6 @@
     "anonymous": false
   },
   {
-    "type": "event",
-    "name": "WithdrewFunds",
-    "inputs": [
-      {
-        "name": "_user",
-        "type": "address",
-        "indexed": false,
-        "internalType": "address"
-      },
-      {
-        "name": "_amount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
     "type": "error",
     "name": "AddressEmptyCode",
     "inputs": [
@@ -1227,12 +1104,22 @@
   },
   {
     "type": "error",
+    "name": "ETHTransferFailed",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "EmissionsNotInitialized",
     "inputs": []
   },
   {
     "type": "error",
     "name": "FailedInnerCall",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "IncorrectETHPaymentAmount",
     "inputs": []
   },
   {
@@ -1272,6 +1159,11 @@
         "internalType": "address"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "SentETHButNotWalletPayment",
+    "inputs": []
   },
   {
     "type": "error",

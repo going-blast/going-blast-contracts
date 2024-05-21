@@ -174,7 +174,7 @@ contract AuctioneerHarvestToFarmTest is AuctioneerHelper, AuctioneerFarmEvents {
 		vm.prank(user2);
 		farm.deposit(goPid, 10e18, user2);
 
-		// Add USD
+		// Add ETH
 		_injectFarmETH(100e18);
 
 		vm.warp(block.timestamp + 1 days);
@@ -186,7 +186,7 @@ contract AuctioneerHarvestToFarmTest is AuctioneerHelper, AuctioneerFarmEvents {
 		uint256 userDebtVoucher = farm.getPoolUser(goPid, user1).voucherDebt;
 		uint256 userDebtEth = farm.getPoolUser(goPid, user1).ethDebt;
 
-		// Add new batch of usd
+		// Add new batch of eTH
 		_injectFarmETH(75e18);
 
 		// Warp to emit GO

@@ -133,61 +133,6 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 		);
 	}
 
-	function test_winning_winnerCanPayForLotFromFunds() public {
-		vm.warp(auctioneerAuction.getAuction(0).unlockTimestamp);
-		_multibid(user2, 58);
-		_multibid(user3, 152);
-		_multibid(user4, 96);
-		_multibid(user1, 110);
-
-		// Claimable after next bid by
-		vm.warp(auctioneerAuction.getAuction(0).bidData.nextBidBy + 1);
-
-		// Deposit into funds
-		vm.deal(user1, 50e18);
-		vm.prank(user1);
-		auctioneerUser.addFunds{ value: 50e18 }();
-
-		uint256 lotPrice = auctioneerAuction.getAuction(0).bidData.bid;
-		uint256 lotPrize = 1e18;
-		uint256 user1FundsInit = auctioneerUser.userFunds(user1);
-
-		_prepExpectETHBalChange(0, user1);
-
-		// Claim
-		vm.prank(user1);
-		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.FUNDS }));
-
-		uint256 user1FundsFinal = auctioneerUser.userFunds(user1);
-
-		assertEq(user1FundsInit - lotPrice, user1FundsFinal, "Users finds should decrease by lot price");
-		_expectETHBalChange(0, user1, int256(lotPrize), "User1. ETH should only increase by lot prize");
-	}
-
-	function test_winning_ExpectRevert_PaymentFromFundsInsufficient() public {
-		vm.warp(auctioneerAuction.getAuction(0).unlockTimestamp);
-		_multibid(user2, 58);
-		_multibid(user3, 152);
-		_multibid(user4, 96);
-		_multibid(user1, 110);
-
-		// Claimable after next bid by
-		vm.warp(auctioneerAuction.getAuction(0).bidData.nextBidBy + 1);
-
-		uint256 lotPrice = auctioneerAuction.getAuction(0).bidData.bid;
-
-		// Deposit into funds
-		vm.prank(user1);
-		vm.deal(user1, 1e18);
-		auctioneerUser.addFunds{ value: lotPrice / 2 }();
-
-		vm.expectRevert(InsufficientFunds.selector);
-
-		// Claim
-		vm.prank(user1);
-		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.FUNDS }));
-	}
-
 	function test_winning_lotPriceIsDistributedCorrectly_Farm0StakedFallbackToTreasury() public {
 		// Set farm
 		auctioneer.updateFarm(address(farm));

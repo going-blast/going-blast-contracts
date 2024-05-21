@@ -20,9 +20,6 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		_auctioneerUpdateFarm();
 		_initializeFarmEmissions();
 		_createDefaultDay1Auction();
-
-		// For GAS test deposit funds into contract
-		_addUserFunds(user2, 10e18);
 	}
 
 	function test_bid_RevertWhen_InvalidAuctionLot() public {
@@ -62,14 +59,6 @@ contract AuctioneerBidTest is AuctioneerHelper {
 	function test_bid_RevertWhen_ETHSentWithWrongPaymentType() public {
 		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
 		vm.deal(user1, 10e18);
-
-		vm.expectRevert(SentETHButNotWalletPayment.selector);
-
-		vm.prank(user1);
-		auctioneer.bid{ value: bidCost }(
-			0,
-			BidOptions({ paymentType: PaymentType.FUNDS, multibid: 1, message: "", rune: 0 })
-		);
 
 		vm.expectRevert(SentETHButNotWalletPayment.selector);
 
@@ -156,7 +145,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		assertEq(auctionUser.bids, 1, "Bid is added to user bid counter");
 	}
 
-	function test_bid_Should_PullBidFundsFromWallet() public {
+	function test_bid_Should_PullBidFromWallet() public {
 		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
 		vm.deal(user1, 1e18);
 
@@ -171,28 +160,6 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		_bidWithOptionsNoDeal(user1, 0, options);
 
 		_expectETHTransfer(0, user1, address(auctioneer), bidCost);
-	}
-
-	function test_bid_Should_PullBidFromFunds() public {
-		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
-
-		// Deposit it wallet (This is tested more fully in Auctioneer.balance.t.sol)
-		_addUserFunds(user1, 10e18);
-		uint256 user1EthBalInit = user1.balance;
-		uint256 auctioneerEthBalInit = address(auctioneer).balance;
-		uint256 user1Funds = auctioneerUser.userFunds(user1);
-
-		BidOptions memory options = BidOptions({
-			paymentType: PaymentType.FUNDS,
-			multibid: 1,
-			message: "Hello World",
-			rune: 0
-		});
-		_bidWithOptions(user1, 0, options);
-
-		assertEq(user1.balance, user1EthBalInit, "Should not remove funds from users wallet");
-		assertEq(auctioneerUser.userFunds(user1), user1Funds - bidCost, "Should remove funds from users balance");
-		assertEq(address(auctioneer).balance, auctioneerEthBalInit, "Should not add fund to auctioneer from users wallet");
 	}
 
 	function test_bid_ExpectEmit_Multibid() public {
@@ -370,12 +337,5 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
 		BidOptions memory options = BidOptions({ paymentType: PaymentType.WALLET, multibid: 1, message: "", rune: 0 });
 		_bidWithOptions(user1, 0, options);
-	}
-
-	// User 2 has deposited funds into contract
-	function test_bid_GAS_FUNDS() public {
-		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
-		BidOptions memory options = BidOptions({ paymentType: PaymentType.FUNDS, multibid: 1, message: "", rune: 0 });
-		_bidWithOptions(user2, 0, options);
 	}
 }

@@ -30,7 +30,6 @@ interface IAuctioneerUser {
 		uint256 _biddersEmission,
 		bool _harvestToFarm
 	) external returns (uint256 harvested, uint256 burned);
-	function payFromFunds(address _user, uint256 _amount) external;
 	function markAuctionHarvestable(uint256 _lot, address _user) external;
 }
 
@@ -50,9 +49,6 @@ contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, Auctioneer
 	mapping(address => EnumerableSet.UintSet) internal userUnharvestedLots;
 	mapping(address => string) public userAlias;
 	mapping(string => address) public aliasUser;
-
-	// USER FUNDS
-	mapping(address => uint256) public userFunds;
 
 	constructor() Ownable(msg.sender) {}
 
@@ -180,38 +176,6 @@ contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, Auctioneer
 
 		user.harvestedEmissions = harvested;
 		user.burnedEmissions = burned;
-	}
-
-	///////////////////
-	// FUNDS
-	///////////////////
-
-	function payFromFunds(address _user, uint256 _amount) public onlyAuctioneer {
-		if (_amount > userFunds[_user]) revert InsufficientFunds();
-		userFunds[_user] -= _amount;
-	}
-
-	function addFunds() public payable nonReentrant {
-		// Send eth to auctioneer
-		(bool sent, ) = auctioneer.call{ value: msg.value }("");
-		if (!sent) revert ETHTransferFailed();
-
-		// Increase users funds
-		userFunds[msg.sender] += msg.value;
-
-		emit AddedFunds(msg.sender, msg.value);
-	}
-
-	function withdrawFunds(uint256 _amount) public nonReentrant {
-		if (_amount > userFunds[msg.sender]) revert BadWithdrawal();
-
-		// Send eth back to user, will revert if failed
-		IAuctioneer(auctioneer).withdrawUserFunds(payable(msg.sender), _amount);
-
-		// Remove funds from user's account
-		userFunds[msg.sender] -= _amount;
-
-		emit WithdrewFunds(msg.sender, _amount);
 	}
 
 	///////////////////

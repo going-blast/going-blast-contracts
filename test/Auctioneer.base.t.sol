@@ -55,8 +55,6 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	GoingBlastPresale public presale;
 	GoingBlastAirdrop public airdrop;
 
-	uint8 usdDecimals;
-	BasicERC20WithDecimals public USD;
 	IWETH public WETH;
 	address public ETH_ADDR = address(0);
 	BasicERC20 public XXToken;
@@ -93,7 +91,6 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		vm.label(address(farm), "farm");
 		vm.label(address(presale), "presale");
 		vm.label(address(airdrop), "airdrop");
-		vm.label(address(USD), "USD");
 		vm.label(address(WETH), "WETH");
 		vm.label(address(0), "ETH_0");
 		vm.label(address(XXToken), "XXToken");
@@ -116,8 +113,6 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 
 		setLabels();
 
-		usdDecimals = 18;
-		USD = new BasicERC20WithDecimals("USD", "USD", usdDecimals);
 		WETH = IWETH(address(new WETH9()));
 		GO = new GoToken();
 		GO_LP = new BasicERC20("UniswapV2Pair", "GO_LP");
@@ -227,15 +222,12 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 			// Give tokens
 			vm.prank(treasury);
 			GO.transfer(users[i], 50e18);
-			USD.mint(users[i], 10000e18);
 			GO_LP.mint(users[i], 50e18);
 			XXToken.mint(users[i], 50e18);
 			YYToken.mint(users[i], 50e18);
 
 			// Approve
 			vm.startPrank(users[i]);
-			USD.approve(address(auctioneer), 10000e18);
-			USD.approve(address(auctioneerUser), 10000e18);
 			GO.approve(address(farm), 10000e18);
 			GO_LP.approve(address(farm), 10000e18);
 			XXToken.approve(address(farm), 10000e18);
@@ -598,15 +590,5 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		uint256[] memory lots = new uint256[](1);
 		lots[0] = _lot;
 		return auctioneerUser.getUserLotInfos(lots, _user)[0];
-	}
-
-	// Funds
-	function _addUserFunds(address user, uint256 amount) public {
-		vm.deal(user, amount);
-		_addUserFundsNoDeal(user, amount);
-	}
-	function _addUserFundsNoDeal(address user, uint256 amount) public {
-		vm.prank(user);
-		auctioneerUser.addFunds{ value: amount }();
 	}
 }
