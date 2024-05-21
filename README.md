@@ -1,6 +1,6 @@
-Contracts / tests / deployments
+Contracts, tests, coverage, and deployment scripts of the Going Blast ecosystem.
 
--   Architect
+-- Architect --
 
 ```
 
