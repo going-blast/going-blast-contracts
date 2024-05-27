@@ -21,6 +21,13 @@ deployments/*
 cache_forge
 .yarn
 
+# subgraph
+subgraph/graph-node/data
+subgraph/tests
+generated/
+build/
+generated/schema.ts
+
 
 # Foundry
 out/

@@ -1,7 +1,36 @@
-type AuctionRune @entity(immutable: true) {
+enum AuctionMessageType {
+	BID
+	RUNE
+	MESSAGE
+	CLAIM
+	INFO
+}
+
+type AuctionMessage @entity(immutable: true) {
+	"id will be auction-lot_index"
 	id: ID!
+	auction: Auction!
+	auctionUser: AuctionUser
+	type: AuctionMessageType!
+	index: Int!
+	user: Bytes
+	alias: String
+	multibid: BigInt
+	prevRuneSymbol: Int
+	runeSymbol: Int
+	message: String
+	bid: BigInt
+	tx: Bytes
+	timestamp: BigInt!
+}
+
+type AuctionRune @entity {
+	"id will be auction-lot_rune-symbol"
+	id: ID!
+	auction: Auction!
 	runeSymbol: Int!
 	bids: BigInt!
+	users: [AuctionUser!]! @derivedFrom(field: "rune")
 }
 
 enum BidWindowType {
@@ -11,6 +40,7 @@ enum BidWindowType {
 }
 
 type AuctionWindow @entity(immutable: true) {
+	"id will be auction-lot_index"
 	id: ID!
 	windowType: BidWindowType!
 	windowOpenTimestamp: BigInt!
@@ -19,6 +49,7 @@ type AuctionWindow @entity(immutable: true) {
 }
 
 type AuctionEmissions @entity(immutable: true) {
+	"id will be auction-lot"
 	id: ID!
 	bp: BigInt!
 	biddersEmission: BigInt!
@@ -26,18 +57,21 @@ type AuctionEmissions @entity(immutable: true) {
 }
 
 type TokenData @entity(immutable: true) {
+	"id will be auction-lot_token-address"
 	id: ID!
 	amount: BigInt!
-	tokenAddress: Bytes!
+	token: Bytes!
 }
 
 type NftData @entity(immutable: true) {
+	"id will be auction-lot_nft-address"
 	id: ID!
 	nftId: BigInt!
-	nftAddress: Bytes!
+	nft: Bytes!
 }
 
 type AuctionRewards @entity(immutable: true) {
+	"id will be auction-lot"
 	id: ID!
 	estimatedValue: BigInt!
 	tokens: [TokenData!]!
@@ -45,6 +79,7 @@ type AuctionRewards @entity(immutable: true) {
 }
 
 type AuctionBidData @entity {
+	"id will be auction-lot"
 	id: ID!
 	revenue: BigInt!
 	bid: BigInt!
@@ -56,16 +91,26 @@ type AuctionBidData @entity {
 	bidCost: BigInt!
 }
 
+type User @entity {
+	"id will be user address"
+	id: ID!
+	alias: String
+}
+
 type AuctionUser @entity {
+	"id will be auction-lot_user-address"
 	id: ID!
 	user: Bytes!
 	auction: Auction!
 	bids: BigInt!
+	lastBidTimestamp: BigInt
 	rune: AuctionRune
+	runeSymbol: Int
 	alias: String
 }
 
-type Auction @entity(immutable: true) {
+type Auction @entity {
+	"id will be lot"
 	id: ID!
 	lot: BigInt!
 	day: BigInt!
@@ -78,4 +123,14 @@ type Auction @entity(immutable: true) {
 	rewards: AuctionRewards!
 	bidData: AuctionBidData!
 	finalized: Boolean!
+	users: [AuctionUser!]! @derivedFrom(field: "auction")
+
+	"ext"
+	hasRunes: Boolean!
+	blockTimestamp: BigInt!
+	activeWindow: BigInt!
+	biddingOpen: Boolean!
+	ended: Boolean!
+	cancelled: Boolean!
+	messagesCount: Int!
 }

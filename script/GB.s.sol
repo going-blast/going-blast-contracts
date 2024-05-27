@@ -94,6 +94,9 @@ contract GBScripts is GBScriptUtils {
 	}
 
 	function _deployCore() internal {
+		// BLOCK NUMBER (for subgraph)
+		writeFirstBlock(block.number);
+
 		// TOKENS
 
 		GO = new GoToken();

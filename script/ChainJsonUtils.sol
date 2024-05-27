@@ -30,6 +30,9 @@ contract ChainJsonUtils is Script {
 
 	// Paths
 
+	function firstBlockPath() internal pure returns (string memory) {
+		return ".firstBlock";
+	}
 	function contractPath(string memory item) internal pure returns (string memory) {
 		return string.concat(".contracts.", item);
 	}
@@ -84,6 +87,11 @@ contract ChainJsonUtils is Script {
 	}
 	function writeFreezeContracts() internal {
 		writeBool(configPath(".contractsFrozen"), true);
+	}
+
+	// First Block
+	function writeFirstBlock(uint256 blockNumber) internal {
+		writeUint(firstBlockPath(), blockNumber);
 	}
 
 	// Auctions

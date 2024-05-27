@@ -6,6 +6,15 @@ Contracts, tests, coverage, and deployment scripts of the Going Blast ecosystem.
 
 ```
 
+- [ ] Changes allowed by subgraph
+  - [ ] Remove alias from bid event
+  - [ ] Remove timestamp from bid event
+  - [ ] Create pure message function
+  - [ ] Add optional message to switch rune
+  - [ ] Remove users counter from runes
+  - [ ] Remove users counter from auction
+  - [ ] Add message to claim lot
+
 ToDos:
 - [ ] Add prevRune to Bid Emit Event, so that the frontend can show that someone has switched rune
 [x] Change min timer duration to 30s
