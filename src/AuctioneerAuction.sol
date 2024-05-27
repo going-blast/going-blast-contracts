@@ -61,7 +61,7 @@ interface IAuctioneerAuction {
 		uint8 _prevRune,
 		uint256 _userGoBalance,
 		BidOptions memory _options
-	) external returns (uint256 userBid, uint256 bidCost, bool actionHasEmissions);
+	) external returns (uint256 userBid, uint256 bidCost);
 	function selectRune(uint256 _lot, uint256 _userBids, uint8 _prevRune, uint8 _rune) external;
 	function claimLot(
 		uint256 _lot,
@@ -323,21 +323,14 @@ contract AuctioneerAuction is
 		if (_prevRune == _newRune) return;
 
 		// Remove data from prevRune
-		if (_prevRune != 0) {
-			auctions[_lot].runes[_prevRune].users -= 1;
-			if (_userBids > 0) {
-				auctions[_lot].runes[_prevRune].bids -= _userBids;
-			}
+		if (_prevRune != 0 && _userBids > 0) {
+			auctions[_lot].runes[_prevRune].bids -= _userBids;
 		}
-
-		auctions[_lot].runes[_newRune].users += 1;
 
 		if (_userBids > 0) {
 			auctions[_lot].runes[_newRune].bids += _userBids.scaleByBP(10000 - runeSwitchPenalty);
-			auctions[_lot].bidData.bids =
-				auctions[_lot].bidData.bids +
-				_userBids.scaleByBP(10000 - runeSwitchPenalty) -
-				_userBids;
+			auctions[_lot].bidData.bids += _userBids.scaleByBP(10000 - runeSwitchPenalty);
+			auctions[_lot].bidData.bids -= _userBids;
 		}
 	}
 
@@ -353,7 +346,7 @@ contract AuctioneerAuction is
 		onlyAuctioneer
 		validAuctionLot(_lot)
 		validRune(_lot, _options.rune)
-		returns (uint256 userBid, uint256 auctionBidCost, bool auctionHasEmissions)
+		returns (uint256 userBid, uint256 auctionBidCost)
 	{
 		Auction storage auction = auctions[_lot];
 		auction.validateBiddingOpen();
@@ -371,10 +364,6 @@ contract AuctioneerAuction is
 		auction.bidData.bids += _options.multibid;
 		auction.bidData.nextBidBy = auction.getNextBidBy();
 
-		if (_prevUserBids == 0) {
-			auction.users += 1;
-		}
-
 		// Runes
 		if (auction.runes.length > 0) {
 			_switchRuneUpdateData(_lot, _prevUserBids, _prevRune, _options.rune);
@@ -384,7 +373,6 @@ contract AuctioneerAuction is
 
 		userBid = auction.bidData.bid;
 		auctionBidCost = auction.bidData.bidCost;
-		auctionHasEmissions = auction.emissions.biddersEmission > 0;
 	}
 
 	function selectRune(
@@ -432,8 +420,6 @@ contract AuctioneerAuction is
 
 		// Finalize
 		triggerFinalization = !auction.finalized;
-
-		emit ClaimedLot(auction.lot, _user, _userRune, userShareOfLot, auction.rewards.tokens, auction.rewards.nfts);
 	}
 
 	function getProfitDistributions(

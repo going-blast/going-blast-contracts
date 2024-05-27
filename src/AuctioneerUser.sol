@@ -52,7 +52,7 @@ interface IAuctioneerUser {
 		uint256 _lot,
 		address _user,
 		BidOptions memory _options
-	) external returns (uint256 prevUserBids, uint8 prevRune, string memory userAlias);
+	) external returns (uint256 prevUserBids, uint8 prevRune);
 	function selectRune(uint256 _lot, address _user, uint8 _rune) external returns (uint256 userBids, uint8 prevRune);
 	function claimLot(uint256 _lot, address _user) external returns (uint8 rune, uint256 bids);
 	function harvestAuctionEmissions(
@@ -63,7 +63,6 @@ interface IAuctioneerUser {
 		uint256 _biddersEmission,
 		bool _harvestToFarm
 	) external returns (uint256 harvested, uint256 burned);
-	function markAuctionHarvestable(uint256 _lot, address _user) external;
 }
 
 contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, AuctioneerEvents {
@@ -78,8 +77,6 @@ contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, Auctioneer
 
 	// AUCTION USER
 	mapping(uint256 => mapping(address => AuctionUser)) public auctionUsers;
-	mapping(address => EnumerableSet.UintSet) internal userInteractedLots;
-	mapping(address => EnumerableSet.UintSet) internal userUnharvestedLots;
 	mapping(address => string) public userAlias;
 	mapping(string => address) public aliasUser;
 
@@ -111,11 +108,10 @@ contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, Auctioneer
 		uint256 _lot,
 		address _user,
 		BidOptions memory _options
-	) public onlyAuctioneer returns (uint256 prevUserBids, uint8 prevRune, string memory userAliasRet) {
+	) public onlyAuctioneer returns (uint256 prevUserBids, uint8 prevRune) {
 		AuctionUser storage user = auctionUsers[_lot][_user];
 		prevUserBids = user.bids;
 		prevRune = user.rune;
-		userAliasRet = userAlias[_user];
 
 		// Force bid count to be at least one
 		if (_options.multibid == 0) _options.multibid = 1;
@@ -132,13 +128,6 @@ contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, Auctioneer
 		if (user.rune != _options.rune) {
 			user.rune = _options.rune;
 		}
-
-		// Mark user has interacted with this lot
-		userInteractedLots[_user].add(_lot);
-	}
-
-	function markAuctionHarvestable(uint256 _lot, address _user) public onlyAuctioneer {
-		userUnharvestedLots[_user].add(_lot);
 	}
 
 	function selectRune(
@@ -197,7 +186,6 @@ contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, Auctioneer
 
 		// Mark harvested
 		user.emissionsHarvested = true;
-		userUnharvestedLots[_user].remove(_lot);
 
 		// Signal auctioneerEmissions to harvest user's emissions
 		(harvested, burned) = auctioneerEmissions.harvestEmissions(
@@ -236,14 +224,6 @@ contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, Auctioneer
 
 	function getAuctionUser(uint256 _lot, address _user) public view returns (AuctionUser memory) {
 		return auctionUsers[_lot][_user];
-	}
-
-	function getUserInteractedLots(address _user) public view returns (uint256[] memory) {
-		return userInteractedLots[_user].values();
-	}
-
-	function getUserUnharvestedLots(address _user) public view returns (uint256[] memory) {
-		return userUnharvestedLots[_user].values();
 	}
 
 	function getUserLotInfos(uint256[] memory _lots, address _user) public view returns (UserLotInfo[] memory infos) {

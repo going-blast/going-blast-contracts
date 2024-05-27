@@ -60,7 +60,7 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 
 		vm.expectRevert(AuctionStillRunning.selector);
 		vm.prank(user1);
-		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.WALLET }));
+		auctioneer.claimLot(0, "");
 
 		// Claimable after next bid by
 		vm.warp(auctioneerAuction.getAuction(0).bidData.nextBidBy + 1);
@@ -95,7 +95,7 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 
 		vm.expectRevert(AuctionStillRunning.selector);
 		vm.prank(user1);
-		auctioneer.claimLot{ value: price }(0, ClaimLotOptions({ paymentType: PaymentType.WALLET }));
+		auctioneer.claimLot{ value: price }(0, "");
 
 		// Claimable after next bid by
 		vm.warp(auctioneerAuction.getAuction(0).bidData.nextBidBy + 1);
@@ -104,7 +104,7 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 		emit AuctionFinalized(0);
 
 		vm.prank(user1);
-		auctioneer.claimLot{ value: price }(0, ClaimLotOptions({ paymentType: PaymentType.WALLET }));
+		auctioneer.claimLot{ value: price }(0, "");
 	}
 
 	function testFail_finalize_claimLot_alreadyFinalized_NotExpectEmit_AuctionFinalized() public {
@@ -116,7 +116,7 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 
 		vm.expectRevert(AuctionStillRunning.selector);
 		vm.prank(user1);
-		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.WALLET }));
+		auctioneer.claimLot(0, "");
 
 		// Claimable after next bid by
 		vm.warp(auctioneerAuction.getAuction(0).bidData.nextBidBy + 1);
@@ -134,7 +134,7 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 
 		// Should revert
 		vm.prank(user1);
-		auctioneer.claimLot(0, ClaimLotOptions({ paymentType: PaymentType.WALLET }));
+		auctioneer.claimLot(0, "");
 	}
 
 	function test_finalizeAuction_TransferEmissionsToTreasury() public {

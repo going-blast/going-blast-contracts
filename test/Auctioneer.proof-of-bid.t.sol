@@ -354,19 +354,6 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 		auctioneer.harvestAuctionsEmissions(auctionsToHarvest, false);
 	}
 
-	function test_proofOfBid_firstBidAddsAuctionToUserInteractedLots() public {
-		vm.warp(auctioneerAuction.getAuction(0).unlockTimestamp);
-
-		uint256[] memory unharvestedLots = auctioneerUser.getUserUnharvestedLots(user1);
-		assertEq(unharvestedLots.length, 0, "unharvestedLots lots should be []");
-
-		_bid(user1);
-
-		unharvestedLots = auctioneerUser.getUserUnharvestedLots(user1);
-		assertEq(unharvestedLots.length, 1, "unharvestedLots should be [0]");
-		assertEq(unharvestedLots[0], 0, "First unharvestedLot should be 0");
-	}
-
 	function test_proofOfBid_harvestAuctionEmissions_RevertWhen_AuctionNotEnded() public {
 		vm.warp(auctioneerAuction.getAuction(0).unlockTimestamp);
 
@@ -398,38 +385,6 @@ contract AuctioneerProofOfBidTest is AuctioneerHelper {
 
 		harvested = auctioneerUser.getAuctionUser(0, user1).emissionsHarvested;
 		assertEq(harvested, true, "User has harvested emissions");
-	}
-
-	function test_proofOfBid_harvestAuctionEmissions_AfterClaim_LotRemovedFromList() public {
-		vm.warp(auctioneerAuction.getAuction(0).unlockTimestamp);
-
-		uint256[] memory interactedLots = auctioneerUser.getUserInteractedLots(user1);
-		uint256[] memory unharvestedLots = auctioneerUser.getUserUnharvestedLots(user1);
-		assertEq(interactedLots.length, 0, "User has not interacted with any lots");
-		assertEq(unharvestedLots.length, 0, "User has no unharvested lots");
-
-		_bid(user1);
-
-		vm.warp(block.timestamp + 1 days);
-
-		interactedLots = auctioneerUser.getUserInteractedLots(user1);
-		unharvestedLots = auctioneerUser.getUserUnharvestedLots(user1);
-		assertEq(interactedLots.length, 1, "User has interacted with one lot");
-		assertEq(interactedLots[0], 0, "Users first interacted lot is lot 0");
-		assertEq(unharvestedLots.length, 1, "User has one unharvested lots");
-		assertEq(unharvestedLots[0], 0, "Users unharvested lot is lot 0");
-
-		// Claim
-		uint256[] memory auctionsToHarvest = new uint256[](1);
-		auctionsToHarvest[0] = 0;
-		vm.prank(user1);
-		auctioneer.harvestAuctionsEmissions(auctionsToHarvest, false);
-
-		interactedLots = auctioneerUser.getUserInteractedLots(user1);
-		unharvestedLots = auctioneerUser.getUserUnharvestedLots(user1);
-		assertEq(interactedLots.length, 1, "User has still interacted with one lot");
-		assertEq(interactedLots[0], 0, "Users first interacted lot is still lot 0");
-		assertEq(unharvestedLots.length, 0, "Lot removed from unharvestedLots list");
 	}
 
 	function test_proofOfBid_harvestAuctionEmissions_EarlyHarvest_50PercTax() public {

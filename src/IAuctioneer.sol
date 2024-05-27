@@ -16,7 +16,6 @@ enum PaymentType {
 struct BidRune {
 	uint8 runeSymbol;
 	uint256 bids;
-	uint256 users;
 }
 
 struct BidOptions {
@@ -106,7 +105,6 @@ struct Auction {
 	string name;
 	bool isPrivate; // whether the auction requires wallet / staked Gavel
 	uint256 unlockTimestamp;
-	uint256 users;
 	BidRune[] runes;
 	BidWindow[] windows;
 	AuctionEmissions emissions;
@@ -238,26 +236,12 @@ interface AuctioneerEvents {
 	event UpdatedRuneSwitchPenalty(uint256 _penalty);
 	event UpdatedRunicLastBidderBonus(uint256 _bonus);
 	event AuctionCreated(uint256 indexed _lot);
-	event Bid(
-		uint256 indexed _lot,
-		address indexed _user,
-		uint256 _bid,
-		string _alias,
-		BidOptions _options,
-		uint256 _timestamp
-	);
-	event SelectedRune(uint256 indexed _lot, address indexed _user, uint8 _rune);
+	event Bid(uint256 indexed _lot, address indexed _user, uint256 _bid, BidOptions _options);
+	event SelectedRune(uint256 indexed _lot, address indexed _user, uint8 _rune, string _message);
 	event AuctionFinalized(uint256 indexed _lot);
-	event ClaimedLot(
-		uint256 indexed _lot,
-		address indexed _user,
-		uint8 _rune,
-		uint256 _userShareOfLot,
-		TokenData[] _tokens,
-		NftData[] _nfts
-	);
+	event ClaimedLot(uint256 indexed _lot, address indexed _user, uint8 _rune, uint256 _userShareOfLot, string _message);
 	event UserHarvestedLotEmissions(
-		uint256 _lot,
+		uint256 indexed _lot,
 		address indexed _user,
 		uint256 _userEmissions,
 		uint256 _burnEmissions,
@@ -269,5 +253,6 @@ interface AuctioneerEvents {
 	event UpdatedTreasurySplit(uint256 _split);
 	event UpdatedPrivateAuctionRequirement(uint256 _requirement);
 	event InitializedAuctions();
-	event UpdatedAlias(address _user, string _alias);
+	event UpdatedAlias(address indexed _user, string _alias);
+	event MessageAuction(uint256 indexed _lot, address indexed _user, string _message);
 }

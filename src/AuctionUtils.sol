@@ -203,10 +203,10 @@ library AuctionMutateUtils {
 		if (params.runeSymbols.length == 0) return;
 
 		// Add empty rune (cannot be bid on), to offset array indices
-		auction.runes.push(BidRune({ runeSymbol: 0, bids: 0, users: 0 }));
+		auction.runes.push(BidRune({ runeSymbol: 0, bids: 0 }));
 
 		for (uint8 i = 0; i < params.runeSymbols.length; i++) {
-			auction.runes.push(BidRune({ runeSymbol: params.runeSymbols[i], bids: 0, users: 0 }));
+			auction.runes.push(BidRune({ runeSymbol: params.runeSymbols[i], bids: 0 }));
 		}
 	}
 

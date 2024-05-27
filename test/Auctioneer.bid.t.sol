@@ -85,7 +85,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 			message: "Hello World",
 			rune: 0
 		});
-		emit Bid(0, user1, expectedBid, "XXXX", options, block.timestamp);
+		emit Bid(0, user1, expectedBid, options);
 
 		_bidWithOptions(user1, 0, options);
 	}
@@ -178,7 +178,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 			message: "Hello World",
 			rune: 0
 		});
-		emit Bid(0, user1, expectedBid, "", options, block.timestamp);
+		emit Bid(0, user1, expectedBid, options);
 
 		_bidWithOptionsNoDeal(user1, 0, options);
 
@@ -218,7 +218,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		uint256 expectedBid = auctioneerAuction.startingBid() + auctioneerAuction.bidIncrement();
 		vm.expectEmit(true, true, true, true);
 		BidOptions memory options = BidOptions({ paymentType: PaymentType.WALLET, multibid: 1, message: "", rune: 0 });
-		emit Bid(1, user1, expectedBid, "", options, block.timestamp);
+		emit Bid(1, user1, expectedBid, options);
 
 		_bidWithOptions(user1, 1, options);
 
@@ -251,7 +251,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		expectedBid = auctioneerAuction.getAuction(1).bidData.bid + auctioneerAuction.bidIncrement();
 		vm.expectEmit(true, true, true, true);
 		options = BidOptions({ paymentType: PaymentType.WALLET, multibid: 1, message: "", rune: 0 });
-		emit Bid(1, user3, expectedBid, "", options, block.timestamp);
+		emit Bid(1, user3, expectedBid, options);
 
 		_bidWithOptions(user3, 1, options);
 
@@ -304,7 +304,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		vm.expectEmit(true, true, true, true);
 
 		BidOptions memory options = BidOptions({ paymentType: PaymentType.VOUCHER, multibid: 1, message: "", rune: 0 });
-		emit Bid(0, user1, expectedBid, "", options, block.timestamp);
+		emit Bid(0, user1, expectedBid, options);
 
 		_bidWithOptions(user1, 0, options);
 	}
@@ -326,7 +326,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 			message: "",
 			rune: 0
 		});
-		emit Bid(0, user1, expectedBid, "", options, block.timestamp);
+		emit Bid(0, user1, expectedBid, options);
 
 		_bidWithOptions(user1, 0, options);
 	}

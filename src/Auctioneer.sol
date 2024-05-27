@@ -217,6 +217,11 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 		}
 	}
 
+	// MESSAGE
+	function messageAuction(uint256 _lot, string memory _message) public {
+		emit MessageAuction(_lot, msg.sender, _message);
+	}
+
 	// BID
 
 	function bidWithPermit(
@@ -237,10 +242,10 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 		if (_options.multibid == 0) _options.multibid = 1;
 
 		// User bid
-		(uint256 prevUserBids, uint8 prevRune, string memory userAlias) = auctioneerUser.bid(_lot, msg.sender, _options);
+		(uint256 prevUserBids, uint8 prevRune) = auctioneerUser.bid(_lot, msg.sender, _options);
 
 		// Auction bid
-		(uint256 userBid, uint256 bidCost, bool auctionHasEmissions) = auctioneerAuction.markBid(
+		(uint256 userBid, uint256 bidCost) = auctioneerAuction.markBid(
 			_lot,
 			msg.sender,
 			prevUserBids,
@@ -249,33 +254,26 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 			_options
 		);
 
-		// Mark user will be able to harvest emissions from this auction after it ends
-		if (auctionHasEmissions) {
-			auctioneerUser.markAuctionHarvestable(_lot, msg.sender);
-		}
-
 		// Payment
 		_takeUserPayment(msg.sender, _options.paymentType, bidCost * _options.multibid, _options.multibid * 1e18);
 
-		emit Bid(_lot, msg.sender, userBid, userAlias, _options, block.timestamp);
+		emit Bid(_lot, msg.sender, userBid, _options);
 	}
 
-	function selectRune(uint256 _lot, uint8 _rune) public nonReentrant {
+	function selectRune(uint256 _lot, uint8 _rune, string calldata _message) public nonReentrant {
 		(uint256 userBids, uint8 prevRune) = auctioneerUser.selectRune(_lot, msg.sender, _rune);
 		auctioneerAuction.selectRune(_lot, userBids, prevRune, _rune);
 
-		emit SelectedRune(_lot, msg.sender, _rune);
+		emit SelectedRune(_lot, msg.sender, _rune, _message);
 	}
 
 	// CLAIM
 
-	function claimLot(uint256 _lot, ClaimLotOptions memory _options) public payable nonReentrant {
-		if (_options.paymentType == PaymentType.VOUCHER) revert CannotPayForLotWithVouchers();
-
+	function claimLot(uint256 _lot, string calldata _message) public payable nonReentrant {
 		// Mark user claimed
 		(uint8 userRune, uint256 userBids) = auctioneerUser.claimLot(_lot, msg.sender);
 
-		(, uint256 userShareOfPayment, bool triggerFinalization) = auctioneerAuction.claimLot(
+		(uint256 userShareOfLot, uint256 userShareOfPayment, bool triggerFinalization) = auctioneerAuction.claimLot(
 			_lot,
 			msg.sender,
 			userBids,
@@ -283,7 +281,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 		);
 
 		// Take Payment
-		_takeUserPayment(msg.sender, _options.paymentType, userShareOfPayment, 0);
+		_takeUserPayment(msg.sender, PaymentType.WALLET, userShareOfPayment, 0);
 
 		// Distribute Payment
 		_distributeLotProfit(_lot, userShareOfPayment);
@@ -292,6 +290,8 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 		if (triggerFinalization) {
 			finalize(_lot);
 		}
+
+		emit ClaimedLot(_lot, msg.sender, userRune, userShareOfLot, _message);
 	}
 
 	function _distributeLotProfit(uint256 _lot, uint256 _userShareOfPayment) internal {

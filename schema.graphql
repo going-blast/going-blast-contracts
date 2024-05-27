@@ -83,7 +83,6 @@ type AuctionBidData @entity {
 	id: ID!
 	revenue: BigInt!
 	bid: BigInt!
-	bidTimestamp: BigInt!
 	nextBidBy: BigInt!
 	bidUser: Bytes!
 	bidRune: Int!
@@ -95,6 +94,7 @@ type User @entity {
 	"id will be user address"
 	id: ID!
 	alias: String
+	interactedAuctions: [Auction!]!
 	harvestableAuctions: [Auction!]!
 	totalBidsCount: BigInt!
 	totalAuctionsParticipated: BigInt!

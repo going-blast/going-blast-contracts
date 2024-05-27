@@ -6,15 +6,16 @@ Contracts, tests, coverage, and deployment scripts of the Going Blast ecosystem.
 
 ```
 
-- [ ] Changes allowed by subgraph
-  - [ ] Remove alias from bid event
-  - [ ] Remove timestamp from bid event
-  - [ ] Create pure message function
-  - [ ] Add optional message to switch rune
-  - [ ] Remove users counter from runes
-  - [ ] Remove users counter from auction
-  - [ ] Add message to claim lot
-  - [ ] Remove list of harvestable lots from AuctioneerUser
+- [x] Changes allowed by subgraph
+  - [x] Remove alias from bid event
+  - [x] Remove timestamp from bid event
+  - [x] Create pure message function
+  - [x] Add optional message to switch rune
+  - [x] Remove users counter from runes
+  - [x] Remove users counter from auction
+  - [x] Add message to claim lot
+  - [x] Remove list of harvestable lots from AuctioneerUser
+  - [x] Remove list of interacted lots from AuctioneerUser
 
 ToDos:
 - [ ] Add prevRune to Bid Emit Event, so that the frontend can show that someone has switched rune

@@ -98,7 +98,7 @@ contract AuctioneerPermitTest is AuctioneerHelper, AuctioneerFarmEvents {
 		_expectTokenTransfer(VOUCHER, user1, dead, 1e18);
 
 		vm.expectEmit(true, true, true, true);
-		emit Bid(0, user1, expectedBid, "", options, block.timestamp);
+		emit Bid(0, user1, expectedBid, options);
 
 		vm.prank(user1);
 		auctioneer.bidWithPermit(0, options, permitData);

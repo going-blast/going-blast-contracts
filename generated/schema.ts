@@ -796,19 +796,6 @@ export class AuctionBidData extends Entity {
     this.set("bid", Value.fromBigInt(value));
   }
 
-  get bidTimestamp(): BigInt {
-    let value = this.get("bidTimestamp");
-    if (!value || value.kind == ValueKind.NULL) {
-      throw new Error("Cannot return null for a required field.");
-    } else {
-      return value.toBigInt();
-    }
-  }
-
-  set bidTimestamp(value: BigInt) {
-    this.set("bidTimestamp", Value.fromBigInt(value));
-  }
-
   get nextBidBy(): BigInt {
     let value = this.get("nextBidBy");
     if (!value || value.kind == ValueKind.NULL) {
@@ -929,6 +916,19 @@ export class User extends Entity {
     } else {
       this.set("alias", Value.fromString(<string>value));
     }
+  }
+
+  get interactedAuctions(): Array<string> {
+    let value = this.get("interactedAuctions");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toStringArray();
+    }
+  }
+
+  set interactedAuctions(value: Array<string>) {
+    this.set("interactedAuctions", Value.fromStringArray(value));
   }
 
   get harvestableAuctions(): Array<string> {
@@ -1135,23 +1135,6 @@ export class AuctionUser extends Entity {
 
   set runeSymbol(value: i32) {
     this.set("runeSymbol", Value.fromI32(value));
-  }
-
-  get alias(): string | null {
-    let value = this.get("alias");
-    if (!value || value.kind == ValueKind.NULL) {
-      return null;
-    } else {
-      return value.toString();
-    }
-  }
-
-  set alias(value: string | null) {
-    if (!value) {
-      this.unset("alias");
-    } else {
-      this.set("alias", Value.fromString(<string>value));
-    }
   }
 
   get harvested(): boolean {
@@ -1382,19 +1365,6 @@ export class Auction extends Entity {
 
   set hasRunes(value: boolean) {
     this.set("hasRunes", Value.fromBoolean(value));
-  }
-
-  get blockTimestamp(): BigInt {
-    let value = this.get("blockTimestamp");
-    if (!value || value.kind == ValueKind.NULL) {
-      throw new Error("Cannot return null for a required field.");
-    } else {
-      return value.toBigInt();
-    }
-  }
-
-  set blockTimestamp(value: BigInt) {
-    this.set("blockTimestamp", Value.fromBigInt(value));
   }
 
   get activeWindow(): BigInt {

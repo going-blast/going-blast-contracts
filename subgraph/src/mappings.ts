@@ -91,7 +91,6 @@ export function handleAuctionCreated(event: AuctionCreatedEvent): void {
 	// Auction Bid Data
 	auctionBidDataEntity.revenue = auctionData.bidData.revenue
 	auctionBidDataEntity.bid = auctionData.bidData.bid
-	auctionBidDataEntity.bidTimestamp = auctionData.bidData.bidTimestamp
 	auctionBidDataEntity.nextBidBy = auctionData.bidData.nextBidBy
 	auctionBidDataEntity.bidUser = auctionData.bidData.bidUser
 	auctionBidDataEntity.bidRune = auctionData.bidData.bidRune
@@ -360,6 +359,7 @@ export function handleBid(event: BidEvent): void {
 	userEntity.totalBidsCount = userEntity.totalBidsCount.plus(event.params._options.multibid)
 	if (isFirstBid) {
 		userEntity.totalAuctionsParticipated = userEntity.totalAuctionsParticipated.plus(BigInt.fromI32(1))
+		userEntity.interactedAuctions.push(auctionEntity.id)
 	}
 	if (isFirstBid && auctionEmissionsEntity.biddersEmission.gt(BigInt.zero())) {
 		userEntity.harvestableAuctions.push(auctionEntity.id)
@@ -372,8 +372,8 @@ export function handleBid(event: BidEvent): void {
 
 	// Update from event
 	auctionBidDataEntity.bidUser = event.params._user
-	auctionBidDataEntity.bidTimestamp = event.block.timestamp
 	auctionBidDataEntity.bidRune = event.params._options.rune
+	auctionBidDataEntity.bid = event.params._bid
 
 	if (switchedRunesIncursPenalty) {
 		// Remove penalized bids
@@ -383,7 +383,6 @@ export function handleBid(event: BidEvent): void {
 	auctionBidDataEntity.bids = auctionBidDataEntity.bids.plus(event.params._options.multibid)
 
 	// Update from contract
-	auctionBidDataEntity.bid = auctionData.bidData.bid
 	auctionBidDataEntity.revenue = auctionData.bidData.revenue
 	auctionBidDataEntity.nextBidBy = auctionData.bidData.nextBidBy
 	auctionBidDataEntity.save()
