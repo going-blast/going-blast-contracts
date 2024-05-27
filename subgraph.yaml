@@ -42,6 +42,8 @@ dataSources:
                 handler: handleAuctionCreated
               - event: AuctionCancelled(indexed uint256)
                 handler: handleAuctionCancelled
+              - event: UserHarvestedLotEmissions(uint256,indexed address,uint256,uint256,bool)
+                handler: handleUserHarvestedLotEmissions
           file: ./subgraph/src/mappings.ts
     - kind: ethereum/contract
       name: AuctioneerAuction

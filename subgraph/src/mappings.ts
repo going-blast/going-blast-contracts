@@ -1,4 +1,4 @@
-import { BigInt, ethereum } from "@graphprotocol/graph-ts"
+import { BigInt } from "@graphprotocol/graph-ts"
 import {
 	AuctionRune,
 	AuctionWindow,
@@ -18,6 +18,7 @@ import {
 	SelectedRune as SelectedRuneEvent,
 	AuctionCreated as AuctionCreatedEvent,
 	AuctionCancelled as AuctionCancelledEvent,
+	UserHarvestedLotEmissions as UserHarvestedLotEmissionsEvent,
 } from "../../generated/Auctioneer/Auctioneer"
 import { AuctioneerAuction, ClaimedLot as ClaimedLotEvent } from "../../generated/AuctioneerAuction/AuctioneerAuction"
 import { UpdatedAlias as UpdatedAliasEvent } from "../../generated/AuctioneerUser/AuctioneerUser"
@@ -136,7 +137,6 @@ export function handleAuctionCreated(event: AuctionCreatedEvent): void {
 	auctionEntity.biddingOpen = auctionExt.isBiddingOpen
 	auctionEntity.ended = auctionExt.isEnded
 	auctionEntity.cancelled = false
-	auctionEntity.blockTimestamp = auctionExt.blockTimestamp
 	auctionEntity.activeWindow = auctionExt.activeWindow
 	auctionEntity.messagesCount = 1
 
@@ -164,6 +164,12 @@ export function handleUpdatedAlias(event: UpdatedAliasEvent): void {
 
 	if (userEntity == null) {
 		userEntity = new User(user)
+		userEntity.harvestableAuctions = []
+		userEntity.totalBidsCount = BigInt.zero()
+		userEntity.totalAuctionsParticipated = BigInt.zero()
+		userEntity.totalEmissionsHarvested = BigInt.zero()
+		userEntity.totalEmissionsBurned = BigInt.zero()
+		userEntity.totalAuctionsWon = BigInt.zero()
 	}
 
 	userEntity.alias = event.params._alias
@@ -181,6 +187,7 @@ export function handleSelectedRune(event: SelectedRuneEvent): void {
 	const auctioneerAuctionContract = AuctioneerAuction.bind(auctioneerContract.auctioneerAuction())
 
 	const auctionEntity = Auction.load(lot)!
+	const userEntity = User.load(user)
 
 	// ===== USER =====
 
@@ -193,9 +200,8 @@ export function handleSelectedRune(event: SelectedRuneEvent): void {
 		auctionUserEntity.auction = lot
 		auctionUserEntity.bids = BigInt.zero()
 		auctionUserEntity.lastBidTimestamp = BigInt.zero()
-
-		const userEntity = User.load(user)
-		auctionUserEntity.alias = userEntity == null ? null : userEntity.alias
+		auctionUserEntity.harvested = false
+		auctionUserEntity.claimed = false
 	}
 
 	// Rune switch pre-calcs
@@ -266,7 +272,7 @@ export function handleSelectedRune(event: SelectedRuneEvent): void {
 	selectRuneMessageEntity.auction = auctionEntity.id
 	selectRuneMessageEntity.auctionUser = auctionUserEntity.id
 	selectRuneMessageEntity.user = event.params._user
-	selectRuneMessageEntity.alias = auctionUserEntity.alias
+	selectRuneMessageEntity.alias = userEntity == null ? null : userEntity.alias
 	selectRuneMessageEntity.prevRuneSymbol = prevRuneSymbol
 	selectRuneMessageEntity.runeSymbol = event.params._rune
 	// selectRuneMessageEntity.message = event.params._options.message
@@ -285,8 +291,11 @@ export function handleBid(event: BidEvent): void {
 	const auctionData = auctioneerAuctionContract.getAuction(event.params._lot)
 
 	const auctionEntity = Auction.load(lot)!
+	const auctionEmissionsEntity = AuctionEmissions.load(auctionEntity.emissions)!
 
-	// ===== USER =====
+	let userEntity = User.load(user)
+
+	// ===== AUCTION USER =====
 
 	// Create user if not exists
 	let auctionUserEntity = AuctionUser.load(lot.concat("_").concat(user))
@@ -296,7 +305,13 @@ export function handleBid(event: BidEvent): void {
 		auctionUserEntity.user = event.params._user
 		auctionUserEntity.auction = lot
 		auctionUserEntity.bids = BigInt.zero()
+		auctionUserEntity.lastBidTimestamp = BigInt.zero()
+		auctionUserEntity.harvested = false
+		auctionUserEntity.claimed = false
 	}
+
+	// Set "isFirstBid" flag
+	const isFirstBid = auctionUserEntity.bids.equals(BigInt.zero())
 
 	// Rune switch pre-calcs
 	const prevRuneSymbol = auctionUserEntity.runeSymbol
@@ -318,8 +333,6 @@ export function handleBid(event: BidEvent): void {
 	}
 
 	// Update user
-	const userEntity = User.load(user)
-	auctionUserEntity.alias = userEntity == null ? null : userEntity.alias
 	auctionUserEntity.runeSymbol = event.params._options.rune
 	const selectedRuneEntity = AuctionRune.load(lot.concat("_").concat(event.params._options.rune.toString()))
 	auctionUserEntity.rune = selectedRuneEntity == null ? null : selectedRuneEntity.id
@@ -331,6 +344,27 @@ export function handleBid(event: BidEvent): void {
 	auctionUserEntity.bids = auctionUserEntity.bids.plus(event.params._options.multibid)
 
 	auctionUserEntity.save()
+
+	// ===== USER =====
+
+	if (userEntity == null) {
+		userEntity = new User(user)
+		userEntity.harvestableAuctions = []
+		userEntity.totalBidsCount = BigInt.zero()
+		userEntity.totalAuctionsParticipated = BigInt.zero()
+		userEntity.totalEmissionsHarvested = BigInt.zero()
+		userEntity.totalEmissionsBurned = BigInt.zero()
+		userEntity.totalAuctionsWon = BigInt.zero()
+	}
+
+	userEntity.totalBidsCount = userEntity.totalBidsCount.plus(event.params._options.multibid)
+	if (isFirstBid) {
+		userEntity.totalAuctionsParticipated = userEntity.totalAuctionsParticipated.plus(BigInt.fromI32(1))
+	}
+	if (isFirstBid && auctionEmissionsEntity.biddersEmission.gt(BigInt.zero())) {
+		userEntity.harvestableAuctions.push(auctionEntity.id)
+	}
+	userEntity.save()
 
 	// ===== AUCTION =====
 
@@ -401,15 +435,96 @@ export function handleBid(event: BidEvent): void {
 }
 
 export function handleAuctionCancelled(event: AuctionCancelledEvent): void {
-	// TODO: Create "auction cancelled" INFO message
+	const lot = event.params._lot.toString()
+
+	// ===== AUCTION =====
+
+	const auctionEntity = Auction.load(lot)!
+	auctionEntity.cancelled = true
+
+	// ===== MESSAGE =====
+
+	// Increment message count
+	auctionEntity.messagesCount = auctionEntity.messagesCount + 1
+	auctionEntity.save()
+
+	// Create bid message entity
+	const cancelledMessageEntity = new AuctionMessage(lot.concat("_").concat(auctionEntity.messagesCount.toString()))
+	cancelledMessageEntity.type = "INFO"
+	cancelledMessageEntity.index = auctionEntity.messagesCount
+	cancelledMessageEntity.auction = auctionEntity.id
+	cancelledMessageEntity.message = "CANCELLED"
+	cancelledMessageEntity.tx = event.transaction.hash
+	cancelledMessageEntity.timestamp = event.block.timestamp
+	cancelledMessageEntity.save()
 }
 
 export function handleClaimedLot(event: ClaimedLotEvent): void {
-	// TODO: Create "claimedLot" CLAIM message
+	const lot = event.params._lot.toString()
+	const user = event.params._user.toString()
+
+	// ===== AUCTION =====
+
+	const auctionEntity = Auction.load(lot)!
+
+	// ===== USER =====
+
+	const userEntity = User.load(user)!
+	userEntity.totalAuctionsWon = userEntity.totalAuctionsWon.plus(BigInt.fromI32(1))
+	userEntity.save()
+
+	const auctionUserEntity = AuctionUser.load(lot.concat("_").concat(user))!
+	auctionUserEntity.claimed = true
+	auctionUserEntity.save()
+
+	// ===== MESSAGE =====
+
+	// Increment message count
+	auctionEntity.messagesCount = auctionEntity.messagesCount + 1
+	auctionEntity.save()
+
+	// Create bid message entity
+	const claimedMessageEntity = new AuctionMessage(lot.concat("_").concat(auctionEntity.messagesCount.toString()))
+	claimedMessageEntity.type = "CLAIM"
+	claimedMessageEntity.index = auctionEntity.messagesCount
+	claimedMessageEntity.auction = auctionEntity.id
+	claimedMessageEntity.auctionUser = auctionUserEntity.id
+	claimedMessageEntity.user = event.params._user
+	claimedMessageEntity.alias = userEntity == null ? null : userEntity.alias
+	claimedMessageEntity.runeSymbol = auctionUserEntity.runeSymbol
+	// TODO: Allow a message to be sent with claiming
+	// claimedMessageEntity.message = event.params._options.message
+	claimedMessageEntity.tx = event.transaction.hash
+	claimedMessageEntity.timestamp = event.block.timestamp
+	claimedMessageEntity.save()
 }
 
-export function handleBlock(block: ethereum.Block): void {
-	// TODO: If Auction switches between windows: Create "Window Change" INFO message
-	// TODO: If Auction bidding opens: Create "Auction NOW OPEN" INFO message
-	// TODO: If Auction ends: Create "Auction Ended" INFO message
+export function handleUserHarvestedLotEmissions(event: UserHarvestedLotEmissionsEvent): void {
+	const lot = event.params._lot.toString()
+	const user = event.params._user.toString()
+
+	// ===== USER =====
+
+	const userEntity = User.load(user)!
+
+	const harvestableAuctionsCount = userEntity.harvestableAuctions.length
+	const remainingHarvestableAuctionIds = new Array<string>()
+	for (let i = 0; i < harvestableAuctionsCount; i++) {
+		const harvestableLot = userEntity.harvestableAuctions[i]
+		if (harvestableLot !== lot) {
+			remainingHarvestableAuctionIds.push(harvestableLot)
+		}
+	}
+	userEntity.harvestableAuctions = remainingHarvestableAuctionIds
+
+	userEntity.totalEmissionsHarvested = userEntity.totalEmissionsHarvested.plus(event.params._userEmissions)
+	userEntity.totalEmissionsBurned = userEntity.totalEmissionsBurned.plus(event.params._userEmissions)
+
+	userEntity.save()
+
+	// ===== AUCTION USER =====
+
+	const auctionUserEntity = AuctionUser.load(lot.concat("_").concat(user))!
+	auctionUserEntity.harvested = true
+	auctionUserEntity.save()
 }

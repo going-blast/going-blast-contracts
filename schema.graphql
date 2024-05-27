@@ -95,6 +95,12 @@ type User @entity {
 	"id will be user address"
 	id: ID!
 	alias: String
+	harvestableAuctions: [Auction!]!
+	totalBidsCount: BigInt!
+	totalAuctionsParticipated: BigInt!
+	totalEmissionsHarvested: BigInt!
+	totalEmissionsBurned: BigInt!
+	totalAuctionsWon: BigInt!
 }
 
 type AuctionUser @entity {
@@ -106,7 +112,8 @@ type AuctionUser @entity {
 	lastBidTimestamp: BigInt
 	rune: AuctionRune
 	runeSymbol: Int
-	alias: String
+	harvested: Boolean!
+	claimed: Boolean!
 }
 
 type Auction @entity {
@@ -127,7 +134,6 @@ type Auction @entity {
 
 	"ext"
 	hasRunes: Boolean!
-	blockTimestamp: BigInt!
 	activeWindow: BigInt!
 	biddingOpen: Boolean!
 	ended: Boolean!

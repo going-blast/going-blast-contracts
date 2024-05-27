@@ -930,6 +930,84 @@ export class User extends Entity {
       this.set("alias", Value.fromString(<string>value));
     }
   }
+
+  get harvestableAuctions(): Array<string> {
+    let value = this.get("harvestableAuctions");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toStringArray();
+    }
+  }
+
+  set harvestableAuctions(value: Array<string>) {
+    this.set("harvestableAuctions", Value.fromStringArray(value));
+  }
+
+  get totalBidsCount(): BigInt {
+    let value = this.get("totalBidsCount");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set totalBidsCount(value: BigInt) {
+    this.set("totalBidsCount", Value.fromBigInt(value));
+  }
+
+  get totalAuctionsParticipated(): BigInt {
+    let value = this.get("totalAuctionsParticipated");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set totalAuctionsParticipated(value: BigInt) {
+    this.set("totalAuctionsParticipated", Value.fromBigInt(value));
+  }
+
+  get totalEmissionsHarvested(): BigInt {
+    let value = this.get("totalEmissionsHarvested");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set totalEmissionsHarvested(value: BigInt) {
+    this.set("totalEmissionsHarvested", Value.fromBigInt(value));
+  }
+
+  get totalEmissionsBurned(): BigInt {
+    let value = this.get("totalEmissionsBurned");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set totalEmissionsBurned(value: BigInt) {
+    this.set("totalEmissionsBurned", Value.fromBigInt(value));
+  }
+
+  get totalAuctionsWon(): BigInt {
+    let value = this.get("totalAuctionsWon");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set totalAuctionsWon(value: BigInt) {
+    this.set("totalAuctionsWon", Value.fromBigInt(value));
+  }
 }
 
 export class AuctionUser extends Entity {
@@ -1074,6 +1152,32 @@ export class AuctionUser extends Entity {
     } else {
       this.set("alias", Value.fromString(<string>value));
     }
+  }
+
+  get harvested(): boolean {
+    let value = this.get("harvested");
+    if (!value || value.kind == ValueKind.NULL) {
+      return false;
+    } else {
+      return value.toBoolean();
+    }
+  }
+
+  set harvested(value: boolean) {
+    this.set("harvested", Value.fromBoolean(value));
+  }
+
+  get claimed(): boolean {
+    let value = this.get("claimed");
+    if (!value || value.kind == ValueKind.NULL) {
+      return false;
+    } else {
+      return value.toBoolean();
+    }
+  }
+
+  set claimed(value: boolean) {
+    this.set("claimed", Value.fromBoolean(value));
   }
 }
 

@@ -14,6 +14,7 @@ Contracts, tests, coverage, and deployment scripts of the Going Blast ecosystem.
   - [ ] Remove users counter from runes
   - [ ] Remove users counter from auction
   - [ ] Add message to claim lot
+  - [ ] Remove list of harvestable lots from AuctioneerUser
 
 ToDos:
 - [ ] Add prevRune to Bid Emit Event, so that the frontend can show that someone has switched rune
