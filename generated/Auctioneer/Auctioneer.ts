@@ -89,18 +89,10 @@ export class Bid__Params {
     return this._event.parameters[2].value.toBigInt();
   }
 
-  get _alias(): string {
-    return this._event.parameters[3].value.toString();
-  }
-
   get _options(): Bid_optionsStruct {
     return changetype<Bid_optionsStruct>(
-      this._event.parameters[4].value.toTuple(),
+      this._event.parameters[3].value.toTuple(),
     );
-  }
-
-  get _timestamp(): BigInt {
-    return this._event.parameters[5].value.toBigInt();
   }
 }
 
@@ -177,32 +169,8 @@ export class ClaimedLot__Params {
     return this._event.parameters[3].value.toBigInt();
   }
 
-  get _tokens(): Array<ClaimedLot_tokensStruct> {
-    return this._event.parameters[4].value.toTupleArray<ClaimedLot_tokensStruct>();
-  }
-
-  get _nfts(): Array<ClaimedLot_nftsStruct> {
-    return this._event.parameters[5].value.toTupleArray<ClaimedLot_nftsStruct>();
-  }
-}
-
-export class ClaimedLot_tokensStruct extends ethereum.Tuple {
-  get amount(): BigInt {
-    return this[0].toBigInt();
-  }
-
-  get token(): Address {
-    return this[1].toAddress();
-  }
-}
-
-export class ClaimedLot_nftsStruct extends ethereum.Tuple {
-  get id(): BigInt {
-    return this[0].toBigInt();
-  }
-
-  get nft(): Address {
-    return this[1].toAddress();
+  get _message(): string {
+    return this._event.parameters[4].value.toString();
   }
 }
 
@@ -278,6 +246,32 @@ export class Linked__Params {
   }
 }
 
+export class MessageAuction extends ethereum.Event {
+  get params(): MessageAuction__Params {
+    return new MessageAuction__Params(this);
+  }
+}
+
+export class MessageAuction__Params {
+  _event: MessageAuction;
+
+  constructor(event: MessageAuction) {
+    this._event = event;
+  }
+
+  get _lot(): BigInt {
+    return this._event.parameters[0].value.toBigInt();
+  }
+
+  get _user(): Address {
+    return this._event.parameters[1].value.toAddress();
+  }
+
+  get _message(): string {
+    return this._event.parameters[2].value.toString();
+  }
+}
+
 export class OwnershipTransferred extends ethereum.Event {
   get params(): OwnershipTransferred__Params {
     return new OwnershipTransferred__Params(this);
@@ -323,6 +317,10 @@ export class SelectedRune__Params {
 
   get _rune(): i32 {
     return this._event.parameters[2].value.toI32();
+  }
+
+  get _message(): string {
+    return this._event.parameters[3].value.toString();
   }
 }
 
@@ -1055,10 +1053,8 @@ export class ClaimLotCall__Inputs {
     return this._call.inputValues[0].value.toBigInt();
   }
 
-  get _options(): ClaimLotCall_optionsStruct {
-    return changetype<ClaimLotCall_optionsStruct>(
-      this._call.inputValues[1].value.toTuple(),
-    );
+  get _message(): string {
+    return this._call.inputValues[1].value.toString();
   }
 }
 
@@ -1067,12 +1063,6 @@ export class ClaimLotCall__Outputs {
 
   constructor(call: ClaimLotCall) {
     this._call = call;
-  }
-}
-
-export class ClaimLotCall_optionsStruct extends ethereum.Tuple {
-  get paymentType(): i32 {
-    return this[0].toI32();
   }
 }
 
@@ -1340,6 +1330,40 @@ export class LinkCall__Outputs {
   }
 }
 
+export class MessageAuctionCall extends ethereum.Call {
+  get inputs(): MessageAuctionCall__Inputs {
+    return new MessageAuctionCall__Inputs(this);
+  }
+
+  get outputs(): MessageAuctionCall__Outputs {
+    return new MessageAuctionCall__Outputs(this);
+  }
+}
+
+export class MessageAuctionCall__Inputs {
+  _call: MessageAuctionCall;
+
+  constructor(call: MessageAuctionCall) {
+    this._call = call;
+  }
+
+  get _lot(): BigInt {
+    return this._call.inputValues[0].value.toBigInt();
+  }
+
+  get _message(): string {
+    return this._call.inputValues[1].value.toString();
+  }
+}
+
+export class MessageAuctionCall__Outputs {
+  _call: MessageAuctionCall;
+
+  constructor(call: MessageAuctionCall) {
+    this._call = call;
+  }
+}
+
 export class RenounceOwnershipCall extends ethereum.Call {
   get inputs(): RenounceOwnershipCall__Inputs {
     return new RenounceOwnershipCall__Inputs(this);
@@ -1389,6 +1413,10 @@ export class SelectRuneCall__Inputs {
 
   get _rune(): i32 {
     return this._call.inputValues[1].value.toI32();
+  }
+
+  get _message(): string {
+    return this._call.inputValues[2].value.toString();
   }
 }
 

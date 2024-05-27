@@ -163,11 +163,6 @@
         "name": "prevRune",
         "type": "uint8",
         "internalType": "uint8"
-      },
-      {
-        "name": "userAliasRet",
-        "type": "string",
-        "internalType": "string"
       }
     ],
     "stateMutability": "nonpayable"
@@ -253,25 +248,6 @@
             "internalType": "uint256"
           }
         ]
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "getUserInteractedLots",
-    "inputs": [
-      {
-        "name": "_user",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256[]",
-        "internalType": "uint256[]"
       }
     ],
     "stateMutability": "view"
@@ -386,25 +362,6 @@
   },
   {
     "type": "function",
-    "name": "getUserUnharvestedLots",
-    "inputs": [
-      {
-        "name": "_user",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256[]",
-        "internalType": "uint256[]"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "harvestAuctionEmissions",
     "inputs": [
       {
@@ -482,24 +439,6 @@
       }
     ],
     "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "markAuctionHarvestable",
-    "inputs": [
-      {
-        "name": "_lot",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_user",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -662,12 +601,6 @@
         "internalType": "uint256"
       },
       {
-        "name": "_alias",
-        "type": "string",
-        "indexed": false,
-        "internalType": "string"
-      },
-      {
         "name": "_options",
         "type": "tuple",
         "indexed": false,
@@ -694,12 +627,6 @@
             "internalType": "uint8"
           }
         ]
-      },
-      {
-        "name": "_timestamp",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
       }
     ],
     "anonymous": false
@@ -733,40 +660,10 @@
         "internalType": "uint256"
       },
       {
-        "name": "_tokens",
-        "type": "tuple[]",
+        "name": "_message",
+        "type": "string",
         "indexed": false,
-        "internalType": "struct TokenData[]",
-        "components": [
-          {
-            "name": "amount",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "token",
-            "type": "address",
-            "internalType": "address"
-          }
-        ]
-      },
-      {
-        "name": "_nfts",
-        "type": "tuple[]",
-        "indexed": false,
-        "internalType": "struct NftData[]",
-        "components": [
-          {
-            "name": "id",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "nft",
-            "type": "address",
-            "internalType": "address"
-          }
-        ]
+        "internalType": "string"
       }
     ],
     "anonymous": false
@@ -822,6 +719,31 @@
   },
   {
     "type": "event",
+    "name": "MessageAuction",
+    "inputs": [
+      {
+        "name": "_lot",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "_user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "_message",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "OwnershipTransferred",
     "inputs": [
       {
@@ -860,6 +782,12 @@
         "type": "uint8",
         "indexed": false,
         "internalType": "uint8"
+      },
+      {
+        "name": "_message",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
       }
     ],
     "anonymous": false
@@ -871,7 +799,7 @@
       {
         "name": "_user",
         "type": "address",
-        "indexed": false,
+        "indexed": true,
         "internalType": "address"
       },
       {
@@ -1020,7 +948,7 @@
       {
         "name": "_lot",
         "type": "uint256",
-        "indexed": false,
+        "indexed": true,
         "internalType": "uint256"
       },
       {

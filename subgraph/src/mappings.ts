@@ -19,6 +19,7 @@ import {
 	AuctionCreated as AuctionCreatedEvent,
 	AuctionCancelled as AuctionCancelledEvent,
 	UserHarvestedLotEmissions as UserHarvestedLotEmissionsEvent,
+	MessageAuction as MessageAuctionEvent,
 } from "../../generated/Auctioneer/Auctioneer"
 import { AuctioneerAuction, ClaimedLot as ClaimedLotEvent } from "../../generated/AuctioneerAuction/AuctioneerAuction"
 import { UpdatedAlias as UpdatedAliasEvent } from "../../generated/AuctioneerUser/AuctioneerUser"
@@ -274,7 +275,7 @@ export function handleSelectedRune(event: SelectedRuneEvent): void {
 	selectRuneMessageEntity.alias = userEntity == null ? null : userEntity.alias
 	selectRuneMessageEntity.prevRuneSymbol = prevRuneSymbol
 	selectRuneMessageEntity.runeSymbol = event.params._rune
-	// selectRuneMessageEntity.message = event.params._options.message
+	selectRuneMessageEntity.message = event.params._message
 	selectRuneMessageEntity.tx = event.transaction.hash
 	selectRuneMessageEntity.timestamp = event.block.timestamp
 	selectRuneMessageEntity.save()
@@ -422,7 +423,7 @@ export function handleBid(event: BidEvent): void {
 	bidMessageEntity.auction = auctionEntity.id
 	bidMessageEntity.auctionUser = auctionUserEntity.id
 	bidMessageEntity.user = event.params._user
-	bidMessageEntity.alias = event.params._alias
+	bidMessageEntity.alias = userEntity.alias
 	bidMessageEntity.multibid = event.params._options.multibid
 	bidMessageEntity.prevRuneSymbol = prevRuneSymbol
 	bidMessageEntity.runeSymbol = event.params._options.rune
@@ -491,8 +492,7 @@ export function handleClaimedLot(event: ClaimedLotEvent): void {
 	claimedMessageEntity.user = event.params._user
 	claimedMessageEntity.alias = userEntity == null ? null : userEntity.alias
 	claimedMessageEntity.runeSymbol = auctionUserEntity.runeSymbol
-	// TODO: Allow a message to be sent with claiming
-	// claimedMessageEntity.message = event.params._options.message
+	claimedMessageEntity.message = event.params._message
 	claimedMessageEntity.tx = event.transaction.hash
 	claimedMessageEntity.timestamp = event.block.timestamp
 	claimedMessageEntity.save()
@@ -526,4 +526,49 @@ export function handleUserHarvestedLotEmissions(event: UserHarvestedLotEmissions
 	const auctionUserEntity = AuctionUser.load(lot.concat("_").concat(user))!
 	auctionUserEntity.harvested = true
 	auctionUserEntity.save()
+}
+
+export function handleMessageAuction(event: MessageAuctionEvent): void {
+	const lot = event.params._lot.toString()
+	const user = event.params._user.toString()
+
+	// ===== AUCTION =====
+
+	const auctionEntity = Auction.load(lot)!
+	if (auctionEntity == null) return
+
+	// Only send message if auction exists
+	auctionEntity.messagesCount = auctionEntity.messagesCount + 1
+	auctionEntity.save()
+
+	// ===== USER =====
+
+	const userEntity = User.load(user)
+
+	let auctionUserEntity = AuctionUser.load(lot.concat("_").concat(user))
+
+	if (auctionUserEntity == null) {
+		auctionUserEntity = new AuctionUser(lot.concat("_").concat(user))
+		auctionUserEntity.user = event.params._user
+		auctionUserEntity.auction = lot
+		auctionUserEntity.bids = BigInt.zero()
+		auctionUserEntity.lastBidTimestamp = BigInt.zero()
+		auctionUserEntity.harvested = false
+		auctionUserEntity.claimed = false
+	}
+
+	// ===== MESSAGE =====
+
+	const messageEntity = new AuctionMessage(lot.toString().concat("_").concat(auctionEntity.messagesCount.toString()))
+	messageEntity.type = "MESSAGE"
+	messageEntity.index = auctionEntity.messagesCount
+	messageEntity.auction = auctionEntity.id
+	messageEntity.auctionUser = auctionUserEntity.id
+	messageEntity.user = event.params._user
+	messageEntity.alias = userEntity == null ? null : userEntity.alias
+	messageEntity.runeSymbol = auctionUserEntity.runeSymbol
+	messageEntity.message = event.params._message
+	messageEntity.tx = event.transaction.hash
+	messageEntity.timestamp = event.block.timestamp
+	messageEntity.save()
 }

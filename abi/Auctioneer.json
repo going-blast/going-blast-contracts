@@ -268,16 +268,9 @@
         "internalType": "uint256"
       },
       {
-        "name": "_options",
-        "type": "tuple",
-        "internalType": "struct ClaimLotOptions",
-        "components": [
-          {
-            "name": "paymentType",
-            "type": "uint8",
-            "internalType": "enum PaymentType"
-          }
-        ]
+        "name": "_message",
+        "type": "string",
+        "internalType": "string"
       }
     ],
     "outputs": [],
@@ -507,6 +500,24 @@
   },
   {
     "type": "function",
+    "name": "messageAuction",
+    "inputs": [
+      {
+        "name": "_lot",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_message",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "owner",
     "inputs": [],
     "outputs": [
@@ -538,6 +549,11 @@
         "name": "_rune",
         "type": "uint8",
         "internalType": "uint8"
+      },
+      {
+        "name": "_message",
+        "type": "string",
+        "internalType": "string"
       }
     ],
     "outputs": [],
@@ -657,12 +673,6 @@
         "internalType": "uint256"
       },
       {
-        "name": "_alias",
-        "type": "string",
-        "indexed": false,
-        "internalType": "string"
-      },
-      {
         "name": "_options",
         "type": "tuple",
         "indexed": false,
@@ -689,12 +699,6 @@
             "internalType": "uint8"
           }
         ]
-      },
-      {
-        "name": "_timestamp",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
       }
     ],
     "anonymous": false
@@ -753,40 +757,10 @@
         "internalType": "uint256"
       },
       {
-        "name": "_tokens",
-        "type": "tuple[]",
+        "name": "_message",
+        "type": "string",
         "indexed": false,
-        "internalType": "struct TokenData[]",
-        "components": [
-          {
-            "name": "amount",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "token",
-            "type": "address",
-            "internalType": "address"
-          }
-        ]
-      },
-      {
-        "name": "_nfts",
-        "type": "tuple[]",
-        "indexed": false,
-        "internalType": "struct NftData[]",
-        "components": [
-          {
-            "name": "id",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "nft",
-            "type": "address",
-            "internalType": "address"
-          }
-        ]
+        "internalType": "string"
       }
     ],
     "anonymous": false
@@ -842,6 +816,31 @@
   },
   {
     "type": "event",
+    "name": "MessageAuction",
+    "inputs": [
+      {
+        "name": "_lot",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "_user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "_message",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "OwnershipTransferred",
     "inputs": [
       {
@@ -880,6 +879,12 @@
         "type": "uint8",
         "indexed": false,
         "internalType": "uint8"
+      },
+      {
+        "name": "_message",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
       }
     ],
     "anonymous": false
@@ -891,7 +896,7 @@
       {
         "name": "_user",
         "type": "address",
-        "indexed": false,
+        "indexed": true,
         "internalType": "address"
       },
       {
@@ -1040,7 +1045,7 @@
       {
         "name": "_lot",
         "type": "uint256",
-        "indexed": false,
+        "indexed": true,
         "internalType": "uint256"
       },
       {
@@ -1095,11 +1100,6 @@
   {
     "type": "error",
     "name": "AlreadyLinked",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "CannotPayForLotWithVouchers",
     "inputs": []
   },
   {

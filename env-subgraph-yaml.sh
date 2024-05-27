@@ -27,6 +27,3 @@ echo $(cat subgraph.yaml | yq -y '.dataSources[1].source.address = "'$Auctioneer
 
 # Update Auctioneer User Address and StartBlock
 echo $(cat subgraph.yaml | yq -y '.dataSources[2].source.address = "'$AuctioneerUserAddress'" | .dataSources[1].source.startBlock = '$FirstBlock) > subgraph.yaml
-
-# Create local subgraph
-yarn graph-create-local

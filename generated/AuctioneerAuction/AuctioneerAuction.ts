@@ -89,18 +89,10 @@ export class Bid__Params {
     return this._event.parameters[2].value.toBigInt();
   }
 
-  get _alias(): string {
-    return this._event.parameters[3].value.toString();
-  }
-
   get _options(): Bid_optionsStruct {
     return changetype<Bid_optionsStruct>(
-      this._event.parameters[4].value.toTuple(),
+      this._event.parameters[3].value.toTuple(),
     );
-  }
-
-  get _timestamp(): BigInt {
-    return this._event.parameters[5].value.toBigInt();
   }
 }
 
@@ -177,32 +169,8 @@ export class ClaimedLot__Params {
     return this._event.parameters[3].value.toBigInt();
   }
 
-  get _tokens(): Array<ClaimedLot_tokensStruct> {
-    return this._event.parameters[4].value.toTupleArray<ClaimedLot_tokensStruct>();
-  }
-
-  get _nfts(): Array<ClaimedLot_nftsStruct> {
-    return this._event.parameters[5].value.toTupleArray<ClaimedLot_nftsStruct>();
-  }
-}
-
-export class ClaimedLot_tokensStruct extends ethereum.Tuple {
-  get amount(): BigInt {
-    return this[0].toBigInt();
-  }
-
-  get token(): Address {
-    return this[1].toAddress();
-  }
-}
-
-export class ClaimedLot_nftsStruct extends ethereum.Tuple {
-  get id(): BigInt {
-    return this[0].toBigInt();
-  }
-
-  get nft(): Address {
-    return this[1].toAddress();
+  get _message(): string {
+    return this._event.parameters[4].value.toString();
   }
 }
 
@@ -278,6 +246,32 @@ export class Linked__Params {
   }
 }
 
+export class MessageAuction extends ethereum.Event {
+  get params(): MessageAuction__Params {
+    return new MessageAuction__Params(this);
+  }
+}
+
+export class MessageAuction__Params {
+  _event: MessageAuction;
+
+  constructor(event: MessageAuction) {
+    this._event = event;
+  }
+
+  get _lot(): BigInt {
+    return this._event.parameters[0].value.toBigInt();
+  }
+
+  get _user(): Address {
+    return this._event.parameters[1].value.toAddress();
+  }
+
+  get _message(): string {
+    return this._event.parameters[2].value.toString();
+  }
+}
+
 export class OwnershipTransferred extends ethereum.Event {
   get params(): OwnershipTransferred__Params {
     return new OwnershipTransferred__Params(this);
@@ -323,6 +317,10 @@ export class SelectedRune__Params {
 
   get _rune(): i32 {
     return this._event.parameters[2].value.toI32();
+  }
+
+  get _message(): string {
+    return this._event.parameters[3].value.toString();
   }
 }
 
@@ -650,11 +648,10 @@ export class AuctioneerAuction__auctionsResult {
   value2: string;
   value3: boolean;
   value4: BigInt;
-  value5: BigInt;
-  value6: AuctioneerAuction__auctionsResultEmissionsStruct;
-  value7: AuctioneerAuction__auctionsResultRewardsStruct;
-  value8: AuctioneerAuction__auctionsResultBidDataStruct;
-  value9: boolean;
+  value5: AuctioneerAuction__auctionsResultEmissionsStruct;
+  value6: AuctioneerAuction__auctionsResultRewardsStruct;
+  value7: AuctioneerAuction__auctionsResultBidDataStruct;
+  value8: boolean;
 
   constructor(
     value0: BigInt,
@@ -662,11 +659,10 @@ export class AuctioneerAuction__auctionsResult {
     value2: string,
     value3: boolean,
     value4: BigInt,
-    value5: BigInt,
-    value6: AuctioneerAuction__auctionsResultEmissionsStruct,
-    value7: AuctioneerAuction__auctionsResultRewardsStruct,
-    value8: AuctioneerAuction__auctionsResultBidDataStruct,
-    value9: boolean,
+    value5: AuctioneerAuction__auctionsResultEmissionsStruct,
+    value6: AuctioneerAuction__auctionsResultRewardsStruct,
+    value7: AuctioneerAuction__auctionsResultBidDataStruct,
+    value8: boolean,
   ) {
     this.value0 = value0;
     this.value1 = value1;
@@ -677,7 +673,6 @@ export class AuctioneerAuction__auctionsResult {
     this.value6 = value6;
     this.value7 = value7;
     this.value8 = value8;
-    this.value9 = value9;
   }
 
   toMap(): TypedMap<string, ethereum.Value> {
@@ -687,11 +682,10 @@ export class AuctioneerAuction__auctionsResult {
     map.set("value2", ethereum.Value.fromString(this.value2));
     map.set("value3", ethereum.Value.fromBoolean(this.value3));
     map.set("value4", ethereum.Value.fromUnsignedBigInt(this.value4));
-    map.set("value5", ethereum.Value.fromUnsignedBigInt(this.value5));
+    map.set("value5", ethereum.Value.fromTuple(this.value5));
     map.set("value6", ethereum.Value.fromTuple(this.value6));
     map.set("value7", ethereum.Value.fromTuple(this.value7));
-    map.set("value8", ethereum.Value.fromTuple(this.value8));
-    map.set("value9", ethereum.Value.fromBoolean(this.value9));
+    map.set("value8", ethereum.Value.fromBoolean(this.value8));
     return map;
   }
 
@@ -715,24 +709,20 @@ export class AuctioneerAuction__auctionsResult {
     return this.value4;
   }
 
-  getUsers(): BigInt {
+  getEmissions(): AuctioneerAuction__auctionsResultEmissionsStruct {
     return this.value5;
   }
 
-  getEmissions(): AuctioneerAuction__auctionsResultEmissionsStruct {
+  getRewards(): AuctioneerAuction__auctionsResultRewardsStruct {
     return this.value6;
   }
 
-  getRewards(): AuctioneerAuction__auctionsResultRewardsStruct {
+  getBidData(): AuctioneerAuction__auctionsResultBidDataStruct {
     return this.value7;
   }
 
-  getBidData(): AuctioneerAuction__auctionsResultBidDataStruct {
-    return this.value8;
-  }
-
   getFinalized(): boolean {
-    return this.value9;
+    return this.value8;
   }
 }
 
@@ -853,38 +843,34 @@ export class AuctioneerAuction__getAuctionResultValue0Struct extends ethereum.Tu
     return this[4].toBigInt();
   }
 
-  get users(): BigInt {
-    return this[5].toBigInt();
-  }
-
   get runes(): Array<AuctioneerAuction__getAuctionResultValue0RunesStruct> {
-    return this[6].toTupleArray<AuctioneerAuction__getAuctionResultValue0RunesStruct>();
+    return this[5].toTupleArray<AuctioneerAuction__getAuctionResultValue0RunesStruct>();
   }
 
   get windows(): Array<AuctioneerAuction__getAuctionResultValue0WindowsStruct> {
-    return this[7].toTupleArray<AuctioneerAuction__getAuctionResultValue0WindowsStruct>();
+    return this[6].toTupleArray<AuctioneerAuction__getAuctionResultValue0WindowsStruct>();
   }
 
   get emissions(): AuctioneerAuction__getAuctionResultValue0EmissionsStruct {
     return changetype<AuctioneerAuction__getAuctionResultValue0EmissionsStruct>(
-      this[8].toTuple(),
+      this[7].toTuple(),
     );
   }
 
   get rewards(): AuctioneerAuction__getAuctionResultValue0RewardsStruct {
     return changetype<AuctioneerAuction__getAuctionResultValue0RewardsStruct>(
-      this[9].toTuple(),
+      this[8].toTuple(),
     );
   }
 
   get bidData(): AuctioneerAuction__getAuctionResultValue0BidDataStruct {
     return changetype<AuctioneerAuction__getAuctionResultValue0BidDataStruct>(
-      this[10].toTuple(),
+      this[9].toTuple(),
     );
   }
 
   get finalized(): boolean {
-    return this[11].toBoolean();
+    return this[10].toBoolean();
   }
 }
 
@@ -895,10 +881,6 @@ export class AuctioneerAuction__getAuctionResultValue0RunesStruct extends ethere
 
   get bids(): BigInt {
     return this[1].toBigInt();
-  }
-
-  get users(): BigInt {
-    return this[2].toBigInt();
   }
 }
 
@@ -1023,38 +1005,34 @@ export class AuctioneerAuction__getAuctionExtResultAuctionStruct extends ethereu
     return this[4].toBigInt();
   }
 
-  get users(): BigInt {
-    return this[5].toBigInt();
-  }
-
   get runes(): Array<AuctioneerAuction__getAuctionExtResultAuctionRunesStruct> {
-    return this[6].toTupleArray<AuctioneerAuction__getAuctionExtResultAuctionRunesStruct>();
+    return this[5].toTupleArray<AuctioneerAuction__getAuctionExtResultAuctionRunesStruct>();
   }
 
   get windows(): Array<AuctioneerAuction__getAuctionExtResultAuctionWindowsStruct> {
-    return this[7].toTupleArray<AuctioneerAuction__getAuctionExtResultAuctionWindowsStruct>();
+    return this[6].toTupleArray<AuctioneerAuction__getAuctionExtResultAuctionWindowsStruct>();
   }
 
   get emissions(): AuctioneerAuction__getAuctionExtResultAuctionEmissionsStruct {
     return changetype<AuctioneerAuction__getAuctionExtResultAuctionEmissionsStruct>(
-      this[8].toTuple(),
+      this[7].toTuple(),
     );
   }
 
   get rewards(): AuctioneerAuction__getAuctionExtResultAuctionRewardsStruct {
     return changetype<AuctioneerAuction__getAuctionExtResultAuctionRewardsStruct>(
-      this[9].toTuple(),
+      this[8].toTuple(),
     );
   }
 
   get bidData(): AuctioneerAuction__getAuctionExtResultAuctionBidDataStruct {
     return changetype<AuctioneerAuction__getAuctionExtResultAuctionBidDataStruct>(
-      this[10].toTuple(),
+      this[9].toTuple(),
     );
   }
 
   get finalized(): boolean {
-    return this[11].toBoolean();
+    return this[10].toBoolean();
   }
 }
 
@@ -1065,10 +1043,6 @@ export class AuctioneerAuction__getAuctionExtResultAuctionRunesStruct extends et
 
   get bids(): BigInt {
     return this[1].toBigInt();
-  }
-
-  get users(): BigInt {
-    return this[2].toBigInt();
   }
 }
 
@@ -1243,38 +1217,34 @@ export class AuctioneerAuction__getAuctionExtsResultAuctionBasesStruct extends e
     return this[4].toBigInt();
   }
 
-  get users(): BigInt {
-    return this[5].toBigInt();
-  }
-
   get runes(): Array<AuctioneerAuction__getAuctionExtsResultAuctionBasesRunesStruct> {
-    return this[6].toTupleArray<AuctioneerAuction__getAuctionExtsResultAuctionBasesRunesStruct>();
+    return this[5].toTupleArray<AuctioneerAuction__getAuctionExtsResultAuctionBasesRunesStruct>();
   }
 
   get windows(): Array<AuctioneerAuction__getAuctionExtsResultAuctionBasesWindowsStruct> {
-    return this[7].toTupleArray<AuctioneerAuction__getAuctionExtsResultAuctionBasesWindowsStruct>();
+    return this[6].toTupleArray<AuctioneerAuction__getAuctionExtsResultAuctionBasesWindowsStruct>();
   }
 
   get emissions(): AuctioneerAuction__getAuctionExtsResultAuctionBasesEmissionsStruct {
     return changetype<AuctioneerAuction__getAuctionExtsResultAuctionBasesEmissionsStruct>(
-      this[8].toTuple(),
+      this[7].toTuple(),
     );
   }
 
   get rewards(): AuctioneerAuction__getAuctionExtsResultAuctionBasesRewardsStruct {
     return changetype<AuctioneerAuction__getAuctionExtsResultAuctionBasesRewardsStruct>(
-      this[9].toTuple(),
+      this[8].toTuple(),
     );
   }
 
   get bidData(): AuctioneerAuction__getAuctionExtsResultAuctionBasesBidDataStruct {
     return changetype<AuctioneerAuction__getAuctionExtsResultAuctionBasesBidDataStruct>(
-      this[10].toTuple(),
+      this[9].toTuple(),
     );
   }
 
   get finalized(): boolean {
-    return this[11].toBoolean();
+    return this[10].toBoolean();
   }
 }
 
@@ -1285,10 +1255,6 @@ export class AuctioneerAuction__getAuctionExtsResultAuctionBasesRunesStruct exte
 
   get bids(): BigInt {
     return this[1].toBigInt();
-  }
-
-  get users(): BigInt {
-    return this[2].toBigInt();
   }
 }
 
@@ -1480,19 +1446,16 @@ export class AuctioneerAuction__getProfitDistributionsResult {
 export class AuctioneerAuction__markBidResult {
   value0: BigInt;
   value1: BigInt;
-  value2: boolean;
 
-  constructor(value0: BigInt, value1: BigInt, value2: boolean) {
+  constructor(value0: BigInt, value1: BigInt) {
     this.value0 = value0;
     this.value1 = value1;
-    this.value2 = value2;
   }
 
   toMap(): TypedMap<string, ethereum.Value> {
     let map = new TypedMap<string, ethereum.Value>();
     map.set("value0", ethereum.Value.fromUnsignedBigInt(this.value0));
     map.set("value1", ethereum.Value.fromUnsignedBigInt(this.value1));
-    map.set("value2", ethereum.Value.fromBoolean(this.value2));
     return map;
   }
 
@@ -1502,10 +1465,6 @@ export class AuctioneerAuction__markBidResult {
 
   getAuctionBidCost(): BigInt {
     return this.value1;
-  }
-
-  getAuctionHasEmissions(): boolean {
-    return this.value2;
   }
 }
 
@@ -1597,7 +1556,7 @@ export class AuctioneerAuction extends ethereum.SmartContract {
   auctions(param0: BigInt): AuctioneerAuction__auctionsResult {
     let result = super.call(
       "auctions",
-      "auctions(uint256):(uint256,uint256,string,bool,uint256,uint256,(uint256,uint256,uint256),(uint256,(uint256,address)[],(uint256,address)[]),(uint256,uint256,uint256,uint256,address,uint8,uint256,uint256),bool)",
+      "auctions(uint256):(uint256,uint256,string,bool,uint256,(uint256,uint256,uint256),(uint256,(uint256,address)[],(uint256,address)[]),(uint256,uint256,uint256,uint256,address,uint8,uint256,uint256),bool)",
       [ethereum.Value.fromUnsignedBigInt(param0)],
     );
 
@@ -1607,17 +1566,16 @@ export class AuctioneerAuction extends ethereum.SmartContract {
       result[2].toString(),
       result[3].toBoolean(),
       result[4].toBigInt(),
-      result[5].toBigInt(),
       changetype<AuctioneerAuction__auctionsResultEmissionsStruct>(
-        result[6].toTuple(),
+        result[5].toTuple(),
       ),
       changetype<AuctioneerAuction__auctionsResultRewardsStruct>(
-        result[7].toTuple(),
+        result[6].toTuple(),
       ),
       changetype<AuctioneerAuction__auctionsResultBidDataStruct>(
-        result[8].toTuple(),
+        result[7].toTuple(),
       ),
-      result[9].toBoolean(),
+      result[8].toBoolean(),
     );
   }
 
@@ -1626,7 +1584,7 @@ export class AuctioneerAuction extends ethereum.SmartContract {
   ): ethereum.CallResult<AuctioneerAuction__auctionsResult> {
     let result = super.tryCall(
       "auctions",
-      "auctions(uint256):(uint256,uint256,string,bool,uint256,uint256,(uint256,uint256,uint256),(uint256,(uint256,address)[],(uint256,address)[]),(uint256,uint256,uint256,uint256,address,uint8,uint256,uint256),bool)",
+      "auctions(uint256):(uint256,uint256,string,bool,uint256,(uint256,uint256,uint256),(uint256,(uint256,address)[],(uint256,address)[]),(uint256,uint256,uint256,uint256,address,uint8,uint256,uint256),bool)",
       [ethereum.Value.fromUnsignedBigInt(param0)],
     );
     if (result.reverted) {
@@ -1640,17 +1598,16 @@ export class AuctioneerAuction extends ethereum.SmartContract {
         value[2].toString(),
         value[3].toBoolean(),
         value[4].toBigInt(),
-        value[5].toBigInt(),
         changetype<AuctioneerAuction__auctionsResultEmissionsStruct>(
-          value[6].toTuple(),
+          value[5].toTuple(),
         ),
         changetype<AuctioneerAuction__auctionsResultRewardsStruct>(
-          value[7].toTuple(),
+          value[6].toTuple(),
         ),
         changetype<AuctioneerAuction__auctionsResultBidDataStruct>(
-          value[8].toTuple(),
+          value[7].toTuple(),
         ),
-        value[9].toBoolean(),
+        value[8].toBoolean(),
       ),
     );
   }
@@ -1849,7 +1806,7 @@ export class AuctioneerAuction extends ethereum.SmartContract {
   getAuction(_lot: BigInt): AuctioneerAuction__getAuctionResultValue0Struct {
     let result = super.call(
       "getAuction",
-      "getAuction(uint256):((uint256,uint256,string,bool,uint256,uint256,(uint8,uint256,uint256)[],(uint8,uint256,uint256,uint256)[],(uint256,uint256,uint256),(uint256,(uint256,address)[],(uint256,address)[]),(uint256,uint256,uint256,uint256,address,uint8,uint256,uint256),bool))",
+      "getAuction(uint256):((uint256,uint256,string,bool,uint256,(uint8,uint256)[],(uint8,uint256,uint256,uint256)[],(uint256,uint256,uint256),(uint256,(uint256,address)[],(uint256,address)[]),(uint256,uint256,uint256,uint256,address,uint8,uint256,uint256),bool))",
       [ethereum.Value.fromUnsignedBigInt(_lot)],
     );
 
@@ -1863,7 +1820,7 @@ export class AuctioneerAuction extends ethereum.SmartContract {
   ): ethereum.CallResult<AuctioneerAuction__getAuctionResultValue0Struct> {
     let result = super.tryCall(
       "getAuction",
-      "getAuction(uint256):((uint256,uint256,string,bool,uint256,uint256,(uint8,uint256,uint256)[],(uint8,uint256,uint256,uint256)[],(uint256,uint256,uint256),(uint256,(uint256,address)[],(uint256,address)[]),(uint256,uint256,uint256,uint256,address,uint8,uint256,uint256),bool))",
+      "getAuction(uint256):((uint256,uint256,string,bool,uint256,(uint8,uint256)[],(uint8,uint256,uint256,uint256)[],(uint256,uint256,uint256),(uint256,(uint256,address)[],(uint256,address)[]),(uint256,uint256,uint256,uint256,address,uint8,uint256,uint256),bool))",
       [ethereum.Value.fromUnsignedBigInt(_lot)],
     );
     if (result.reverted) {
@@ -1880,7 +1837,7 @@ export class AuctioneerAuction extends ethereum.SmartContract {
   getAuctionExt(_lot: BigInt): AuctioneerAuction__getAuctionExtResult {
     let result = super.call(
       "getAuctionExt",
-      "getAuctionExt(uint256):((uint256,uint256,string,bool,uint256,uint256,(uint8,uint256,uint256)[],(uint8,uint256,uint256,uint256)[],(uint256,uint256,uint256),(uint256,(uint256,address)[],(uint256,address)[]),(uint256,uint256,uint256,uint256,address,uint8,uint256,uint256),bool),(uint256,uint256,bool,bool,uint256))",
+      "getAuctionExt(uint256):((uint256,uint256,string,bool,uint256,(uint8,uint256)[],(uint8,uint256,uint256,uint256)[],(uint256,uint256,uint256),(uint256,(uint256,address)[],(uint256,address)[]),(uint256,uint256,uint256,uint256,address,uint8,uint256,uint256),bool),(uint256,uint256,bool,bool,uint256))",
       [ethereum.Value.fromUnsignedBigInt(_lot)],
     );
 
@@ -1901,7 +1858,7 @@ export class AuctioneerAuction extends ethereum.SmartContract {
   ): ethereum.CallResult<AuctioneerAuction__getAuctionExtResult> {
     let result = super.tryCall(
       "getAuctionExt",
-      "getAuctionExt(uint256):((uint256,uint256,string,bool,uint256,uint256,(uint8,uint256,uint256)[],(uint8,uint256,uint256,uint256)[],(uint256,uint256,uint256),(uint256,(uint256,address)[],(uint256,address)[]),(uint256,uint256,uint256,uint256,address,uint8,uint256,uint256),bool),(uint256,uint256,bool,bool,uint256))",
+      "getAuctionExt(uint256):((uint256,uint256,string,bool,uint256,(uint8,uint256)[],(uint8,uint256,uint256,uint256)[],(uint256,uint256,uint256),(uint256,(uint256,address)[],(uint256,address)[]),(uint256,uint256,uint256,uint256,address,uint8,uint256,uint256),bool),(uint256,uint256,bool,bool,uint256))",
       [ethereum.Value.fromUnsignedBigInt(_lot)],
     );
     if (result.reverted) {
@@ -1927,7 +1884,7 @@ export class AuctioneerAuction extends ethereum.SmartContract {
   ): AuctioneerAuction__getAuctionExtsResult {
     let result = super.call(
       "getAuctionExts",
-      "getAuctionExts(uint256[]):((uint256,uint256,string,bool,uint256,uint256,(uint8,uint256,uint256)[],(uint8,uint256,uint256,uint256)[],(uint256,uint256,uint256),(uint256,(uint256,address)[],(uint256,address)[]),(uint256,uint256,uint256,uint256,address,uint8,uint256,uint256),bool)[],(uint256,uint256,bool,bool,uint256)[])",
+      "getAuctionExts(uint256[]):((uint256,uint256,string,bool,uint256,(uint8,uint256)[],(uint8,uint256,uint256,uint256)[],(uint256,uint256,uint256),(uint256,(uint256,address)[],(uint256,address)[]),(uint256,uint256,uint256,uint256,address,uint8,uint256,uint256),bool)[],(uint256,uint256,bool,bool,uint256)[])",
       [ethereum.Value.fromUnsignedBigIntArray(_lots)],
     );
 
@@ -1942,7 +1899,7 @@ export class AuctioneerAuction extends ethereum.SmartContract {
   ): ethereum.CallResult<AuctioneerAuction__getAuctionExtsResult> {
     let result = super.tryCall(
       "getAuctionExts",
-      "getAuctionExts(uint256[]):((uint256,uint256,string,bool,uint256,uint256,(uint8,uint256,uint256)[],(uint8,uint256,uint256,uint256)[],(uint256,uint256,uint256),(uint256,(uint256,address)[],(uint256,address)[]),(uint256,uint256,uint256,uint256,address,uint8,uint256,uint256),bool)[],(uint256,uint256,bool,bool,uint256)[])",
+      "getAuctionExts(uint256[]):((uint256,uint256,string,bool,uint256,(uint8,uint256)[],(uint8,uint256,uint256,uint256)[],(uint256,uint256,uint256),(uint256,(uint256,address)[],(uint256,address)[]),(uint256,uint256,uint256,uint256,address,uint8,uint256,uint256),bool)[],(uint256,uint256,bool,bool,uint256)[])",
       [ethereum.Value.fromUnsignedBigIntArray(_lots)],
     );
     if (result.reverted) {
@@ -2125,7 +2082,7 @@ export class AuctioneerAuction extends ethereum.SmartContract {
   ): AuctioneerAuction__markBidResult {
     let result = super.call(
       "markBid",
-      "markBid(uint256,address,uint256,uint8,uint256,(uint8,uint256,string,uint8)):(uint256,uint256,bool)",
+      "markBid(uint256,address,uint256,uint8,uint256,(uint8,uint256,string,uint8)):(uint256,uint256)",
       [
         ethereum.Value.fromUnsignedBigInt(_lot),
         ethereum.Value.fromAddress(_user),
@@ -2139,7 +2096,6 @@ export class AuctioneerAuction extends ethereum.SmartContract {
     return new AuctioneerAuction__markBidResult(
       result[0].toBigInt(),
       result[1].toBigInt(),
-      result[2].toBoolean(),
     );
   }
 
@@ -2153,7 +2109,7 @@ export class AuctioneerAuction extends ethereum.SmartContract {
   ): ethereum.CallResult<AuctioneerAuction__markBidResult> {
     let result = super.tryCall(
       "markBid",
-      "markBid(uint256,address,uint256,uint8,uint256,(uint8,uint256,string,uint8)):(uint256,uint256,bool)",
+      "markBid(uint256,address,uint256,uint8,uint256,(uint8,uint256,string,uint8)):(uint256,uint256)",
       [
         ethereum.Value.fromUnsignedBigInt(_lot),
         ethereum.Value.fromAddress(_user),
@@ -2171,7 +2127,6 @@ export class AuctioneerAuction extends ethereum.SmartContract {
       new AuctioneerAuction__markBidResult(
         value[0].toBigInt(),
         value[1].toBigInt(),
-        value[2].toBoolean(),
       ),
     );
   }
@@ -2848,10 +2803,6 @@ export class MarkBidCall__Outputs {
 
   get auctionBidCost(): BigInt {
     return this._call.outputValues[1].value.toBigInt();
-  }
-
-  get auctionHasEmissions(): boolean {
-    return this._call.outputValues[2].value.toBoolean();
   }
 }
 
