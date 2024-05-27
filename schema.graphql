@@ -1,0 +1,81 @@
+type AuctionRune @entity(immutable: true) {
+	id: ID!
+	runeSymbol: Int!
+	bids: BigInt!
+}
+
+enum BidWindowType {
+	OPEN
+	TIMED
+	INFINITE
+}
+
+type AuctionWindow @entity(immutable: true) {
+	id: ID!
+	windowType: BidWindowType!
+	windowOpenTimestamp: BigInt!
+	windowCloseTimestamp: BigInt!
+	timer: BigInt!
+}
+
+type AuctionEmissions @entity(immutable: true) {
+	id: ID!
+	bp: BigInt!
+	biddersEmission: BigInt!
+	treasuryEmission: BigInt!
+}
+
+type TokenData @entity(immutable: true) {
+	id: ID!
+	amount: BigInt!
+	tokenAddress: Bytes!
+}
+
+type NftData @entity(immutable: true) {
+	id: ID!
+	nftId: BigInt!
+	nftAddress: Bytes!
+}
+
+type AuctionRewards @entity(immutable: true) {
+	id: ID!
+	estimatedValue: BigInt!
+	tokens: [TokenData!]!
+	nfts: [NftData!]!
+}
+
+type AuctionBidData @entity {
+	id: ID!
+	revenue: BigInt!
+	bid: BigInt!
+	bidTimestamp: BigInt!
+	nextBidBy: BigInt!
+	bidUser: Bytes!
+	bidRune: Int!
+	bids: BigInt!
+	bidCost: BigInt!
+}
+
+type AuctionUser @entity {
+	id: ID!
+	user: Bytes!
+	auction: Auction!
+	bids: BigInt!
+	rune: AuctionRune
+	alias: String
+}
+
+type Auction @entity(immutable: true) {
+	id: ID!
+	lot: BigInt!
+	day: BigInt!
+	name: String!
+	isPrivate: Boolean!
+	unlockTimestamp: BigInt!
+	runes: [AuctionRune!]!
+	windows: [AuctionWindow!]!
+	emissions: AuctionEmissions!
+	rewards: AuctionRewards!
+	bidData: AuctionBidData!
+	finalized: Boolean!
+}

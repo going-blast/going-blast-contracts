@@ -7,6 +7,7 @@ Contracts, tests, coverage, and deployment scripts of the Going Blast ecosystem.
 ```
 
 ToDos:
+- [ ] Add prevRune to Bid Emit Event, so that the frontend can show that someone has switched rune
 [x] Change min timer duration to 30s
 [x] Allow rune preselection
 [x] Add permit option to bidding (self permit + overloaded bid param w/ permit options)

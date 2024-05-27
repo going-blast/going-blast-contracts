@@ -1,0 +1,56 @@
+specVersion: 0.0.4
+description: Gravatar for Ethereum
+repository: https://github.com/going-blast/going-blast-contracts
+schema:
+  file: ./schema.graphql
+indexerHints:
+  prune: auto
+dataSources:
+  - kind: ethereum/contract
+    name: Auctioneer
+    network: mainnet
+    source:
+      address: '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9'
+      abi: Auctioneer
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.6
+      language: wasm/assemblyscript
+      entities:
+        - Auction
+      abis:
+        - name: Auctioneer
+          file: abi/Auctioneer.json
+      eventHandlers:
+        - event: Bid(indexed uint256,indexed address,uint256,string,(uint8,uint256,string,uint8),uint256)
+          handler: handleBid
+        - event: SelectedRune(indexed uint256,indexed address,uint8)
+          handler: handleSelectedRune
+      blockHandlers:
+        - handler: handleBlock
+      file: ./subgraph/src/mappings.ts
+  - kind: ethereum/contract
+    name: AuctioneerAuction
+    network: mainnet
+    source:
+      address: '0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9'
+      abi: AuctioneerAuction
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.6
+      language: wasm/assemblyscript
+      entities:
+        - Auction
+      abis:
+        - name: AuctioneerAuction
+          file: abi/AuctioneerAuction.json
+      eventHandlers:
+        - event: Bid(indexed uint256,indexed address,uint256,string,(uint8,uint256,string,uint8),uint256)
+          handler: handleBid
+        - event: SelectedRune(indexed uint256,indexed address,uint8)
+          handler: handleSelectedRune
+      blockHandlers:
+        - handler: handleBlock
+      file: ./subgraph/src/mappings.ts
