@@ -1008,6 +1008,19 @@ export class User extends Entity {
   set totalAuctionsWon(value: BigInt) {
     this.set("totalAuctionsWon", Value.fromBigInt(value));
   }
+
+  get chatBlacklisted(): boolean {
+    let value = this.get("chatBlacklisted");
+    if (!value || value.kind == ValueKind.NULL) {
+      return false;
+    } else {
+      return value.toBoolean();
+    }
+  }
+
+  set chatBlacklisted(value: boolean) {
+    this.set("chatBlacklisted", Value.fromBoolean(value));
+  }
 }
 
 export class AuctionUser extends Entity {

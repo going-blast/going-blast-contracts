@@ -248,6 +248,14 @@ contract GBScripts is GBScriptUtils {
 		auctioneer.cancelAuction(lot);
 	}
 
+	function messageAuction(uint256 lot, string memory message) public broadcast loadChain loadContracts {
+		auctioneer.messageAuction(lot, message);
+	}
+
+	function selectRune(uint256 lot, uint8 rune, string memory message) public broadcast loadChain loadContracts {
+		auctioneer.selectRune(lot, rune, message);
+	}
+
 	function syncConfigValues() public broadcast loadChain loadContracts loadConfigValues {
 		console.log(". sync bidCost");
 		if (bidCost != auctioneerAuction.bidCost()) {

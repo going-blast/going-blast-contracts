@@ -164,12 +164,14 @@ export function handleUpdatedAlias(event: UpdatedAliasEvent): void {
 
 	if (userEntity == null) {
 		userEntity = new User(user)
+		userEntity.interactedAuctions = []
 		userEntity.harvestableAuctions = []
 		userEntity.totalBidsCount = BigInt.zero()
 		userEntity.totalAuctionsParticipated = BigInt.zero()
 		userEntity.totalEmissionsHarvested = BigInt.zero()
 		userEntity.totalEmissionsBurned = BigInt.zero()
 		userEntity.totalAuctionsWon = BigInt.zero()
+		userEntity.chatBlacklisted = false
 	}
 
 	userEntity.alias = event.params._alias
@@ -272,10 +274,10 @@ export function handleSelectedRune(event: SelectedRuneEvent): void {
 	selectRuneMessageEntity.auction = auctionEntity.id
 	selectRuneMessageEntity.auctionUser = auctionUserEntity.id
 	selectRuneMessageEntity.user = event.params._user
-	selectRuneMessageEntity.alias = userEntity == null ? null : userEntity.alias
+	selectRuneMessageEntity.alias = userEntity == null || userEntity.chatBlacklisted ? null : userEntity.alias
 	selectRuneMessageEntity.prevRuneSymbol = prevRuneSymbol
 	selectRuneMessageEntity.runeSymbol = event.params._rune
-	selectRuneMessageEntity.message = event.params._message
+	selectRuneMessageEntity.message = userEntity?.chatBlacklisted ? null : event.params._message
 	selectRuneMessageEntity.tx = event.transaction.hash
 	selectRuneMessageEntity.timestamp = event.block.timestamp
 	selectRuneMessageEntity.save()
@@ -349,12 +351,14 @@ export function handleBid(event: BidEvent): void {
 
 	if (userEntity == null) {
 		userEntity = new User(user)
+		userEntity.interactedAuctions = []
 		userEntity.harvestableAuctions = []
 		userEntity.totalBidsCount = BigInt.zero()
 		userEntity.totalAuctionsParticipated = BigInt.zero()
 		userEntity.totalEmissionsHarvested = BigInt.zero()
 		userEntity.totalEmissionsBurned = BigInt.zero()
 		userEntity.totalAuctionsWon = BigInt.zero()
+		userEntity.chatBlacklisted = false
 	}
 
 	userEntity.totalBidsCount = userEntity.totalBidsCount.plus(event.params._options.multibid)
@@ -423,11 +427,11 @@ export function handleBid(event: BidEvent): void {
 	bidMessageEntity.auction = auctionEntity.id
 	bidMessageEntity.auctionUser = auctionUserEntity.id
 	bidMessageEntity.user = event.params._user
-	bidMessageEntity.alias = userEntity.alias
+	bidMessageEntity.alias = userEntity.chatBlacklisted ? null : userEntity.alias
 	bidMessageEntity.multibid = event.params._options.multibid
 	bidMessageEntity.prevRuneSymbol = prevRuneSymbol
 	bidMessageEntity.runeSymbol = event.params._options.rune
-	bidMessageEntity.message = event.params._options.message
+	bidMessageEntity.message = userEntity.chatBlacklisted ? null : event.params._options.message
 	bidMessageEntity.bid = event.params._bid
 	bidMessageEntity.tx = event.transaction.hash
 	bidMessageEntity.timestamp = event.block.timestamp
@@ -490,9 +494,9 @@ export function handleClaimedLot(event: ClaimedLotEvent): void {
 	claimedMessageEntity.auction = auctionEntity.id
 	claimedMessageEntity.auctionUser = auctionUserEntity.id
 	claimedMessageEntity.user = event.params._user
-	claimedMessageEntity.alias = userEntity == null ? null : userEntity.alias
+	claimedMessageEntity.alias = userEntity == null || userEntity.chatBlacklisted ? null : userEntity.alias
 	claimedMessageEntity.runeSymbol = auctionUserEntity.runeSymbol
-	claimedMessageEntity.message = event.params._message
+	claimedMessageEntity.message = userEntity.chatBlacklisted ? null : event.params._message
 	claimedMessageEntity.tx = event.transaction.hash
 	claimedMessageEntity.timestamp = event.block.timestamp
 	claimedMessageEntity.save()
@@ -565,9 +569,9 @@ export function handleMessageAuction(event: MessageAuctionEvent): void {
 	messageEntity.auction = auctionEntity.id
 	messageEntity.auctionUser = auctionUserEntity.id
 	messageEntity.user = event.params._user
-	messageEntity.alias = userEntity == null ? null : userEntity.alias
+	messageEntity.alias = userEntity == null || userEntity.chatBlacklisted ? null : userEntity.alias
 	messageEntity.runeSymbol = auctionUserEntity.runeSymbol
-	messageEntity.message = event.params._message
+	messageEntity.message = userEntity?.chatBlacklisted ? null : event.params._message
 	messageEntity.tx = event.transaction.hash
 	messageEntity.timestamp = event.block.timestamp
 	messageEntity.save()

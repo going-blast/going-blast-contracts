@@ -101,6 +101,7 @@ type User @entity {
 	totalEmissionsHarvested: BigInt!
 	totalEmissionsBurned: BigInt!
 	totalAuctionsWon: BigInt!
+	chatBlacklisted: Boolean!
 }
 
 type AuctionUser @entity {

@@ -271,14 +271,16 @@ contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, Auctioneer
 				? auction.runes[user.rune].bids.scaleByBP(runicLastBidderBonus)
 				: 0;
 
-			infos[i].shareOfLot = auctionHasBids
-				? (
-					auctionHasRunes
-						? ((user.bids + runicLastBidderBonusBids) * 1e18) /
-							auction.runes[user.rune].bids.scaleByBP(10000 + runicLastBidderBonus)
-						: 1e18
-				)
-				: 0;
+			if (auctionHasBids && auctionHasRunes && auction.runes[user.rune].bids > 0) {
+				infos[i].shareOfLot =
+					((user.bids + runicLastBidderBonusBids) * 1e18) /
+					auction.runes[user.rune].bids.scaleByBP(10000 + runicLastBidderBonus);
+			} else if (auctionHasBids && !auctionHasRunes) {
+				infos[i].shareOfLot = 1e18;
+			} else {
+				infos[i].shareOfLot = 0;
+			}
+
 			infos[i].price = (auction.bidData.bid * infos[i].shareOfLot) / 1e18;
 		}
 	}
