@@ -11,7 +11,7 @@ import {
 	Auction,
 	AuctionMessage,
 	User,
-} from "../../generated/schema"
+} from "../generated/schema"
 import {
 	Auctioneer,
 	Bid as BidEvent,
@@ -20,9 +20,9 @@ import {
 	AuctionCancelled as AuctionCancelledEvent,
 	UserHarvestedLotEmissions as UserHarvestedLotEmissionsEvent,
 	MessageAuction as MessageAuctionEvent,
-} from "../../generated/Auctioneer/Auctioneer"
-import { AuctioneerAuction, ClaimedLot as ClaimedLotEvent } from "../../generated/AuctioneerAuction/AuctioneerAuction"
-import { UpdatedAlias as UpdatedAliasEvent } from "../../generated/AuctioneerUser/AuctioneerUser"
+} from "../generated/Auctioneer/Auctioneer"
+import { AuctioneerAuction, ClaimedLot as ClaimedLotEvent } from "../generated/AuctioneerAuction/AuctioneerAuction"
+import { UpdatedAlias as UpdatedAliasEvent } from "../generated/AuctioneerUser/AuctioneerUser"
 
 function getUserEntity(user: Address): User {
 	let userEntity = User.load(user.toHexString())
