@@ -1,5 +1,3 @@
-#!/bin/bash
-
 # Revert to the previous snapshot
 revert_success=$(cast rpc evm_revert $SNAPSHOT_VALUE)
 

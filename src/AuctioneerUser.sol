@@ -52,9 +52,14 @@ interface IAuctioneerUser {
 		uint256 _lot,
 		address _user,
 		BidOptions memory _options
-	) external returns (uint256 prevUserBids, uint8 prevRune);
-	function selectRune(uint256 _lot, address _user, uint8 _rune) external returns (uint256 userBids, uint8 prevRune);
-	function claimLot(uint256 _lot, address _user) external returns (uint8 rune, uint256 bids);
+	) external returns (uint256 prevUserBids, uint8 prevRune, string memory _alias);
+	function selectRune(
+		uint256 _lot,
+		address _user,
+		uint8 _rune
+	) external returns (uint256 userBids, uint8 prevRune, string memory _alias);
+	function claimLot(uint256 _lot, address _user) external returns (uint8 rune, uint256 bids, string memory _alias);
+	function getAliasAndRune(uint256 _lot, address _user) external returns (uint8 rune, string memory _alias);
 	function harvestAuctionEmissions(
 		uint256 _lot,
 		address _user,

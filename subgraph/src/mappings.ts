@@ -83,6 +83,7 @@ export function handleAuctionCreated(event: AuctionCreatedEvent): void {
 	auctionEntity.isPrivate = auctionData.isPrivate
 	auctionEntity.unlockTimestamp = auctionData.unlockTimestamp
 	auctionEntity.finalized = auctionData.finalized
+	auctionEntity.userCount = 0
 
 	// Auction Emissions
 	auctionEmissionsEntity.bp = auctionData.emissions.bp
@@ -144,6 +145,7 @@ export function handleAuctionCreated(event: AuctionCreatedEvent): void {
 		runeEntity.runeSymbol = rune.runeSymbol
 		runeEntity.bids = rune.bids
 		runeEntity.auction = auctionEntity.id
+		runeEntity.userCount = 0
 		runeEntity.save()
 
 		runeEntityIds[i] = runeEntity.id
@@ -263,10 +265,12 @@ export function handleSelectedRune(event: SelectedRuneEvent): void {
 				lot.concat("_").concat(auctionUserEntity.runeSymbol.toString())
 			)!
 			auctionUserPrevRuneEntity.bids = auctionUserPrevRuneEntity.bids.minus(userBidsBeforePenalty)
+			auctionUserPrevRuneEntity.userCount -= 1
 			auctionUserPrevRuneEntity.save()
 
 			// Add bids to new rune with penalty taken
 			auctionUserRuneEntity.bids = auctionUserRuneEntity.bids.plus(userBidsAfterPenalty)
+			auctionUserRuneEntity.userCount += 1
 			auctionUserRuneEntity.save()
 		}
 	}
@@ -348,14 +352,22 @@ export function handleBid(event: BidEvent): void {
 	userEntity.totalBidsCount = userEntity.totalBidsCount.plus(event.params._options.multibid)
 	if (isFirstBid) {
 		userEntity.totalAuctionsParticipated = userEntity.totalAuctionsParticipated.plus(BigInt.fromI32(1))
-		userEntity.interactedAuctions.push(auctionEntity.id)
+		const interactedAuctions = userEntity.interactedAuctions
+		interactedAuctions.push(auctionEntity.id)
+		userEntity.interactedAuctions = interactedAuctions
 	}
 	if (isFirstBid && auctionEmissionsEntity.biddersEmission.gt(BigInt.zero())) {
-		userEntity.harvestableAuctions.push(auctionEntity.id)
+		const harvestableAuctions = userEntity.harvestableAuctions
+		harvestableAuctions.push(auctionEntity.id)
+		userEntity.harvestableAuctions = harvestableAuctions
 	}
 	userEntity.save()
 
 	// ===== AUCTION =====
+
+	if (isFirstBid) {
+		auctionEntity.userCount += 1
+	}
 
 	const auctionBidDataEntity = AuctionBidData.load(auctionEntity.bidData)!
 
@@ -387,10 +399,16 @@ export function handleBid(event: BidEvent): void {
 				lot.concat("_").concat(auctionUserEntity.runeSymbol.toString())
 			)!
 			auctionUserPrevRuneEntity.bids = auctionUserPrevRuneEntity.bids.minus(userBidsBeforePenalty)
+			auctionUserPrevRuneEntity.userCount -= 1
 			auctionUserPrevRuneEntity.save()
 
 			// Add bids to new rune with penalty taken
+			auctionUserRuneEntity.userCount += 1
 			auctionUserRuneEntity.bids = auctionUserRuneEntity.bids.plus(userBidsAfterPenalty)
+		}
+
+		if (isFirstBid) {
+			auctionUserRuneEntity.userCount += 1
 		}
 
 		// Add new bids to users rune

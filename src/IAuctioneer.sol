@@ -10,6 +10,13 @@ enum PaymentType {
 	WALLET,
 	VOUCHER
 }
+enum AuctionEventType {
+	BID,
+	RUNE,
+	MESSAGE,
+	CLAIM,
+	INFO
+}
 
 // Params
 
@@ -236,10 +243,10 @@ interface AuctioneerEvents {
 	event UpdatedRuneSwitchPenalty(uint256 _penalty);
 	event UpdatedRunicLastBidderBonus(uint256 _bonus);
 	event AuctionCreated(uint256 indexed _lot);
-	event Bid(uint256 indexed _lot, address indexed _user, uint256 _bid, BidOptions _options);
-	event SelectedRune(uint256 indexed _lot, address indexed _user, uint8 _rune, string _message);
+	event Bid(uint256 indexed _lot, address indexed _user, uint256 _bid, uint256 _multibid, uint8 _rune);
+	event SelectedRune(uint256 indexed _lot, address indexed _user, uint8 _rune);
 	event AuctionFinalized(uint256 indexed _lot);
-	event ClaimedLot(uint256 indexed _lot, address indexed _user, uint8 _rune, uint256 _userShareOfLot, string _message);
+	event ClaimedLot(uint256 indexed _lot, address indexed _user, uint256 _userShareOfLot);
 	event UserHarvestedLotEmissions(
 		uint256 indexed _lot,
 		address indexed _user,
@@ -254,5 +261,27 @@ interface AuctioneerEvents {
 	event UpdatedPrivateAuctionRequirement(uint256 _requirement);
 	event InitializedAuctions();
 	event UpdatedAlias(address indexed _user, string _alias);
-	event MessageAuction(uint256 indexed _lot, address indexed _user, string _message);
+	// BID / RUNE events
+	event AuctionEvent(
+		uint256 indexed _lot,
+		address indexed _user,
+		AuctionEventType indexed _type,
+		string _message,
+		string _alias,
+		uint256 _multibid,
+		uint8 _prevRune,
+		uint8 _rune,
+		uint256 _timestamp
+	);
+	// MESSAGE / CLAIM events
+	event AuctionEvent(
+		uint256 indexed _lot,
+		address indexed _user,
+		AuctionEventType indexed _type,
+		string _message,
+		string _alias,
+		uint8 _rune
+	);
+	// INFO events
+	event AuctionEvent(uint256 indexed _lot, address indexed _user, AuctionEventType indexed _type, string _message);
 }

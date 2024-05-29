@@ -26,4 +26,4 @@ echo $(cat subgraph.yaml | yq -y '.dataSources[0].source.address = "'$Auctioneer
 echo $(cat subgraph.yaml | yq -y '.dataSources[1].source.address = "'$AuctioneerAuctionAddress'" | .dataSources[1].source.startBlock = '$FirstBlock) > subgraph.yaml
 
 # Update Auctioneer User Address and StartBlock
-echo $(cat subgraph.yaml | yq -y '.dataSources[2].source.address = "'$AuctioneerUserAddress'" | .dataSources[1].source.startBlock = '$FirstBlock) > subgraph.yaml
+echo $(cat subgraph.yaml | yq -y '.dataSources[2].source.address = "'$AuctioneerUserAddress'" | .dataSources[2].source.startBlock = '$FirstBlock) > subgraph.yaml
