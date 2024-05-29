@@ -188,14 +188,7 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 			// console.log("    Test rune: %s, expected to: %s", i, validRune ? "EMIT" : "REVERT");
 
 			if (validRune) {
-				uint256 expectedBid = auctioneerAuction.getAuction(lot).bidData.bid + auctioneerAuction.bidIncrement();
-				vm.expectEmit(true, true, true, true);
-				emit Bid(
-					lot,
-					user1,
-					expectedBid,
-					BidOptions({ paymentType: PaymentType.WALLET, multibid: 1, message: "", rune: i })
-				);
+				_expectEmitAuctionEvent_Bid(lot, user1, "", i, 1);
 			} else {
 				vm.expectRevert(InvalidRune.selector);
 			}
@@ -257,11 +250,10 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		vm.prank(user1);
 		auctioneer.claimLot{ value: lotPrice }(lot, "");
 
-		vm.expectEmit(true, true, true, true);
-		emit ClaimedLot(lot, user2, 2, 1e18, "");
+		_expectEmitAuctionEvent_Claim(lot, user2, "USER2 CLAIM");
 
 		vm.prank(user2);
-		auctioneer.claimLot{ value: lotPrice }(lot, "");
+		auctioneer.claimLot{ value: lotPrice }(lot, "USER2 CLAIM");
 	}
 
 	function test_runes_win_Expect_lotClaimedSetToTrue() public {
@@ -278,7 +270,7 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		vm.prank(user2);
 		auctioneer.claimLot{ value: lotPrice }(lot, "");
 
-		assertEq(auctioneerUser.getAuctionUser(lot, user2).lotClaimed, true, "User has claimed lot");
+		assertEq(auctioneer.getAuctionUser(lot, user2).lotClaimed, true, "User has claimed lot");
 	}
 	function test_runes_win_RevertWhen_AlreadyClaimed() public {
 		uint256 lot = _createDailyAuctionWithRunes(2, true);
@@ -295,7 +287,7 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		vm.prank(user2);
 		auctioneer.claimLot{ value: lotPrice }(lot, "");
 
-		assertEq(auctioneerUser.getAuctionUser(lot, user2).lotClaimed, true, "User has claimed lot");
+		assertEq(auctioneer.getAuctionUser(lot, user2).lotClaimed, true, "User has claimed lot");
 
 		vm.expectRevert(UserAlreadyClaimedLot.selector);
 
@@ -562,8 +554,7 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 
 		assertEq(getUserLotInfo(lot, user1).rune, 0, "User1 no rune");
 
-		vm.expectEmit(true, true, true, true);
-		emit SelectedRune(lot, user1, 1, "");
+		_expectEmitAuctionEvent_SwitchRune(lot, user1, "", 1);
 
 		vm.prank(user1);
 		auctioneer.selectRune(lot, 1, "");
@@ -576,8 +567,7 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 
 		assertEq(getUserLotInfo(lot, user1).rune, 0, "User1 no rune");
 
-		vm.expectEmit(true, true, true, true);
-		emit SelectedRune(lot, user1, 1, "RUNE RUNE RUNE");
+		_expectEmitAuctionEvent_SwitchRune(lot, user1, "RUNE RUNE RUNE", 1);
 
 		vm.prank(user1);
 		auctioneer.selectRune(lot, 1, "RUNE RUNE RUNE");

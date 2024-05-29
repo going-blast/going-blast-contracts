@@ -3,7 +3,6 @@ pragma solidity ^0.8.20;
 pragma experimental ABIEncoderV2;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
@@ -73,7 +72,6 @@ interface IAuctioneerUser {
 contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, AuctioneerEvents {
 	using GBMath for uint256;
 	using SafeERC20 for IERC20;
-	using EnumerableSet for EnumerableSet.UintSet;
 
 	address payable public auctioneer;
 	IAuctioneerEmissions public auctioneerEmissions;
@@ -113,10 +111,11 @@ contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, Auctioneer
 		uint256 _lot,
 		address _user,
 		BidOptions memory _options
-	) public onlyAuctioneer returns (uint256 prevUserBids, uint8 prevRune) {
+	) public onlyAuctioneer returns (uint256 prevUserBids, uint8 prevRune, string memory _alias) {
 		AuctionUser storage user = auctionUsers[_lot][_user];
 		prevUserBids = user.bids;
 		prevRune = user.rune;
+		_alias = userAlias[_user];
 
 		// Force bid count to be at least one
 		if (_options.multibid == 0) _options.multibid = 1;
@@ -139,10 +138,11 @@ contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, Auctioneer
 		uint256 _lot,
 		address _user,
 		uint8 _rune
-	) public onlyAuctioneer returns (uint256 userBids, uint8 prevRune) {
+	) public onlyAuctioneer returns (uint256 userBids, uint8 prevRune, string memory _alias) {
 		AuctionUser storage user = auctionUsers[_lot][_user];
 		userBids = user.bids;
 		prevRune = user.rune;
+		_alias = userAlias[_user];
 		user.rune = _rune;
 
 		// Incur rune switch penalty
@@ -155,7 +155,10 @@ contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, Auctioneer
 	// CLAIM
 	///////////////////
 
-	function claimLot(uint256 _lot, address _user) public onlyAuctioneer returns (uint8 rune, uint256 bids) {
+	function claimLot(
+		uint256 _lot,
+		address _user
+	) public onlyAuctioneer returns (uint8 rune, uint256 bids, string memory _alias) {
 		AuctionUser storage user = auctionUsers[_lot][_user];
 
 		// Winner has already paid for and claimed the lot (or their share of it)
@@ -167,6 +170,7 @@ contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, Auctioneer
 		// Return values
 		rune = user.rune;
 		bids = user.bids;
+		_alias = userAlias[_user];
 	}
 
 	///////////////////
@@ -226,6 +230,11 @@ contract AuctioneerUser is IAuctioneerUser, Ownable, ReentrancyGuard, Auctioneer
 	///////////////////
 	// VIEW
 	///////////////////
+
+	function getAliasAndRune(uint256 _lot, address _user) public view returns (uint8 rune, string memory _alias) {
+		rune = auctionUsers[_lot][_user].rune;
+		_alias = userAlias[_user];
+	}
 
 	function getAuctionUser(uint256 _lot, address _user) public view returns (AuctionUser memory) {
 		return auctionUsers[_lot][_user];

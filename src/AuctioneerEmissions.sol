@@ -46,7 +46,7 @@ interface IAuctioneerEmissions {
 	function emissionTaxDuration() external view returns (uint256);
 	function emissionsInitialized() external view returns (bool);
 
-	function link(address _auctioneerUser) external;
+	function link() external;
 	function allocateAuctionEmissions(uint256 _unlockTimestamp, uint256 _bp) external returns (uint256 emissions);
 	function deAllocateEmissions(uint256 _unlockTimestamp, uint256 _emissionsToDeAllocate) external;
 	function transferEmissions(address _to, uint256 _amount) external;
@@ -64,7 +64,6 @@ contract AuctioneerEmissions is IAuctioneerEmissions, Ownable, AuctioneerEvents 
 	using SafeERC20 for IERC20;
 
 	address public auctioneer;
-	address public auctioneerUser;
 	bool public emissionsInitialized = false;
 	bool public linked = false;
 
@@ -86,12 +85,11 @@ contract AuctioneerEmissions is IAuctioneerEmissions, Ownable, AuctioneerEvents 
 		GO = _go;
 	}
 
-	function link(address _auctioneerUser) public {
+	function link() public {
 		if (linked) revert AlreadyLinked();
 		linked = true;
 
 		auctioneer = msg.sender;
-		auctioneerUser = _auctioneerUser;
 	}
 
 	///////////////////
@@ -100,10 +98,6 @@ contract AuctioneerEmissions is IAuctioneerEmissions, Ownable, AuctioneerEvents 
 
 	modifier onlyAuctioneer() {
 		if (msg.sender != auctioneer) revert NotAuctioneer();
-		_;
-	}
-	modifier onlyAuctioneerUser() {
-		if (msg.sender != address(auctioneerUser)) revert NotAuctioneerUser();
 		_;
 	}
 
@@ -237,7 +231,7 @@ contract AuctioneerEmissions is IAuctioneerEmissions, Ownable, AuctioneerEvents 
 		uint256 _emissions,
 		uint256 _emissionsEarnedTimestamp,
 		bool _harvestToFarm
-	) public onlyAuctioneerUser returns (uint256 harvested, uint256 burned) {
+	) public onlyAuctioneer returns (uint256 harvested, uint256 burned) {
 		// If emissions should be taxed
 		bool incursTax = !_harvestToFarm && block.timestamp < (_emissionsEarnedTimestamp + emissionTaxDuration);
 

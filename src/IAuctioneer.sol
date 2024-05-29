@@ -180,7 +180,6 @@ struct DailyAuctions {
 
 error NotAuctioneer();
 error NotAuctioneerAuction();
-error NotAuctioneerUser();
 error GONotYetReceived();
 error EmissionsNotInitialized();
 error AlreadyInitialized();
@@ -228,12 +227,7 @@ error IncorrectETHPaymentAmount();
 error SentETHButNotWalletPayment();
 
 interface AuctioneerEvents {
-	event Linked(
-		address indexed _auctioneer,
-		address indexed _auctioneerUser,
-		address indexed _auctioneerEmissions,
-		address _auctioneerAuction
-	);
+	event Linked(address indexed _auctioneer, address indexed _auctioneerEmissions, address _auctioneerAuction);
 	event Initialized();
 	event InitializedEmissions();
 	event UpdatedStartingBid(uint256 _startingBid);

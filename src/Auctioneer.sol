@@ -12,7 +12,6 @@ import { IAuctioneerFarm } from "./IAuctioneerFarm.sol";
 import "./IAuctioneer.sol";
 import { BlastYield } from "./BlastYield.sol";
 import { GBMath } from "./AuctionUtils.sol";
-import { IAuctioneerUser } from "./AuctioneerUser.sol";
 import { IAuctioneerEmissions } from "./AuctioneerEmissions.sol";
 import { IAuctioneerAuction } from "./AuctioneerAuction.sol";
 
@@ -54,7 +53,6 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 	using SafeERC20 for IERC20;
 
 	// FACETS (not really)
-	IAuctioneerUser public auctioneerUser;
 	IAuctioneerEmissions public auctioneerEmissions;
 	IAuctioneerAuction public auctioneerAuction;
 	IAuctioneerFarm public auctioneerFarm;
@@ -67,29 +65,29 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 	IERC20 public VOUCHER;
 	IWETH public WETH;
 
+	// USER
+	mapping(uint256 => mapping(address => AuctionUser)) public auctionUsers;
+	mapping(address => string) public userAlias;
+	mapping(string => address) public aliasUser;
+
 	constructor(IERC20 _go, IERC20 _voucher, IWETH _weth) Ownable(msg.sender) {
 		GO = _go;
 		VOUCHER = _voucher;
 		WETH = _weth;
 	}
 
-	function link(address _auctioneerUser, address _auctioneerEmissions, address _auctioneerAuction) public onlyOwner {
-		if (_auctioneerUser == address(0) || _auctioneerEmissions == address(0) || _auctioneerAuction == address(0))
-			revert ZeroAddress();
-		if (address(auctioneerUser) != address(0)) revert AlreadyLinked();
+	function link(address _auctioneerEmissions, address _auctioneerAuction) public onlyOwner {
+		if (_auctioneerEmissions == address(0) || _auctioneerAuction == address(0)) revert ZeroAddress();
 		if (address(auctioneerEmissions) != address(0)) revert AlreadyLinked();
 		if (address(auctioneerAuction) != address(0)) revert AlreadyLinked();
 
 		auctioneerEmissions = IAuctioneerEmissions(_auctioneerEmissions);
-		auctioneerEmissions.link(_auctioneerUser);
-
-		auctioneerUser = IAuctioneerUser(_auctioneerUser);
-		auctioneerUser.link(_auctioneerEmissions, _auctioneerAuction);
+		auctioneerEmissions.link();
 
 		auctioneerAuction = IAuctioneerAuction(_auctioneerAuction);
 		auctioneerAuction.link();
 
-		emit Linked(address(this), _auctioneerUser, _auctioneerEmissions, _auctioneerAuction);
+		emit Linked(address(this), _auctioneerEmissions, _auctioneerAuction);
 	}
 
 	// RECEIVERS
@@ -221,8 +219,14 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 
 	// MESSAGE
 	function messageAuction(uint256 _lot, string memory _message) public {
-		(uint8 rune, string memory _alias) = auctioneerUser.getAliasAndRune(_lot, msg.sender);
-		emit AuctionEvent(_lot, msg.sender, AuctionEventType.MESSAGE, _message, _alias, rune);
+		emit AuctionEvent(
+			_lot,
+			msg.sender,
+			AuctionEventType.MESSAGE,
+			_message,
+			userAlias[msg.sender],
+			auctionUsers[_lot][msg.sender].rune
+		);
 	}
 
 	// BID
@@ -245,17 +249,37 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 		if (_options.multibid == 0) _options.multibid = 1;
 
 		// User bid
-		(uint256 prevUserBids, uint8 prevRune, string memory _alias) = auctioneerUser.bid(_lot, msg.sender, _options);
+		AuctionUser storage user = auctionUsers[_lot][msg.sender];
+		uint8 prevRune = user.rune;
 
 		// Auction bid
 		(uint256 userBid, uint256 bidCost) = auctioneerAuction.markBid(
 			_lot,
 			msg.sender,
-			prevUserBids,
+			user.bids,
 			prevRune,
 			_userGOBalance(msg.sender),
 			_options
 		);
+
+		// Update User
+		{
+			// Force bid count to be at least one
+			if (_options.multibid == 0) _options.multibid = 1;
+
+			// Incur rune switch penalty
+			if (user.rune != _options.rune && user.rune != 0) {
+				user.bids = user.bids.scaleByBP(10000 - auctioneerAuction.runeSwitchPenalty());
+			}
+
+			// Mark users bids
+			user.bids += _options.multibid;
+
+			// Mark users rune
+			if (user.rune != _options.rune) {
+				user.rune = _options.rune;
+			}
+		}
 
 		// Payment
 		_takeUserPayment(msg.sender, _options.paymentType, bidCost * _options.multibid, _options.multibid * 1e18);
@@ -263,9 +287,9 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 		emit AuctionEvent(
 			_lot,
 			msg.sender,
-			AuctionEventType.RUNE,
+			AuctionEventType.BID,
 			_options.message,
-			_alias,
+			userAlias[msg.sender],
 			_options.multibid,
 			prevRune,
 			_options.rune,
@@ -274,23 +298,45 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 	}
 
 	function selectRune(uint256 _lot, uint8 _rune, string calldata _message) public nonReentrant {
-		(uint256 userBids, uint8 prevRune, string memory _alias) = auctioneerUser.selectRune(_lot, msg.sender, _rune);
-		auctioneerAuction.selectRune(_lot, userBids, prevRune, _rune);
+		AuctionUser storage user = auctionUsers[_lot][msg.sender];
 
-		emit AuctionEvent(_lot, msg.sender, AuctionEventType.RUNE, _message, _alias, 0, prevRune, _rune, block.timestamp);
+		auctioneerAuction.selectRune(_lot, user.bids, user.rune, _rune);
+
+		emit AuctionEvent(
+			_lot,
+			msg.sender,
+			AuctionEventType.RUNE,
+			_message,
+			userAlias[msg.sender],
+			0,
+			user.rune,
+			_rune,
+			block.timestamp
+		);
+
+		// Incur rune switch penalty
+		if (user.rune != _rune) {
+			user.bids = user.bids.scaleByBP(10000 - auctioneerAuction.runeSwitchPenalty());
+			user.rune = _rune;
+		}
 	}
 
 	// CLAIM
 
 	function claimLot(uint256 _lot, string calldata _message) public payable nonReentrant {
-		// Mark user claimed
-		(uint8 userRune, uint256 userBids, string memory _alias) = auctioneerUser.claimLot(_lot, msg.sender);
+		AuctionUser storage user = auctionUsers[_lot][msg.sender];
+
+		// Winner has already paid for and claimed the lot (or their share of it)
+		if (user.lotClaimed) revert UserAlreadyClaimedLot();
+
+		// Mark lot as claimed
+		user.lotClaimed = true;
 
 		(uint256 userShareOfLot, uint256 userShareOfPayment, bool triggerFinalization) = auctioneerAuction.claimLot(
 			_lot,
 			msg.sender,
-			userBids,
-			userRune
+			user.bids,
+			user.rune
 		);
 
 		// Take Payment
@@ -304,7 +350,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 			finalize(_lot);
 		}
 
-		emit AuctionEvent(_lot, msg.sender, AuctionEventType.CLAIM, _message, _alias, userRune);
+		emit AuctionEvent(_lot, msg.sender, AuctionEventType.CLAIM, _message, userAlias[msg.sender], user.rune);
 	}
 
 	function _distributeLotProfit(uint256 _lot, uint256 _userShareOfPayment) internal {
@@ -366,18 +412,30 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 	}
 
 	function harvestAuctionEmissions(uint256 _lot, bool _harvestToFarm) internal {
-		(uint256 unlockTimestamp, uint256 bids, uint256 biddersEmissions) = auctioneerAuction.validateAndGetHarvestData(
-			_lot
-		);
+		AuctionUser storage user = auctionUsers[_lot][msg.sender];
 
-		(uint256 harvested, uint256 burned) = auctioneerUser.harvestAuctionEmissions(
-			_lot,
+		// Exit if user already harvested emissions from auction
+		// Exit early if nothing to claim
+		if (user.emissionsHarvested || user.bids == 0) return;
+
+		(uint256 unlockTimestamp, uint256 auctionBids, uint256 biddersEmissions) = auctioneerAuction
+			.validateAndGetHarvestData(_lot);
+
+		if (biddersEmissions == 0) return;
+
+		// Mark harvested
+		user.emissionsHarvested = true;
+
+		// Signal auctioneerEmissions to harvest user's emissions
+		(uint256 harvested, uint256 burned) = auctioneerEmissions.harvestEmissions(
 			msg.sender,
+			(biddersEmissions * user.bids) / auctionBids,
 			unlockTimestamp,
-			bids,
-			biddersEmissions,
 			_harvestToFarm
 		);
+
+		user.harvestedEmissions = harvested;
+		user.burnedEmissions = burned;
 
 		if (_harvestToFarm && harvested > 0) {
 			GO.safeIncreaseAllowance(address(auctioneerFarm), harvested);
@@ -399,5 +457,94 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 		userGO = _userGOBalance(_user);
 		requirement = auctioneerAuction.privateAuctionRequirement();
 		permitted = userGO >= requirement;
+	}
+
+	///////////////////
+	// ALIAS
+	///////////////////
+
+	function setAlias(string memory _alias) public nonReentrant {
+		if (bytes(_alias).length < 3 || bytes(_alias).length > 9) revert InvalidAlias();
+		if (aliasUser[_alias] != address(0)) revert AliasTaken();
+
+		// Clear out old alias if it exists
+		if (bytes(userAlias[msg.sender]).length != 0) {
+			aliasUser[userAlias[msg.sender]] = address(0);
+		}
+
+		userAlias[msg.sender] = _alias;
+		aliasUser[_alias] = msg.sender;
+
+		emit UpdatedAlias(msg.sender, _alias);
+	}
+
+	// USER VIEW
+
+	function getAliasAndRune(uint256 _lot, address _user) public view returns (uint8 rune, string memory _alias) {
+		rune = auctionUsers[_lot][_user].rune;
+		_alias = userAlias[_user];
+	}
+
+	function getAuctionUser(uint256 _lot, address _user) public view returns (AuctionUser memory) {
+		return auctionUsers[_lot][_user];
+	}
+
+	function getUserLotInfos(uint256[] memory _lots, address _user) public view returns (UserLotInfo[] memory infos) {
+		infos = new UserLotInfo[](_lots.length);
+
+		uint256 lot;
+		for (uint256 i = 0; i < _lots.length; i++) {
+			lot = _lots[i];
+			Auction memory auction = auctioneerAuction.getAuction(lot);
+			uint256 runicLastBidderBonus = auctioneerAuction.runicLastBidderBonus();
+			AuctionUser memory user = auctionUsers[lot][_user];
+			bool auctionHasRunes = auction.runes.length > 0;
+			bool auctionHasBids = auction.bidData.bids > 0;
+
+			infos[i].lot = auction.lot;
+			infos[i].rune = user.rune;
+
+			// Bids
+			infos[i].bidCounts.user = user.bids;
+			infos[i].bidCounts.rune = !auctionHasRunes || user.rune == 0 ? 0 : auction.runes[user.rune].bids;
+			infos[i].bidCounts.auction = auction.bidData.bids;
+
+			// Emissions
+			infos[i].matureTimestamp = (auction.day * 1 days) + auctioneerEmissions.emissionTaxDuration();
+			infos[i].timeUntilMature = block.timestamp >= infos[i].matureTimestamp
+				? 0
+				: infos[i].matureTimestamp - block.timestamp;
+			infos[i].emissionsEarned = user.bids == 0 || auction.bidData.bids == 0
+				? 0
+				: (user.bids * auction.emissions.biddersEmission) / auction.bidData.bids;
+
+			infos[i].emissionsHarvested = user.emissionsHarvested;
+			infos[i].harvestedEmissions = user.harvestedEmissions;
+			infos[i].burnedEmissions = user.burnedEmissions;
+
+			// Winning bid
+			infos[i].isWinner =
+				user.bids > 0 &&
+				(auction.runes.length > 0 ? user.rune == auction.bidData.bidRune : _user == auction.bidData.bidUser);
+			infos[i].lotClaimed = user.lotClaimed;
+
+			// Share
+			bool isLastBidder = auction.bidData.bidUser == _user;
+			uint256 runicLastBidderBonusBids = isLastBidder && auctionHasRunes
+				? auction.runes[user.rune].bids.scaleByBP(runicLastBidderBonus)
+				: 0;
+
+			if (auctionHasBids && auctionHasRunes && auction.runes[user.rune].bids > 0) {
+				infos[i].shareOfLot =
+					((user.bids + runicLastBidderBonusBids) * 1e18) /
+					auction.runes[user.rune].bids.scaleByBP(10000 + runicLastBidderBonus);
+			} else if (auctionHasBids && !auctionHasRunes) {
+				infos[i].shareOfLot = 1e18;
+			} else {
+				infos[i].shareOfLot = 0;
+			}
+
+			infos[i].price = (auction.bidData.bid * infos[i].shareOfLot) / 1e18;
+		}
 	}
 }

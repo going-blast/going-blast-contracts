@@ -70,29 +70,28 @@ contract AuctioneerBidTest is AuctioneerHelper {
 	}
 
 	function test_bid_ExpectEmit_Bid() public {
-		// Get expected bid
-		uint256 expectedBid = startingBid + bidIncrement;
-
 		// Set user alias
 		_setUserAlias(user1, "XXXX");
 
 		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
 
-		vm.expectEmit(true, true, true, true);
 		BidOptions memory options = BidOptions({
 			paymentType: PaymentType.WALLET,
 			multibid: 1,
 			message: "Hello World",
 			rune: 0
 		});
-		emit Bid(0, user1, expectedBid, options);
 
+		_expectEmitAuctionEvent_Bid_FromOptions(0, user1, options);
 		_bidWithOptions(user1, 0, options);
 	}
 
 	function test_bid_Should_UpdateAuctionCorrectly() public {
 		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
 		Auction memory auctionInit = auctioneerAuction.getAuction(0);
+
+		// Get expected bid
+		uint256 expectedBid = startingBid + bidIncrement;
 
 		BidOptions memory options = BidOptions({
 			paymentType: PaymentType.WALLET,
@@ -108,9 +107,10 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		assertEq(auction.bidData.bidTimestamp, block.timestamp, "Bid timestamp is set correctly");
 		assertEq(auction.bidData.revenue, auctionInit.bidData.revenue + bidCost, "Bid cost is added to revenue");
 		assertEq(auction.bidData.bid, auctionInit.bidData.bid + bidIncrement, "Bid is incremented by bidIncrement");
+		assertEq(auction.bidData.bid, expectedBid, "Bid matches expected bid");
 		assertEq(auction.bidData.bids, auctionInit.bidData.bids + 1, "Bid is added to auction bid counter");
 
-		AuctionUser memory auctionUser = auctioneerUser.getAuctionUser(0, user1);
+		AuctionUser memory auctionUser = auctioneer.getAuctionUser(0, user1);
 
 		assertEq(auctionUser.bids, 1, "Bid is added to user bid counter");
 	}
@@ -140,7 +140,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		// Meaningful assertion
 		assertEq(auction.bidData.revenue, auctionInit.bidData.revenue, "Revenue should not change");
 
-		AuctionUser memory auctionUser = auctioneerUser.getAuctionUser(0, user1);
+		AuctionUser memory auctionUser = auctioneer.getAuctionUser(0, user1);
 
 		assertEq(auctionUser.bids, 1, "Bid is added to user bid counter");
 	}
@@ -171,18 +171,20 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		uint256 userETHInit = user1.balance;
 
 		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
-		vm.expectEmit(true, true, true, true);
 		BidOptions memory options = BidOptions({
 			paymentType: PaymentType.WALLET,
 			multibid: multibid,
 			message: "Hello World",
 			rune: 0
 		});
-		emit Bid(0, user1, expectedBid, options);
 
+		_expectEmitAuctionEvent_Bid_FromOptions(0, user1, options);
 		_bidWithOptionsNoDeal(user1, 0, options);
 
+		Auction memory auction = auctioneerAuction.getAuction(0);
+
 		assertEq(user1.balance, userETHInit - expectedCost, "Expected to pay cost * multibid");
+		assertEq(auction.bidData.bid, expectedBid, "Bid updated to match expectedBid");
 	}
 
 	// PRIVATE AUCTION
@@ -215,11 +217,9 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		assertEq(permitted, true, "User 1 permitted");
 
 		// user 1 can bid
-		uint256 expectedBid = auctioneerAuction.startingBid() + auctioneerAuction.bidIncrement();
-		vm.expectEmit(true, true, true, true);
 		BidOptions memory options = BidOptions({ paymentType: PaymentType.WALLET, multibid: 1, message: "", rune: 0 });
-		emit Bid(1, user1, expectedBid, options);
 
+		_expectEmitAuctionEvent_Bid_FromOptions(1, user1, options);
 		_bidWithOptions(user1, 1, options);
 
 		// USER 2
@@ -248,11 +248,9 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		assertEq(permitted, true, "User 3 permitted");
 
 		// user 3 can bid
-		expectedBid = auctioneerAuction.getAuction(1).bidData.bid + auctioneerAuction.bidIncrement();
-		vm.expectEmit(true, true, true, true);
 		options = BidOptions({ paymentType: PaymentType.WALLET, multibid: 1, message: "", rune: 0 });
-		emit Bid(1, user3, expectedBid, options);
 
+		_expectEmitAuctionEvent_Bid_FromOptions(1, user3, options);
 		_bidWithOptions(user3, 1, options);
 
 		// USER 4
@@ -300,12 +298,9 @@ contract AuctioneerBidTest is AuctioneerHelper {
 
 		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
 
-		uint256 expectedBid = auctioneerAuction.startingBid() + auctioneerAuction.bidIncrement();
-		vm.expectEmit(true, true, true, true);
-
 		BidOptions memory options = BidOptions({ paymentType: PaymentType.VOUCHER, multibid: 1, message: "", rune: 0 });
-		emit Bid(0, user1, expectedBid, options);
 
+		_expectEmitAuctionEvent_Bid_FromOptions(0, user1, options);
 		_bidWithOptions(user1, 0, options);
 	}
 	function test_bid_Voucher_ExpectEmit_Multibid() public {
@@ -317,17 +312,14 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
 
 		uint256 multibid = 6;
-		uint256 expectedBid = auctioneerAuction.startingBid() + auctioneerAuction.bidIncrement() * multibid;
-		vm.expectEmit(true, true, true, true);
-
 		BidOptions memory options = BidOptions({
 			paymentType: PaymentType.VOUCHER,
 			multibid: multibid,
 			message: "",
 			rune: 0
 		});
-		emit Bid(0, user1, expectedBid, options);
 
+		_expectEmitAuctionEvent_Bid_FromOptions(0, user1, options);
 		_bidWithOptions(user1, 0, options);
 	}
 

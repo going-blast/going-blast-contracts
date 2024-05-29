@@ -97,13 +97,12 @@ contract AuctioneerPermitTest is AuctioneerHelper, AuctioneerFarmEvents {
 
 		_expectTokenTransfer(VOUCHER, user1, dead, 1e18);
 
-		vm.expectEmit(true, true, true, true);
-		emit Bid(0, user1, expectedBid, options);
+		_expectEmitAuctionEvent_Bid_FromOptions(0, user1, options);
 
 		vm.prank(user1);
 		auctioneer.bidWithPermit(0, options, permitData);
 
-		assertEq(auctioneerUser.getAuctionUser(0, user1).bids, 1, "User has bid");
+		assertEq(auctioneer.getAuctionUser(0, user1).bids, 1, "User has bid");
 		assertEq(VOUCHER.allowance(user1, address(auctioneer)), 9e18, "User1 approved VOUCHER for auctioneer");
 	}
 

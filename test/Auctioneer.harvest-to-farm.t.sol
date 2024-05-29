@@ -47,7 +47,7 @@ contract AuctioneerHarvestToFarmTest is AuctioneerHelper, AuctioneerFarmEvents {
 
 		vm.warp(block.timestamp + 1 days);
 
-		bool harvested = auctioneerUser.getAuctionUser(0, user1).emissionsHarvested;
+		bool harvested = auctioneer.getAuctionUser(0, user1).emissionsHarvested;
 		assertEq(harvested, false, "User has not harvested emissions");
 
 		uint256[] memory auctionsToHarvest = new uint256[](1);
@@ -55,7 +55,7 @@ contract AuctioneerHarvestToFarmTest is AuctioneerHelper, AuctioneerFarmEvents {
 		vm.prank(user1);
 		auctioneer.harvestAuctionsEmissions(auctionsToHarvest, true);
 
-		harvested = auctioneerUser.getAuctionUser(0, user1).emissionsHarvested;
+		harvested = auctioneer.getAuctionUser(0, user1).emissionsHarvested;
 		assertEq(harvested, true, "User has harvested emissions");
 	}
 

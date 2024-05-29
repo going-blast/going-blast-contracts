@@ -8,7 +8,6 @@ import { IWETH } from "../src/WETH9.sol";
 import { Auctioneer } from "../src/Auctioneer.sol";
 import { AuctioneerAuction } from "../src/AuctioneerAuction.sol";
 import { AuctioneerFarm } from "../src/AuctioneerFarm.sol";
-import { AuctioneerUser } from "../src/AuctioneerUser.sol";
 import { AuctioneerEmissions } from "../src/AuctioneerEmissions.sol";
 import { GoToken } from "../src/GoToken.sol";
 import { VoucherToken } from "../src/VoucherToken.sol";
@@ -21,7 +20,6 @@ contract GBScriptUtils is Script, ChainJsonUtils {
 	// Ecosystem contracts
 	Auctioneer public auctioneer;
 	AuctioneerAuction public auctioneerAuction;
-	AuctioneerUser public auctioneerUser;
 	AuctioneerEmissions public auctioneerEmissions;
 	AuctioneerFarm public auctioneerFarm;
 	GoingBlastPresale public presale;
@@ -66,7 +64,6 @@ contract GBScriptUtils is Script, ChainJsonUtils {
 
 		auctioneer = Auctioneer(payable(readAddress(contractPath("Auctioneer"))));
 		auctioneerAuction = AuctioneerAuction(payable(readAddress(contractPath("AuctioneerAuction"))));
-		auctioneerUser = AuctioneerUser(readAddress(contractPath("AuctioneerUser")));
 		auctioneerEmissions = AuctioneerEmissions(readAddress(contractPath("AuctioneerEmissions")));
 		auctioneerFarm = AuctioneerFarm(readAddress(contractPath("AuctioneerFarm")));
 		presale = GoingBlastPresale(payable(readAddress(contractPath("GoingBlastPresale"))));

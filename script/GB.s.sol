@@ -11,7 +11,6 @@ import { BasicERC20 } from "../src/BasicERC20.sol";
 import { IWETH, WETH9 } from "../src/WETH9.sol";
 import { Auctioneer } from "../src/Auctioneer.sol";
 import { AuctioneerAuction } from "../src/AuctioneerAuction.sol";
-import { AuctioneerUser } from "../src/AuctioneerUser.sol";
 import { AuctioneerEmissions } from "../src/AuctioneerEmissions.sol";
 import { AuctioneerFarm } from "../src/AuctioneerFarm.sol";
 import { GoToken } from "../src/GoToken.sol";
@@ -115,13 +114,10 @@ contract GBScripts is GBScriptUtils {
 		auctioneerAuction = new AuctioneerAuction(bidCost, bidIncrement, startingBid, privateAuctionRequirement);
 		writeContractAddress("AuctioneerAuction", address(auctioneerAuction));
 
-		auctioneerUser = new AuctioneerUser();
-		writeContractAddress("AuctioneerUser", address(auctioneerUser));
-
 		auctioneerEmissions = new AuctioneerEmissions(GO);
 		writeContractAddress("AuctioneerEmissions", address(auctioneerEmissions));
 
-		auctioneer.link(address(auctioneerUser), address(auctioneerEmissions), address(auctioneerAuction));
+		auctioneer.link(address(auctioneerEmissions), address(auctioneerAuction));
 
 		auctioneerFarm = new AuctioneerFarm(GO, VOUCHER);
 		writeContractAddress("AuctioneerFarm", address(auctioneerFarm));

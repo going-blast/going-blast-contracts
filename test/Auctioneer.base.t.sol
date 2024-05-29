@@ -13,7 +13,6 @@ import { IWETH, WETH9 } from "../src/WETH9.sol";
 import { AuctioneerHarness, AuctioneerAuctionHarness } from "./AuctioneerHarness.sol";
 import { Auctioneer } from "../src/Auctioneer.sol";
 import { GBMath } from "../src/AuctionUtils.sol";
-import { AuctioneerUser } from "../src/AuctioneerUser.sol";
 import { AuctioneerEmissions } from "../src/AuctioneerEmissions.sol";
 import { GoingBlastPresale, PresaleOptions } from "../src/GoingBlastPresale.sol";
 import { GoingBlastAirdrop } from "../src/GoingBlastAirdrop.sol";
@@ -49,7 +48,6 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 
 	AuctioneerHarness public auctioneer;
 	AuctioneerAuctionHarness public auctioneerAuction;
-	AuctioneerUser public auctioneerUser;
 	AuctioneerEmissions public auctioneerEmissions;
 	AuctioneerFarm public farm;
 	GoingBlastPresale public presale;
@@ -86,7 +84,6 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		vm.label(user4, "user4");
 		vm.label(address(auctioneer), "auctioneer");
 		vm.label(address(auctioneerAuction), "auctioneerAuction");
-		vm.label(address(auctioneerUser), "auctioneerUser");
 		vm.label(address(auctioneerEmissions), "auctioneerEmissions");
 		vm.label(address(farm), "farm");
 		vm.label(address(presale), "presale");
@@ -133,12 +130,11 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	function _createAndLinkAuctioneers() public {
 		auctioneer = new AuctioneerHarness(GO, VOUCHER, WETH);
 		auctioneerAuction = new AuctioneerAuctionHarness(bidCost, bidIncrement, startingBid, privateAuctionRequirement);
-		auctioneerUser = new AuctioneerUser();
 		auctioneerEmissions = new AuctioneerEmissions(GO);
 		farm = new AuctioneerFarm(GO, VOUCHER);
 
 		// LINK
-		auctioneer.link(address(auctioneerUser), address(auctioneerEmissions), address(auctioneerAuction));
+		auctioneer.link(address(auctioneerEmissions), address(auctioneerAuction));
 	}
 
 	function _createPresale() public {
@@ -521,11 +517,42 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		_bid(user);
 	}
 	function _bidShouldEmit(address user) public {
-		uint256 expectedBid = auctioneerAuction.getAuction(0).bidData.bid + auctioneerAuction.bidIncrement();
-		vm.expectEmit(true, true, true, true);
-		BidOptions memory options = BidOptions({ paymentType: PaymentType.WALLET, multibid: 1, message: "", rune: 0 });
-		emit Bid(0, user, expectedBid, options);
+		_expectEmitAuctionEvent_Bid(0, user, "", 0, 1);
 		_bid(user);
+	}
+
+	function _expectEmitAuctionEvent_Info(uint256 lot, string memory message) public {
+		vm.expectEmit(true, true, true, true);
+		emit AuctionEvent(lot, address(0), AuctionEventType.INFO, message);
+	}
+	function _expectEmitAuctionEvent_Message(uint256 lot, address user, string memory message) public {
+		(uint8 rune, string memory _alias) = auctioneer.getAliasAndRune(lot, user);
+		vm.expectEmit(true, true, true, true);
+		emit AuctionEvent(lot, user, AuctionEventType.MESSAGE, message, _alias, rune);
+	}
+	function _expectEmitAuctionEvent_Claim(uint256 lot, address user, string memory message) public {
+		(uint8 rune, string memory _alias) = auctioneer.getAliasAndRune(lot, user);
+		vm.expectEmit(true, true, true, true);
+		emit AuctionEvent(lot, user, AuctionEventType.CLAIM, message, _alias, rune);
+	}
+	function _expectEmitAuctionEvent_SwitchRune(uint256 lot, address user, string memory message, uint8 newRune) public {
+		(uint8 prevRune, string memory _alias) = auctioneer.getAliasAndRune(lot, user);
+		vm.expectEmit(true, true, true, true);
+		emit AuctionEvent(lot, user, AuctionEventType.RUNE, message, _alias, 0, prevRune, newRune, block.timestamp);
+	}
+	function _expectEmitAuctionEvent_Bid(
+		uint256 lot,
+		address user,
+		string memory message,
+		uint8 rune,
+		uint256 multibid
+	) public {
+		(uint8 prevRune, string memory _alias) = auctioneer.getAliasAndRune(lot, user);
+		vm.expectEmit(true, true, true, true);
+		emit AuctionEvent(lot, user, AuctionEventType.BID, message, _alias, multibid, prevRune, rune, block.timestamp);
+	}
+	function _expectEmitAuctionEvent_Bid_FromOptions(uint256 lot, address user, BidOptions memory options) public {
+		_expectEmitAuctionEvent_Bid(lot, user, options.message, options.rune, options.multibid);
 	}
 
 	function _bidWithOptions(address user, uint256 lot, BidOptions memory options) public {
@@ -582,13 +609,13 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	// Alias helpers
 	function _setUserAlias(address user, string memory userAlias) public {
 		vm.prank(user);
-		auctioneerUser.setAlias(userAlias);
+		auctioneer.setAlias(userAlias);
 	}
 
 	// User Lot Info
 	function getUserLotInfo(uint256 _lot, address _user) public view returns (UserLotInfo memory info) {
 		uint256[] memory lots = new uint256[](1);
 		lots[0] = _lot;
-		return auctioneerUser.getUserLotInfos(lots, _user)[0];
+		return auctioneer.getUserLotInfos(lots, _user)[0];
 	}
 }

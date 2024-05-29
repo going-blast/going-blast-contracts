@@ -55,8 +55,7 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 		// Claimable after next bid by
 		vm.warp(auctioneerAuction.getAuction(0).bidData.nextBidBy + 1);
 
-		vm.expectEmit(true, true, true, true);
-		emit ClaimedLot(0, user1, 0, 1e18, "");
+		_expectEmitAuctionEvent_Claim(0, user1, "");
 
 		vm.prank(user1);
 		auctioneer.claimLot{ value: lotPrice }(0, "");
@@ -70,8 +69,7 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 		vm.deal(user1, lotPrice);
 		vm.warp(auctioneerAuction.getAuction(0).bidData.nextBidBy + 1);
 
-		vm.expectEmit(true, true, true, true);
-		emit ClaimedLot(0, user1, 0, 1e18, "CLAIM CLAIM CLAIM");
+		_expectEmitAuctionEvent_Claim(0, user1, "CLAIM CLAIM CLAIM");
 
 		vm.prank(user1);
 		auctioneer.claimLot{ value: lotPrice }(0, "CLAIM CLAIM CLAIM");
@@ -105,7 +103,7 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 		// Claim once
 		vm.prank(user1);
 		auctioneer.claimLot{ value: lotPrice }(0, "");
-		assertEq(auctioneerUser.getAuctionUser(0, user1).lotClaimed, true, "AuctionUser marked as lotClaimed");
+		assertEq(auctioneer.getAuctionUser(0, user1).lotClaimed, true, "AuctionUser marked as lotClaimed");
 
 		// Revert on claim again
 		vm.expectRevert(UserAlreadyClaimedLot.selector);
@@ -244,7 +242,7 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 		// Claim
 		vm.prank(user1);
 		auctioneer.claimLot{ value: lotPrice }(0, "");
-		assertEq(auctioneerUser.getAuctionUser(0, user1).lotClaimed, true, "AuctionUser marked as lotClaimed");
+		assertEq(auctioneer.getAuctionUser(0, user1).lotClaimed, true, "AuctionUser marked as lotClaimed");
 	}
 
 	function test_winning_userReceivesLotTokens() public {
