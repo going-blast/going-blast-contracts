@@ -521,24 +521,20 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		_bid(user);
 	}
 
-	function _expectEmitAuctionEvent_Info(uint256 lot, string memory message) public {
-		vm.expectEmit(true, true, true, true);
-		emit AuctionEvent(lot, address(0), AuctionEventType.INFO, message);
-	}
 	function _expectEmitAuctionEvent_Message(uint256 lot, address user, string memory message) public {
 		(uint8 rune, string memory _alias) = auctioneer.getAliasAndRune(lot, user);
 		vm.expectEmit(true, true, true, true);
-		emit AuctionEvent(lot, user, AuctionEventType.MESSAGE, message, _alias, rune);
+		emit Messaged(lot, user, message, _alias, rune);
 	}
 	function _expectEmitAuctionEvent_Claim(uint256 lot, address user, string memory message) public {
 		(uint8 rune, string memory _alias) = auctioneer.getAliasAndRune(lot, user);
 		vm.expectEmit(true, true, true, true);
-		emit AuctionEvent(lot, user, AuctionEventType.CLAIM, message, _alias, rune);
+		emit Claimed(lot, user, message, _alias, rune);
 	}
 	function _expectEmitAuctionEvent_SwitchRune(uint256 lot, address user, string memory message, uint8 newRune) public {
 		(uint8 prevRune, string memory _alias) = auctioneer.getAliasAndRune(lot, user);
 		vm.expectEmit(true, true, true, true);
-		emit AuctionEvent(lot, user, AuctionEventType.RUNE, message, _alias, 0, prevRune, newRune, block.timestamp);
+		emit SelectedRune(lot, user, message, _alias, newRune, prevRune);
 	}
 	function _expectEmitAuctionEvent_Bid(
 		uint256 lot,
@@ -549,7 +545,7 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	) public {
 		(uint8 prevRune, string memory _alias) = auctioneer.getAliasAndRune(lot, user);
 		vm.expectEmit(true, true, true, true);
-		emit AuctionEvent(lot, user, AuctionEventType.BID, message, _alias, multibid, prevRune, rune, block.timestamp);
+		emit Bid(lot, user, message, _alias, rune, prevRune, multibid, block.timestamp);
 	}
 	function _expectEmitAuctionEvent_Bid_FromOptions(uint256 lot, address user, BidOptions memory options) public {
 		_expectEmitAuctionEvent_Bid(lot, user, options.message, options.rune, options.multibid);

@@ -35,10 +35,7 @@ contract AuctioneerMessageTest is AuctioneerHelper {
 	}
 
 	function test_messageAuction_ExpectEmit() public {
-		(uint8 rune, string memory _alias) = auctioneer.getAliasAndRune(0, user1);
-
-		vm.expectEmit(true, true, true, true);
-		emit AuctionEvent(0, user1, AuctionEventType.MESSAGE, "TEST TEST TEST", _alias, rune);
+		_expectEmitAuctionEvent_Message(0, user1, "TEST TEST TEST");
 
 		vm.prank(user1);
 		auctioneer.messageAuction(0, "TEST TEST TEST");

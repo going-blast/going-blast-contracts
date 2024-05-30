@@ -86,7 +86,6 @@ contract AuctioneerPermitTest is AuctioneerHelper, AuctioneerFarmEvents {
 
 		assertEq(VOUCHER.allowance(user1, address(auctioneer)), 0, "User1 not approved VOUCHER for auctioneer");
 
-		uint256 expectedBid = auctioneerAuction.startingBid() + auctioneerAuction.bidIncrement();
 		BidOptions memory options = BidOptions({
 			paymentType: PaymentType.VOUCHER,
 			multibid: 1,

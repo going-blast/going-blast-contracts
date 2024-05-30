@@ -78,6 +78,74 @@
   },
   {
     "type": "function",
+    "name": "aliasUser",
+    "inputs": [
+      {
+        "name": "",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "auctionUsers",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "bids",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "rune",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "lotClaimed",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "emissionsHarvested",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "harvestedEmissions",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "burnedEmissions",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "auctioneerAuction",
     "inputs": [],
     "outputs": [
@@ -111,19 +179,6 @@
         "name": "",
         "type": "address",
         "internalType": "contract IAuctioneerFarm"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "auctioneerUser",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract IAuctioneerUser"
       }
     ],
     "stateMutability": "view"
@@ -423,6 +478,199 @@
   },
   {
     "type": "function",
+    "name": "getAliasAndRune",
+    "inputs": [
+      {
+        "name": "_lot",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "rune",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "_alias",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getAuctionUser",
+    "inputs": [
+      {
+        "name": "_lot",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct AuctionUser",
+        "components": [
+          {
+            "name": "bids",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "rune",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "lotClaimed",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "emissionsHarvested",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "harvestedEmissions",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "burnedEmissions",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getUserLotInfos",
+    "inputs": [
+      {
+        "name": "_lots",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "_user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "infos",
+        "type": "tuple[]",
+        "internalType": "struct UserLotInfo[]",
+        "components": [
+          {
+            "name": "lot",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "rune",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "bidCounts",
+            "type": "tuple",
+            "internalType": "struct BidCounts",
+            "components": [
+              {
+                "name": "user",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "rune",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "auction",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ]
+          },
+          {
+            "name": "matureTimestamp",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "timeUntilMature",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "emissionsEarned",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "emissionsHarvested",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "harvestedEmissions",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "burnedEmissions",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "isWinner",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "lotClaimed",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "shareOfLot",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "price",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "getUserPrivateAuctionData",
     "inputs": [
       {
@@ -479,11 +727,6 @@
     "type": "function",
     "name": "link",
     "inputs": [
-      {
-        "name": "_auctioneerUser",
-        "type": "address",
-        "internalType": "address"
-      },
       {
         "name": "_auctioneerEmissions",
         "type": "address",
@@ -561,6 +804,19 @@
   },
   {
     "type": "function",
+    "name": "setAlias",
+    "inputs": [
+      {
+        "name": "_alias",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "transferOwnership",
     "inputs": [
       {
@@ -610,6 +866,25 @@
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "userAlias",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "event",
@@ -673,32 +948,71 @@
         "internalType": "uint256"
       },
       {
-        "name": "_options",
-        "type": "tuple",
+        "name": "_multibid",
+        "type": "uint256",
         "indexed": false,
-        "internalType": "struct BidOptions",
-        "components": [
-          {
-            "name": "paymentType",
-            "type": "uint8",
-            "internalType": "enum PaymentType"
-          },
-          {
-            "name": "multibid",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "message",
-            "type": "string",
-            "internalType": "string"
-          },
-          {
-            "name": "rune",
-            "type": "uint8",
-            "internalType": "uint8"
-          }
-        ]
+        "internalType": "uint256"
+      },
+      {
+        "name": "_rune",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Bid",
+    "inputs": [
+      {
+        "name": "_lot",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "_user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "_message",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      },
+      {
+        "name": "_alias",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      },
+      {
+        "name": "_rune",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      },
+      {
+        "name": "_prevRune",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      },
+      {
+        "name": "_multibid",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "_timestamp",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
       }
     ],
     "anonymous": false
@@ -730,6 +1044,43 @@
   },
   {
     "type": "event",
+    "name": "Claimed",
+    "inputs": [
+      {
+        "name": "_lot",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "_user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "_message",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      },
+      {
+        "name": "_alias",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      },
+      {
+        "name": "_rune",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "ClaimedLot",
     "inputs": [
       {
@@ -745,22 +1096,10 @@
         "internalType": "address"
       },
       {
-        "name": "_rune",
-        "type": "uint8",
-        "indexed": false,
-        "internalType": "uint8"
-      },
-      {
         "name": "_userShareOfLot",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
-      },
-      {
-        "name": "_message",
-        "type": "string",
-        "indexed": false,
-        "internalType": "string"
       }
     ],
     "anonymous": false
@@ -794,12 +1133,6 @@
         "internalType": "address"
       },
       {
-        "name": "_auctioneerUser",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
         "name": "_auctioneerEmissions",
         "type": "address",
         "indexed": true,
@@ -816,7 +1149,7 @@
   },
   {
     "type": "event",
-    "name": "MessageAuction",
+    "name": "Messaged",
     "inputs": [
       {
         "name": "_lot",
@@ -835,6 +1168,18 @@
         "type": "string",
         "indexed": false,
         "internalType": "string"
+      },
+      {
+        "name": "_alias",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      },
+      {
+        "name": "_rune",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
       }
     ],
     "anonymous": false
@@ -879,12 +1224,49 @@
         "type": "uint8",
         "indexed": false,
         "internalType": "uint8"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "SelectedRune",
+    "inputs": [
+      {
+        "name": "_lot",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "_user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
       },
       {
         "name": "_message",
         "type": "string",
         "indexed": false,
         "internalType": "string"
+      },
+      {
+        "name": "_alias",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      },
+      {
+        "name": "_rune",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      },
+      {
+        "name": "_prevRune",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
       }
     ],
     "anonymous": false
@@ -1099,6 +1481,11 @@
   },
   {
     "type": "error",
+    "name": "AliasTaken",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "AlreadyLinked",
     "inputs": []
   },
@@ -1120,6 +1507,11 @@
   {
     "type": "error",
     "name": "IncorrectETHPaymentAmount",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidAlias",
     "inputs": []
   },
   {
@@ -1168,6 +1560,11 @@
   {
     "type": "error",
     "name": "TreasuryNotSet",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UserAlreadyClaimedLot",
     "inputs": []
   },
   {

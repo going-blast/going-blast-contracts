@@ -61,14 +61,14 @@ interface IAuctioneerAuction {
 		uint8 _prevRune,
 		uint256 _userGoBalance,
 		BidOptions memory _options
-	) external returns (uint256 userBid, uint256 bidCost);
+	) external returns (uint256 bidCost);
 	function selectRune(uint256 _lot, uint256 _userBids, uint8 _prevRune, uint8 _rune) external;
 	function claimLot(
 		uint256 _lot,
 		address _user,
 		uint256 _userBids,
 		uint8 _userRune
-	) external returns (uint256 userShareOfLot, uint256 userShareOfPayment, bool triggerFinalization);
+	) external returns (uint256 userShareOfPayment, bool triggerFinalization);
 	function finalizeAuction(
 		uint256 _lot
 	)
@@ -278,6 +278,8 @@ contract AuctioneerAuction is
 		auction.bidData.bidTimestamp = _params.unlockTimestamp;
 		auction.bidData.nextBidBy = auction.getNextBidBy();
 
+		auction.initialBlock = block.number;
+
 		// Runes
 		auction.addRunes(_params);
 
@@ -341,13 +343,7 @@ contract AuctioneerAuction is
 		uint8 _prevRune,
 		uint256 _userGoBalance,
 		BidOptions memory _options
-	)
-		external
-		onlyAuctioneer
-		validAuctionLot(_lot)
-		validRune(_lot, _options.rune)
-		returns (uint256 userBid, uint256 auctionBidCost)
-	{
+	) external onlyAuctioneer validAuctionLot(_lot) validRune(_lot, _options.rune) returns (uint256 auctionBidCost) {
 		Auction storage auction = auctions[_lot];
 		auction.validateBiddingOpen();
 
@@ -371,7 +367,6 @@ contract AuctioneerAuction is
 			auction.bidData.bidRune = _options.rune;
 		}
 
-		userBid = auction.bidData.bid;
 		auctionBidCost = auction.bidData.bidCost;
 	}
 
@@ -381,6 +376,7 @@ contract AuctioneerAuction is
 		uint8 _prevRune,
 		uint8 _rune
 	) external onlyAuctioneer validAuctionLot(_lot) validRune(_lot, _rune) {
+		if (auctions[_lot].isEnded()) revert CantSwitchRune();
 		if (auctions[_lot].runes.length == 0) revert InvalidRune();
 		_switchRuneUpdateData(_lot, _userBids, _prevRune, _rune);
 	}
@@ -392,12 +388,7 @@ contract AuctioneerAuction is
 		address _user,
 		uint256 _userBids,
 		uint8 _userRune
-	)
-		public
-		onlyAuctioneer
-		validAuctionLot(_lot)
-		returns (uint256 userShareOfLot, uint256 userShareOfPayment, bool triggerFinalization)
-	{
+	) public onlyAuctioneer validAuctionLot(_lot) returns (uint256 userShareOfPayment, bool triggerFinalization) {
 		Auction storage auction = auctions[_lot];
 
 		auction.validateEnded();
@@ -409,7 +400,7 @@ contract AuctioneerAuction is
 		uint256 runicLastBidderBonusBids = isLastBidder && auctionHasRunes
 			? auction.runes[_userRune].bids.scaleByBP(runicLastBidderBonus)
 			: 0;
-		userShareOfLot = auctionHasRunes
+		uint256 userShareOfLot = auctionHasRunes
 			? ((_userBids + runicLastBidderBonusBids) * 1e18) /
 				auction.runes[_userRune].bids.scaleByBP(10000 + runicLastBidderBonus)
 			: 1e18;

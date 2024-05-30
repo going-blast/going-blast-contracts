@@ -173,7 +173,6 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 			uint256 lot = auctioneerAuction.createAuction{ value: lotEth }(_params[i], auctionEmissions);
 
 			emit AuctionCreated(lot);
-			emit AuctionEvent(lot, address(0), AuctionEventType.INFO, "CREATED");
 		}
 	}
 
@@ -184,7 +183,6 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 
 		auctioneerEmissions.deAllocateEmissions(unlockTimestamp, cancelledEmissions);
 		emit AuctionCancelled(_lot);
-		emit AuctionEvent(_lot, address(0), AuctionEventType.INFO, "CANCELLED");
 	}
 
 	// USER PAYMENT
@@ -219,14 +217,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 
 	// MESSAGE
 	function messageAuction(uint256 _lot, string memory _message) public {
-		emit AuctionEvent(
-			_lot,
-			msg.sender,
-			AuctionEventType.MESSAGE,
-			_message,
-			userAlias[msg.sender],
-			auctionUsers[_lot][msg.sender].rune
-		);
+		emit Messaged(_lot, msg.sender, _message, userAlias[msg.sender], auctionUsers[_lot][msg.sender].rune);
 	}
 
 	// BID
@@ -253,7 +244,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 		uint8 prevRune = user.rune;
 
 		// Auction bid
-		(uint256 userBid, uint256 bidCost) = auctioneerAuction.markBid(
+		uint256 bidCost = auctioneerAuction.markBid(
 			_lot,
 			msg.sender,
 			user.bids,
@@ -284,15 +275,14 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 		// Payment
 		_takeUserPayment(msg.sender, _options.paymentType, bidCost * _options.multibid, _options.multibid * 1e18);
 
-		emit AuctionEvent(
+		emit Bid(
 			_lot,
 			msg.sender,
-			AuctionEventType.BID,
 			_options.message,
 			userAlias[msg.sender],
-			_options.multibid,
-			prevRune,
 			_options.rune,
+			prevRune,
+			_options.multibid,
 			block.timestamp
 		);
 	}
@@ -302,17 +292,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 
 		auctioneerAuction.selectRune(_lot, user.bids, user.rune, _rune);
 
-		emit AuctionEvent(
-			_lot,
-			msg.sender,
-			AuctionEventType.RUNE,
-			_message,
-			userAlias[msg.sender],
-			0,
-			user.rune,
-			_rune,
-			block.timestamp
-		);
+		emit SelectedRune(_lot, msg.sender, _message, userAlias[msg.sender], _rune, user.rune);
 
 		// Incur rune switch penalty
 		if (user.rune != _rune) {
@@ -332,7 +312,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 		// Mark lot as claimed
 		user.lotClaimed = true;
 
-		(uint256 userShareOfLot, uint256 userShareOfPayment, bool triggerFinalization) = auctioneerAuction.claimLot(
+		(uint256 userShareOfPayment, bool triggerFinalization) = auctioneerAuction.claimLot(
 			_lot,
 			msg.sender,
 			user.bids,
@@ -350,7 +330,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 			finalize(_lot);
 		}
 
-		emit AuctionEvent(_lot, msg.sender, AuctionEventType.CLAIM, _message, userAlias[msg.sender], user.rune);
+		emit Claimed(_lot, msg.sender, _message, userAlias[msg.sender], user.rune);
 	}
 
 	function _distributeLotProfit(uint256 _lot, uint256 _userShareOfPayment) internal {

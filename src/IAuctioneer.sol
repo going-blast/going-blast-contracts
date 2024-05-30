@@ -10,13 +10,6 @@ enum PaymentType {
 	WALLET,
 	VOUCHER
 }
-enum AuctionEventType {
-	BID,
-	RUNE,
-	MESSAGE,
-	CLAIM,
-	INFO
-}
 
 // Params
 
@@ -118,6 +111,7 @@ struct Auction {
 	AuctionLot rewards;
 	AuctionBidData bidData;
 	bool finalized;
+	uint256 initialBlock;
 }
 
 struct AuctionUser {
@@ -222,25 +216,54 @@ error InvalidRunesCount();
 error DuplicateRuneSymbols();
 error CantSwitchRune();
 error CannotHaveNFTsWithRunes();
-error CannotPayForLotWithVouchers();
 error IncorrectETHPaymentAmount();
 error SentETHButNotWalletPayment();
 
 interface AuctioneerEvents {
+	// ADMIN
 	event Linked(address indexed _auctioneer, address indexed _auctioneerEmissions, address _auctioneerAuction);
 	event Initialized();
 	event InitializedEmissions();
+
+	// CONSTS
 	event UpdatedStartingBid(uint256 _startingBid);
 	event UpdatedBidCost(uint256 _bidCost);
 	event UpdatedEarlyHarvestTax(uint256 _earlyHarvestTax);
 	event UpdatedEmissionTaxDuration(uint256 _emissionTax);
 	event UpdatedRuneSwitchPenalty(uint256 _penalty);
+	event UpdatedTreasury(address indexed _treasury);
+	event UpdatedFarm(address indexed _farm);
+	event UpdatedTreasurySplit(uint256 _split);
+	event UpdatedPrivateAuctionRequirement(uint256 _requirement);
+	event UpdatedAlias(address indexed _user, string _alias);
 	event UpdatedRunicLastBidderBonus(uint256 _bonus);
+
+	// AUCTION STATE
 	event AuctionCreated(uint256 indexed _lot);
-	event Bid(uint256 indexed _lot, address indexed _user, uint256 _bid, uint256 _multibid, uint8 _rune);
-	event SelectedRune(uint256 indexed _lot, address indexed _user, uint8 _rune);
+	event AuctionCancelled(uint256 indexed _lot);
 	event AuctionFinalized(uint256 indexed _lot);
-	event ClaimedLot(uint256 indexed _lot, address indexed _user, uint256 _userShareOfLot);
+
+	// USER INTERACTIONS
+	event Bid(
+		uint256 indexed _lot,
+		address indexed _user,
+		string _message,
+		string _alias,
+		uint8 _rune,
+		uint8 _prevRune,
+		uint256 _multibid,
+		uint256 _timestamp
+	);
+	event SelectedRune(
+		uint256 indexed _lot,
+		address indexed _user,
+		string _message,
+		string _alias,
+		uint8 _rune,
+		uint8 _prevRune
+	);
+	event Messaged(uint256 indexed _lot, address indexed _user, string _message, string _alias, uint8 _rune);
+	event Claimed(uint256 indexed _lot, address indexed _user, string _message, string _alias, uint8 _rune);
 	event UserHarvestedLotEmissions(
 		uint256 indexed _lot,
 		address indexed _user,
@@ -248,34 +271,4 @@ interface AuctioneerEvents {
 		uint256 _burnEmissions,
 		bool _harvestToFarm
 	);
-	event AuctionCancelled(uint256 indexed _lot);
-	event UpdatedTreasury(address indexed _treasury);
-	event UpdatedFarm(address indexed _farm);
-	event UpdatedTreasurySplit(uint256 _split);
-	event UpdatedPrivateAuctionRequirement(uint256 _requirement);
-	event InitializedAuctions();
-	event UpdatedAlias(address indexed _user, string _alias);
-	// BID / RUNE events
-	event AuctionEvent(
-		uint256 indexed _lot,
-		address indexed _user,
-		AuctionEventType indexed _type,
-		string _message,
-		string _alias,
-		uint256 _multibid,
-		uint8 _prevRune,
-		uint8 _rune,
-		uint256 _timestamp
-	);
-	// MESSAGE / CLAIM events
-	event AuctionEvent(
-		uint256 indexed _lot,
-		address indexed _user,
-		AuctionEventType indexed _type,
-		string _message,
-		string _alias,
-		uint8 _rune
-	);
-	// INFO events
-	event AuctionEvent(uint256 indexed _lot, address indexed _user, AuctionEventType indexed _type, string _message);
 }

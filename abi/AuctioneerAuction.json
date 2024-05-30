@@ -210,6 +210,11 @@
         "name": "finalized",
         "type": "bool",
         "internalType": "bool"
+      },
+      {
+        "name": "initialBlock",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -290,11 +295,6 @@
       }
     ],
     "outputs": [
-      {
-        "name": "userShareOfLot",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
       {
         "name": "userShareOfPayment",
         "type": "uint256",
@@ -708,6 +708,11 @@
             "name": "finalized",
             "type": "bool",
             "internalType": "bool"
+          },
+          {
+            "name": "initialBlock",
+            "type": "uint256",
+            "internalType": "uint256"
           }
         ]
       }
@@ -918,6 +923,11 @@
             "name": "finalized",
             "type": "bool",
             "internalType": "bool"
+          },
+          {
+            "name": "initialBlock",
+            "type": "uint256",
+            "internalType": "uint256"
           }
         ]
       },
@@ -1160,6 +1170,11 @@
             "name": "finalized",
             "type": "bool",
             "internalType": "bool"
+          },
+          {
+            "name": "initialBlock",
+            "type": "uint256",
+            "internalType": "uint256"
           }
         ]
       },
@@ -1399,11 +1414,6 @@
       }
     ],
     "outputs": [
-      {
-        "name": "userBid",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
       {
         "name": "auctionBidCost",
         "type": "uint256",
@@ -1780,32 +1790,71 @@
         "internalType": "uint256"
       },
       {
-        "name": "_options",
-        "type": "tuple",
+        "name": "_multibid",
+        "type": "uint256",
         "indexed": false,
-        "internalType": "struct BidOptions",
-        "components": [
-          {
-            "name": "paymentType",
-            "type": "uint8",
-            "internalType": "enum PaymentType"
-          },
-          {
-            "name": "multibid",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "message",
-            "type": "string",
-            "internalType": "string"
-          },
-          {
-            "name": "rune",
-            "type": "uint8",
-            "internalType": "uint8"
-          }
-        ]
+        "internalType": "uint256"
+      },
+      {
+        "name": "_rune",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Bid",
+    "inputs": [
+      {
+        "name": "_lot",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "_user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "_message",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      },
+      {
+        "name": "_alias",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      },
+      {
+        "name": "_rune",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      },
+      {
+        "name": "_prevRune",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      },
+      {
+        "name": "_multibid",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "_timestamp",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
       }
     ],
     "anonymous": false
@@ -1837,6 +1886,43 @@
   },
   {
     "type": "event",
+    "name": "Claimed",
+    "inputs": [
+      {
+        "name": "_lot",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "_user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "_message",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      },
+      {
+        "name": "_alias",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      },
+      {
+        "name": "_rune",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "ClaimedLot",
     "inputs": [
       {
@@ -1852,22 +1938,10 @@
         "internalType": "address"
       },
       {
-        "name": "_rune",
-        "type": "uint8",
-        "indexed": false,
-        "internalType": "uint8"
-      },
-      {
         "name": "_userShareOfLot",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
-      },
-      {
-        "name": "_message",
-        "type": "string",
-        "indexed": false,
-        "internalType": "string"
       }
     ],
     "anonymous": false
@@ -1901,12 +1975,6 @@
         "internalType": "address"
       },
       {
-        "name": "_auctioneerUser",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
         "name": "_auctioneerEmissions",
         "type": "address",
         "indexed": true,
@@ -1923,7 +1991,7 @@
   },
   {
     "type": "event",
-    "name": "MessageAuction",
+    "name": "Messaged",
     "inputs": [
       {
         "name": "_lot",
@@ -1942,6 +2010,18 @@
         "type": "string",
         "indexed": false,
         "internalType": "string"
+      },
+      {
+        "name": "_alias",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      },
+      {
+        "name": "_rune",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
       }
     ],
     "anonymous": false
@@ -1986,12 +2066,49 @@
         "type": "uint8",
         "indexed": false,
         "internalType": "uint8"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "SelectedRune",
+    "inputs": [
+      {
+        "name": "_lot",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "_user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
       },
       {
         "name": "_message",
         "type": "string",
         "indexed": false,
         "internalType": "string"
+      },
+      {
+        "name": "_alias",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      },
+      {
+        "name": "_rune",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      },
+      {
+        "name": "_prevRune",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
       }
     ],
     "anonymous": false
@@ -2227,6 +2344,11 @@
   {
     "type": "error",
     "name": "CannotHaveNFTsWithRunes",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "CantSwitchRune",
     "inputs": []
   },
   {
