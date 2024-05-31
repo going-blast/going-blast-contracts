@@ -24,7 +24,9 @@
 		"privateAuctionRequirement": 250e18,
 		"earlyHarvestTax": 5000,
 		"emissionTaxDurationDays": 30,
+		"multisig": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
 		"treasury": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+		"teamTreasury": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
 		"teamTreasurySplit": 2000
 	}
 }

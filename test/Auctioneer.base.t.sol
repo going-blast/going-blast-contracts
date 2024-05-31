@@ -35,6 +35,7 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 
 	address public liquidity = address(40);
 
+	address public multisig = address(49);
 	address public treasury = address(50);
 	address public treasury2 = address(51);
 	address public teamTreasury = address(52);
@@ -78,6 +79,7 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		vm.label(sender, "sender");
 		vm.label(dead, "dead");
 		vm.label(liquidity, "liquidity");
+		vm.label(multisig, "multisig");
 		vm.label(treasury, "treasury");
 		vm.label(treasury2, "treasury2");
 		vm.label(teamTreasury, "teamTreasury");
@@ -132,10 +134,16 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	// SETUP UTILS
 
 	function _createAndLinkAuctioneers() public {
-		auctioneer = new AuctioneerHarness(GO, VOUCHER, WETH);
-		auctioneerAuction = new AuctioneerAuctionHarness(bidCost, bidIncrement, startingBid, privateAuctionRequirement);
-		auctioneerEmissions = new AuctioneerEmissions(GO);
-		farm = new AuctioneerFarm(GO, VOUCHER);
+		auctioneer = new AuctioneerHarness(multisig, GO, VOUCHER, WETH);
+		auctioneerAuction = new AuctioneerAuctionHarness(
+			address(auctioneer),
+			bidCost,
+			bidIncrement,
+			startingBid,
+			privateAuctionRequirement
+		);
+		auctioneerEmissions = new AuctioneerEmissions(address(auctioneer), GO);
+		farm = new AuctioneerFarm(address(auctioneer), GO, VOUCHER);
 
 		// LINK
 		auctioneer.link(address(auctioneerEmissions), address(auctioneerAuction));
@@ -534,15 +542,6 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 
 	// BIDS
 
-	function _createDefaultBidOptions() public pure returns (BidOptions memory options) {
-		options = BidOptions({ paymentType: PaymentType.WALLET, multibid: 1, message: "Hello World", rune: 0 });
-	}
-
-	function _createBidOptions_PaymentType(PaymentType paymentType) public pure returns (BidOptions memory options) {
-		options = _createDefaultBidOptions();
-		options.paymentType = paymentType;
-	}
-
 	function _bidShouldRevert_AuctionEnded(address user) public {
 		vm.expectRevert(AuctionEnded.selector);
 		_bid(user);
@@ -552,7 +551,7 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		_bid(user);
 	}
 	function _bidShouldEmit(address user) public {
-		_expectEmitAuctionEvent_Bid(0, user, "", 0, 1);
+		_expectEmitAuctionEvent_Bid(user, 0, 0, "", 1);
 		_bid(user);
 	}
 
@@ -572,48 +571,55 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		emit SelectedRune(lot, user, message, _alias, newRune, prevRune);
 	}
 	function _expectEmitAuctionEvent_Bid(
-		uint256 lot,
 		address user,
-		string memory message,
+		uint256 lot,
 		uint8 rune,
-		uint256 multibid
+		string memory message,
+		uint256 bidCount
 	) public {
 		(uint8 prevRune, string memory _alias) = auctioneer.getAliasAndRune(lot, user);
-		uint256 expectedBid = auctioneerAuction.getAuction(lot).bidData.bid + (multibid * bidIncrement);
+		uint256 expectedBid = auctioneerAuction.getAuction(lot).bidData.bid + (bidCount * bidIncrement);
 
 		vm.expectEmit(true, true, true, true);
-		emit Bid(lot, user, message, _alias, rune, prevRune, expectedBid, multibid, block.timestamp);
-	}
-	function _expectEmitAuctionEvent_Bid_FromOptions(uint256 lot, address user, BidOptions memory options) public {
-		_expectEmitAuctionEvent_Bid(lot, user, options.message, options.rune, options.multibid);
+		emit Bid(lot, user, message, _alias, rune, prevRune, expectedBid, bidCount, block.timestamp);
 	}
 
-	function _bidWithOptions(address user, uint256 lot, BidOptions memory options) public {
+	function _bidWithOptions(
+		address user,
+		uint256 lot,
+		uint8 _rune,
+		string memory _message,
+		uint256 _bidCount,
+		PaymentType _paymentType
+	) public {
 		vm.prank(user);
-		uint256 value = options.paymentType == PaymentType.WALLET ? bidCost * options.multibid : 0;
+		uint256 value = _paymentType == PaymentType.WALLET ? bidCost * _bidCount : 0;
 		vm.deal(user, value);
-		auctioneer.bid{ value: value }(lot, options);
+		auctioneer.bid{ value: value }(lot, _rune, _message, _bidCount, _paymentType);
 	}
-	function _bidWithOptionsNoDeal(address user, uint256 lot, BidOptions memory options) public {
+	function _bidWithOptionsNoDeal(
+		address user,
+		uint256 lot,
+		uint8 _rune,
+		string memory _message,
+		uint256 _bidCount,
+		PaymentType _paymentType
+	) public {
 		vm.prank(user);
-		uint256 value = options.paymentType == PaymentType.WALLET ? bidCost * options.multibid : 0;
-		auctioneer.bid{ value: value }(lot, options);
+		uint256 value = _paymentType == PaymentType.WALLET ? bidCost * _bidCount : 0;
+		auctioneer.bid{ value: value }(lot, _rune, _message, _bidCount, _paymentType);
 	}
 	function _bid(address user) public {
-		_bidWithOptions(user, 0, BidOptions({ paymentType: PaymentType.WALLET, multibid: 1, message: "", rune: 0 }));
+		_bidWithOptions(user, 0, 0, "", 1, PaymentType.WALLET);
 	}
 	function _bidOnLot(address user, uint256 lot) public {
-		_bidWithOptions(user, lot, BidOptions({ paymentType: PaymentType.WALLET, multibid: 1, message: "", rune: 0 }));
+		_bidWithOptions(user, lot, 0, "", 1, PaymentType.WALLET);
 	}
 	function _multibid(address user, uint256 bidCount) public {
-		_bidWithOptions(user, 0, BidOptions({ paymentType: PaymentType.WALLET, multibid: bidCount, message: "", rune: 0 }));
+		_bidWithOptions(user, 0, 0, "", bidCount, PaymentType.WALLET);
 	}
 	function _multibidLot(address user, uint256 bidCount, uint256 lot) public {
-		_bidWithOptions(
-			user,
-			lot,
-			BidOptions({ paymentType: PaymentType.WALLET, multibid: bidCount, message: "", rune: 0 })
-		);
+		_bidWithOptions(user, lot, 0, "", bidCount, PaymentType.WALLET);
 	}
 	function _bidUntil(address user, uint256 timer, uint256 until) public {
 		while (true) {
@@ -623,15 +629,11 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		}
 	}
 	function _bidWithRune(address user, uint256 lot, uint8 rune) internal {
-		_bidWithOptions(user, lot, BidOptions({ paymentType: PaymentType.WALLET, multibid: 1, message: "", rune: rune }));
+		_bidWithOptions(user, lot, rune, "", 1, PaymentType.WALLET);
 	}
 
-	function _multibidWithRune(address user, uint256 lot, uint256 multibid, uint8 rune) internal {
-		_bidWithOptions(
-			user,
-			lot,
-			BidOptions({ paymentType: PaymentType.WALLET, multibid: multibid, message: "", rune: rune })
-		);
+	function _multibidWithRune(address user, uint256 lot, uint256 bidCount, uint8 rune) internal {
+		_bidWithOptions(user, lot, rune, "", bidCount, PaymentType.WALLET);
 	}
 
 	// Farm helpers
@@ -650,5 +652,14 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		uint256[] memory lots = new uint256[](1);
 		lots[0] = _lot;
 		return auctioneer.getUserLotInfos(lots, _user)[0];
+	}
+
+	// Switch Runes
+	function _getBidsAfterRuneSwitchPenalty(uint256 bids) public view returns (uint256) {
+		return _getBidsAfterRuneSwitchPenalty(bids, auctioneerAuction.runeSwitchPenalty());
+	}
+	function _getBidsAfterRuneSwitchPenalty(uint256 bids, uint256 penalty) public pure returns (uint256) {
+		if (bids < 4) return bids;
+		return bids.scaleByBP(10000 - penalty);
 	}
 }

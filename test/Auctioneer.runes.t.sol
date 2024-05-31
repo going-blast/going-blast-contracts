@@ -191,7 +191,7 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 			// console.log("    Test rune: %s, expected to: %s", i, validRune ? "EMIT" : "REVERT");
 
 			if (validRune) {
-				_expectEmitAuctionEvent_Bid(lot, user1, "", i, 1);
+				_expectEmitAuctionEvent_Bid(user1, lot, i, "", 1);
 			} else {
 				vm.expectRevert(InvalidRune.selector);
 			}
@@ -654,14 +654,20 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 
 		vm.prank(user1);
 		auctioneer.selectRune(lot, 3, "");
+
+		vm.expectRevert(InvalidRune.selector);
+
+		vm.prank(user1);
+		auctioneer.selectRune(lot, 0, "");
 	}
 
 	// SWITCHING RUNES
 
-	function test_selectRune_Expect_ValuesUpdatedCorrectly() public {
+	function testFuzz_selectRune_Expect_ValuesUpdatedCorrectly_LargeValues(uint256 userBids) public {
+		vm.assume(userBids > 0 && userBids < 10000);
+
 		uint256 lot = _createDailyAuctionWithRunes(2, true);
 
-		uint256 userBids = 100;
 		uint256[5] memory penalties = [uint256(0), 2000, 5000, 8000, 10000];
 
 		uint256 snapshot = vm.snapshot();
@@ -670,7 +676,7 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 			vm.revertTo(snapshot);
 
 			uint256 penalty = penalties[i];
-			uint256 expectedBidsAfterPenalty = (userBids * (10000 - penalty)) / 10000;
+			uint256 expectedBidsAfterPenalty = _getBidsAfterRuneSwitchPenalty(userBids, penalty);
 
 			auctioneerAuction.updateRuneSwitchPenalty(penalty);
 			assertEq(
@@ -689,51 +695,53 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 			UserLotInfo memory userInfoInit = getUserLotInfo(lot, user1);
 
 			// Auction
-			assertEq(auctionInit.bidData.bids, 400, "Expect 400 Bids");
+			assertEq(auctionInit.bidData.bids, userBids * 4, "Expect auction 'userBids * 4' Bids");
 			// User
-			assertEq(userInfoInit.bidCounts.user, 100, "User 1 has 100 Bids");
+			assertEq(userInfoInit.bidCounts.user, userBids, "User 1 has 'userBids' Bids");
 			assertEq(userInfoInit.rune, 1, "User 1 has selected Rune 1");
 			// Runes
-			assertEq(auctionInit.runes[1].bids, 200, "Rune 1 should have 200 Bids");
-			assertEq(auctionInit.runes[2].bids, 200, "Rune 2 should have 200 Bids");
+			assertEq(auctionInit.runes[1].bids, userBids * 2, "Rune 1 should have 'userBids * 2' Bids");
+			assertEq(auctionInit.runes[2].bids, userBids * 2, "Rune 2 should have 'userBids * 2' Bids");
 
 			// Switch Rune
 			vm.prank(user1);
 			auctioneer.selectRune(lot, 2, "");
 
-			Auction memory auctionFinal = auctioneerAuction.getAuction(lot);
-			UserLotInfo memory userInfoFinal = getUserLotInfo(lot, user1);
-			string memory bidsAfterPenaltyStr = string.concat(" bids after ", vm.toString(penalty), "% penalty");
-			uint256 auctionExpectedBids = (3 * userBids) + (1 * expectedBidsAfterPenalty);
-			uint256 rune2ExpectedBids = (2 * userBids) + (1 * expectedBidsAfterPenalty);
+			{
+				Auction memory auctionFinal = auctioneerAuction.getAuction(lot);
+				UserLotInfo memory userInfoFinal = getUserLotInfo(lot, user1);
+				string memory bidsAfterPenaltyStr = string.concat(" bids after ", vm.toString(penalty), "% penalty");
+				uint256 auctionExpectedBids = (3 * userBids) + (1 * expectedBidsAfterPenalty);
+				uint256 rune2ExpectedBids = (2 * userBids) + (1 * expectedBidsAfterPenalty);
 
-			// Auction
-			assertEq(
-				auctionFinal.bidData.bids,
-				auctionExpectedBids,
-				string.concat("Expect ", vm.toString(auctionExpectedBids), bidsAfterPenaltyStr)
-			);
-			// User
-			assertEq(
-				userInfoFinal.bidCounts.user,
-				expectedBidsAfterPenalty,
-				string.concat("User 1 has ", vm.toString(expectedBidsAfterPenalty), bidsAfterPenaltyStr)
-			);
-			assertEq(userInfoFinal.rune, 2, "User 1 has selected Rune 2");
-			// Runes
-			assertEq(auctionFinal.runes[1].bids, 100, "Rune 1 should have 100 Bids");
-			assertEq(
-				auctionFinal.runes[2].bids,
-				rune2ExpectedBids,
-				string.concat("Rune 2 should have ", vm.toString(rune2ExpectedBids), bidsAfterPenaltyStr)
-			);
+				// Auction
+				assertEq(
+					auctionFinal.bidData.bids,
+					auctionExpectedBids,
+					string.concat("Expect ", vm.toString(auctionExpectedBids), bidsAfterPenaltyStr)
+				);
+				// User
+				assertEq(
+					userInfoFinal.bidCounts.user,
+					expectedBidsAfterPenalty,
+					string.concat("User 1 has ", vm.toString(expectedBidsAfterPenalty), bidsAfterPenaltyStr)
+				);
+				assertEq(userInfoFinal.rune, 2, "User 1 has selected Rune 2");
+				// Runes
+				assertEq(auctionFinal.runes[1].bids, userBids, "Rune 1 should have 'userBids' Bids");
+				assertEq(
+					auctionFinal.runes[2].bids,
+					rune2ExpectedBids,
+					string.concat("Rune 2 should have ", vm.toString(rune2ExpectedBids), bidsAfterPenaltyStr)
+				);
+			}
 
-			console.log("Penalty %s", penalty);
-			console.log("  Auction bids %s -> %s", auctionInit.bidData.bids, auctionFinal.bidData.bids);
-			console.log("  User bids %s -> %s", userInfoInit.bidCounts.user, userInfoFinal.bidCounts.user);
-			console.log("  User rune %s -> %s", userInfoInit.rune, userInfoFinal.rune);
-			console.log("  Rune 1 Bids %s -> %s", auctionInit.runes[1].bids, auctionFinal.runes[1].bids);
-			console.log("  Rune 2 Bids %s -> %s", auctionInit.runes[2].bids, auctionFinal.runes[2].bids);
+			// console.log("Penalty %s", penalty);
+			// console.log("  Auction bids %s -> %s", auctionInit.bidData.bids, auctionFinal.bidData.bids);
+			// console.log("  User bids %s -> %s", userInfoInit.bidCounts.user, userInfoFinal.bidCounts.user);
+			// console.log("  User rune %s -> %s", userInfoInit.rune, userInfoFinal.rune);
+			// console.log("  Rune 1 Bids %s -> %s", auctionInit.runes[1].bids, auctionFinal.runes[1].bids);
+			// console.log("  Rune 2 Bids %s -> %s", auctionInit.runes[2].bids, auctionFinal.runes[2].bids);
 		}
 	}
 

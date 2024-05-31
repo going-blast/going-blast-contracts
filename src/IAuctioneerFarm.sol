@@ -57,7 +57,6 @@ interface IAuctioneerFarm {
 	error InvalidPid();
 	error GoLocked();
 
-	function link() external;
 	function depositLockedGo(uint256 amount, address payable user, uint256 lockDuration) external;
 	function distributionReceivable() external view returns (bool);
 	function receiveDistribution() external payable;

@@ -37,12 +37,13 @@ Contracts, tests, coverage, and deployment scripts of the Going Blast ecosystem.
 - [x] Break apart project and team treasury
 
 
-- [ ] Calculate bid penalty more elegantly (1 * 0.2 = 0.2, should round to 0, not ceil to 1)
+- [x] Calculate bid penalty more elegantly (1 * 0.2 = 0.2, should round to 0, not ceil to 1)
 
 - [ ] Add migration functionality
   - [ ] Add multisig wallet address
   - [ ] Add 7 day timelock
   - [ ] GO sent to multisig, then injected into new contract
+  - [ ] What to do about the farm?
 
 
 
@@ -54,7 +55,7 @@ Contracts, tests, coverage, and deployment scripts of the Going Blast ecosystem.
   - [x] Revenue (up to 110% lot value) distributed to projectTreasury
   - [x] Split profit distributions between teamTreasury and farm
   - [x] Fallback farm distribution to treasury if farm not receivable
-  - [ ] Cant claim lot not participated in
+  - [x] Cant claim lot not participated in
 
 
 - [x] Changes allowed by subgraph

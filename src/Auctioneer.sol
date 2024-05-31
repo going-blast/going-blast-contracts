@@ -75,7 +75,8 @@ contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYi
 	mapping(address => bool) public mutedUsers;
 	bytes32 public constant MOD_ROLE = keccak256("MOD_ROLE");
 
-	constructor(IERC20 _go, IERC20 _voucher, IWETH _weth) {
+	constructor(address _multisig, IERC20 _go, IERC20 _voucher, IWETH _weth) {
+		multisig = _multisig;
 		GO = _go;
 		VOUCHER = _voucher;
 		WETH = _weth;
@@ -92,14 +93,10 @@ contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYi
 
 	function link(address _auctioneerEmissions, address _auctioneerAuction) public onlyAdmin {
 		if (_auctioneerEmissions == address(0) || _auctioneerAuction == address(0)) revert ZeroAddress();
-		if (address(auctioneerEmissions) != address(0)) revert AlreadyLinked();
-		if (address(auctioneerAuction) != address(0)) revert AlreadyLinked();
+		if (address(auctioneerEmissions) != address(0) || address(auctioneerAuction) != address(0)) revert AlreadyLinked();
 
 		auctioneerEmissions = IAuctioneerEmissions(_auctioneerEmissions);
-		auctioneerEmissions.link();
-
 		auctioneerAuction = IAuctioneerAuction(_auctioneerAuction);
-		auctioneerAuction.link();
 
 		emit Linked(address(this), _auctioneerEmissions, _auctioneerAuction);
 	}
@@ -116,6 +113,7 @@ contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYi
 		auctioneerAuction.updateTreasury(treasury);
 		emit UpdatedTreasury(_treasury);
 	}
+
 	function updateTeamTreasury(address _teamTreasury) public onlyAdmin {
 		if (_teamTreasury == address(0)) revert ZeroAddress();
 		teamTreasury = _teamTreasury;
@@ -125,7 +123,6 @@ contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYi
 
 	function updateFarm(address _farm) public onlyAdmin {
 		auctioneerFarm = IAuctioneerFarm(_farm);
-		auctioneerFarm.link();
 		emit UpdatedFarm(address(auctioneerFarm));
 	}
 
@@ -141,6 +138,64 @@ contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYi
 		emit MutedUser(_user, _muted);
 	}
 
+	// MIGRATION
+	//
+	// Escape hatch for serious bugs or serious upgrades
+	// Migration is behind 10 day timelock and 4 party multisig
+	//
+	//   I really don't like having this functionality in here, but its
+	//   irresponsible to pretend that it could never be necessary. I
+	//   see it as the lesser of the evils. I'm not going to steal from
+	//   any of you, I've been stolen from in the past, I couldn't imagine
+	//   inflicting that on others.
+	//
+	//      -- Arch
+	//
+
+	address public multisig;
+	bool public deprecated = false;
+	uint256 migrationQueueTimestamp;
+	address migrationDestination;
+	uint256 migrationDelay = 7 days;
+
+	modifier onlyMultisig() {
+		if (multisig != msg.sender) revert NotMultisig();
+		_;
+	}
+
+	modifier notDeprecated() {
+		if (deprecated) revert Deprecated();
+		_;
+	}
+
+	function queueMigration(address _dest) public onlyMultisig notDeprecated {
+		if (_dest == address(0)) revert ZeroAddress();
+		if (migrationQueueTimestamp != 0) revert MigrationAlreadyQueued();
+
+		migrationQueueTimestamp = block.timestamp;
+		migrationDestination = _dest;
+
+		emit MigrationQueued(multisig, _dest);
+	}
+	function cancelMigration(address _dest) public onlyMultisig {
+		if (migrationQueueTimestamp == 0) revert MigrationNotQueued();
+		if (migrationDestination != _dest) revert MigrationDestMismatch();
+
+		migrationQueueTimestamp = 0;
+		migrationDestination = address(0);
+
+		emit MigrationQueued(multisig, _dest);
+	}
+	function executeMigration(address _dest) public onlyMultisig {
+		if (migrationQueueTimestamp == 0) revert MigrationNotQueued();
+		if (migrationDestination != _dest) revert MigrationDestMismatch();
+
+		deprecated = true;
+		uint256 unallocated = auctioneerEmissions.executeMigration(_dest);
+
+		emit MigrationExecuted(multisig, _dest, unallocated);
+	}
+
 	// BLAST
 
 	function initializeBlast() public onlyAdmin {
@@ -153,7 +208,7 @@ contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYi
 
 	// PRIVATE AUCTION
 
-	function _userGOBalance(address _user) internal view returns (uint256 bal) {
+	function _userGoBalance(address _user) internal view returns (uint256 bal) {
 		bal = GO.balanceOf(_user);
 		if (address(auctioneerFarm) != address(0)) {
 			bal += auctioneerFarm.getEqualizedUserStaked(_user);
@@ -164,7 +219,7 @@ contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYi
 	// CORE
 	///////////////////
 
-	function createAuctions(AuctionParams[] memory _params) public onlyAdmin nonReentrant {
+	function createAuctions(AuctionParams[] memory _params) public onlyAdmin nonReentrant notDeprecated {
 		if (!auctioneerEmissions.emissionsInitialized()) revert EmissionsNotInitialized();
 		if (treasury == address(0)) revert TreasuryNotSet();
 		if (teamTreasury == address(0)) revert TeamTreasuryNotSet();
@@ -252,7 +307,7 @@ contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYi
 	function messageAuction(uint256 _lot, string memory _message) public {
 		if (mutedUsers[msg.sender]) revert Muted();
 		auctioneerAuction.validateAuctionRunning(_lot);
-		auctioneerAuction.validatePrivateAuctionEligibility(_lot, _userGOBalance(msg.sender));
+		auctioneerAuction.validatePrivateAuctionEligibility(_lot, _userGoBalance(msg.sender));
 		emit Messaged(_lot, msg.sender, _message, userAlias[msg.sender], auctionUsers[_lot][msg.sender].rune);
 	}
 
@@ -260,76 +315,77 @@ contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYi
 
 	function bidWithPermit(
 		uint256 _lot,
-		BidOptions memory _options,
+		uint8 _rune,
+		string calldata _message,
+		uint256 _bidCount,
+		PaymentType _paymentType,
 		PermitData memory _permitData
 	) public payable nonReentrant {
 		_selfPermit(_permitData);
-		_bid(_lot, _options);
+		_bid(_lot, _rune, _message, _bidCount, _paymentType);
 	}
 
-	function bid(uint256 _lot, BidOptions memory _options) public payable nonReentrant {
-		_bid(_lot, _options);
+	function bid(
+		uint256 _lot,
+		uint8 _rune,
+		string calldata _message,
+		uint256 _bidCount,
+		PaymentType _paymentType
+	) public payable nonReentrant {
+		_bid(_lot, _rune, _message, _bidCount, _paymentType);
 	}
 
-	function _bid(uint256 _lot, BidOptions memory _options) internal {
-		// Force bid count to be at least one
-		if (_options.multibid == 0) _options.multibid = 1;
+	function _bid(
+		uint256 _lot,
+		uint8 _rune,
+		string calldata _message,
+		uint256 _bidCount,
+		PaymentType _paymentType
+	) internal {
+		if (_bidCount == 0) revert InvalidBidCount();
 
 		// User bid
 		AuctionUser storage user = auctionUsers[_lot][msg.sender];
 		uint8 prevRune = user.rune;
 
 		// Auction bid
-		(uint256 auctionBid, uint256 bidCost) = auctioneerAuction.markBid(
+		(uint256 userBidsAfterPenalty, uint256 auctionBid, uint256 bidCost) = auctioneerAuction.markBid(
 			_lot,
-			msg.sender,
-			user.bids,
-			prevRune,
-			_userGOBalance(msg.sender),
-			_options
+			IAuctioneerAuction.MarkBidPayload({
+				user: msg.sender,
+				prevRune: prevRune,
+				newRune: _rune,
+				existingBidCount: user.bids,
+				arrivingBidCount: _bidCount,
+				paymentType: _paymentType,
+				userGoBalance: _userGoBalance(msg.sender)
+			})
 		);
-
-		// Update User
-		{
-			// Force bid count to be at least one
-			if (_options.multibid == 0) _options.multibid = 1;
-
-			// Incur rune switch penalty
-			if (user.rune != _options.rune && user.rune != 0) {
-				user.bids = user.bids.scaleByBP(10000 - auctioneerAuction.runeSwitchPenalty());
-			}
-
-			// Mark users bids
-			user.bids += _options.multibid;
-
-			// Mark users rune
-			if (user.rune != _options.rune) {
-				user.rune = _options.rune;
-			}
-		}
-
-		// Payment
-		_takeUserPayment(msg.sender, _options.paymentType, bidCost * _options.multibid, _options.multibid * 1e18);
 
 		emit Bid(
 			_lot,
 			msg.sender,
-			mutedUsers[msg.sender] ? "" : _options.message,
+			mutedUsers[msg.sender] ? "" : _message,
 			userAlias[msg.sender],
-			_options.rune,
-			prevRune,
+			_rune,
+			user.rune,
 			auctionBid,
-			_options.multibid,
+			_bidCount,
 			block.timestamp
 		);
+
+		user.bids = userBidsAfterPenalty + _bidCount;
+		user.rune = _rune;
+
+		_takeUserPayment(msg.sender, _paymentType, bidCost * _bidCount, _bidCount * 1e18);
 	}
 
 	function selectRune(uint256 _lot, uint8 _rune, string calldata _message) public nonReentrant {
-		auctioneerAuction.validatePrivateAuctionEligibility(_lot, _userGOBalance(msg.sender));
+		auctioneerAuction.validatePrivateAuctionEligibility(_lot, _userGoBalance(msg.sender));
 
 		AuctionUser storage user = auctionUsers[_lot][msg.sender];
 
-		auctioneerAuction.selectRune(_lot, user.bids, user.rune, _rune);
+		user.bids = auctioneerAuction.selectRune(_lot, user.bids, user.rune, _rune);
 
 		emit SelectedRune(
 			_lot,
@@ -342,7 +398,6 @@ contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYi
 
 		// Incur rune switch penalty
 		if (user.rune != _rune) {
-			user.bids = user.bids.scaleByBP(10000 - auctioneerAuction.runeSwitchPenalty());
 			user.rune = _rune;
 		}
 	}
@@ -490,7 +545,7 @@ contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYi
 	function getUserPrivateAuctionData(
 		address _user
 	) public view returns (uint256 userGO, uint256 requirement, bool permitted) {
-		userGO = _userGOBalance(_user);
+		userGO = _userGoBalance(_user);
 		requirement = auctioneerAuction.privateAuctionRequirement();
 		permitted = userGO >= requirement;
 	}

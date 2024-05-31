@@ -10,6 +10,10 @@ import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 contract AuctioneerBidTest is AuctioneerHelper {
 	using SafeERC20 for IERC20;
 
+	uint256 runicLot;
+	address userG1 = address(1220);
+	address userG2 = address(1221);
+
 	function setUp() public override {
 		super.setUp();
 
@@ -21,11 +25,16 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		_auctioneerUpdateFarm();
 		_initializeFarmEmissions();
 		_createDefaultDay1Auction();
+
+		runicLot = _createDailyAuctionWithRunes(2, false);
+
+		vm.deal(userG1, 100e18);
+		vm.deal(userG2, 100e18);
 	}
 
 	function test_bid_RevertWhen_InvalidAuctionLot() public {
 		vm.expectRevert(InvalidAuctionLot.selector);
-		_bidOnLot(user1, 1);
+		_bidOnLot(user1, 10);
 	}
 
 	function test_bid_RevertWhen_AuctionNotYetOpen() public {
@@ -36,7 +45,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 	// EvmError: OutOfFunds
 	function testFail_bid_RevertWhen_InsufficientBalance() public {
 		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
-		_bidWithOptionsNoDeal(user1, 0, BidOptions({ paymentType: PaymentType.WALLET, multibid: 1, message: "", rune: 0 }));
+		_bidWithOptionsNoDeal(user1, 0, 0, "", 1, PaymentType.WALLET);
 	}
 
 	function test_bid_RevertWhen_IncorrectETHValue() public {
@@ -46,15 +55,12 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		vm.expectRevert(IncorrectETHPaymentAmount.selector);
 
 		vm.prank(user1);
-		auctioneer.bid{ value: 0 }(0, BidOptions({ paymentType: PaymentType.WALLET, multibid: 1, message: "", rune: 0 }));
+		auctioneer.bid{ value: 0 }(0, 0, "", 1, PaymentType.WALLET);
 
 		vm.expectRevert(IncorrectETHPaymentAmount.selector);
 
 		vm.prank(user1);
-		auctioneer.bid{ value: 1e18 }(
-			0,
-			BidOptions({ paymentType: PaymentType.WALLET, multibid: 1, message: "", rune: 0 })
-		);
+		auctioneer.bid{ value: 1e18 }(0, 0, "", 1, PaymentType.WALLET);
 	}
 
 	function test_bid_RevertWhen_ETHSentWithWrongPaymentType() public {
@@ -64,10 +70,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		vm.expectRevert(SentETHButNotWalletPayment.selector);
 
 		vm.prank(user1);
-		auctioneer.bid{ value: bidCost }(
-			0,
-			BidOptions({ paymentType: PaymentType.VOUCHER, multibid: 1, message: "", rune: 0 })
-		);
+		auctioneer.bid{ value: bidCost }(0, 0, "", 1, PaymentType.VOUCHER);
 	}
 
 	function test_bid_ExpectEmit_Bid() public {
@@ -76,15 +79,8 @@ contract AuctioneerBidTest is AuctioneerHelper {
 
 		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
 
-		BidOptions memory options = BidOptions({
-			paymentType: PaymentType.WALLET,
-			multibid: 1,
-			message: "Hello World",
-			rune: 0
-		});
-
-		_expectEmitAuctionEvent_Bid_FromOptions(0, user1, options);
-		_bidWithOptions(user1, 0, options);
+		_expectEmitAuctionEvent_Bid(user1, 0, 0, "Hello World", 1);
+		_bidWithOptions(user1, 0, 0, "Hello World", 1, PaymentType.WALLET);
 	}
 
 	function test_bid_Should_UpdateAuctionCorrectly() public {
@@ -94,13 +90,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		// Get expected bid
 		uint256 expectedBid = startingBid + bidIncrement;
 
-		BidOptions memory options = BidOptions({
-			paymentType: PaymentType.WALLET,
-			multibid: 1,
-			message: "Hello World",
-			rune: 0
-		});
-		_bidWithOptions(user1, 0, options);
+		_bidWithOptions(user1, 0, 0, "Hello World", 1, PaymentType.WALLET);
 
 		Auction memory auction = auctioneerAuction.getAuction(0);
 
@@ -123,13 +113,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		_warpToUnlockTimestamp(0);
 		Auction memory auctionInit = auctioneerAuction.getAuction(0);
 
-		BidOptions memory options = BidOptions({
-			paymentType: PaymentType.VOUCHER,
-			multibid: 1,
-			message: "Hello World",
-			rune: 0
-		});
-		_bidWithOptions(user1, 0, options);
+		_bidWithOptions(user1, 0, 0, "Hello World", 1, PaymentType.VOUCHER);
 
 		Auction memory auction = auctioneerAuction.getAuction(0);
 
@@ -152,13 +136,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 
 		_prepExpectETHTransfer(0, user1, address(auctioneer));
 
-		BidOptions memory options = BidOptions({
-			paymentType: PaymentType.WALLET,
-			multibid: 1,
-			message: "Hello World",
-			rune: 0
-		});
-		_bidWithOptionsNoDeal(user1, 0, options);
+		_bidWithOptionsNoDeal(user1, 0, 0, "Hello World", 1, PaymentType.WALLET);
 
 		_expectETHTransfer(0, user1, address(auctioneer), bidCost);
 	}
@@ -172,15 +150,9 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		uint256 userETHInit = user1.balance;
 
 		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
-		BidOptions memory options = BidOptions({
-			paymentType: PaymentType.WALLET,
-			multibid: multibid,
-			message: "Hello World",
-			rune: 0
-		});
 
-		_expectEmitAuctionEvent_Bid_FromOptions(0, user1, options);
-		_bidWithOptionsNoDeal(user1, 0, options);
+		_expectEmitAuctionEvent_Bid(user1, 0, 0, "Hello World", multibid);
+		_bidWithOptionsNoDeal(user1, 0, 0, "Hello World", multibid, PaymentType.WALLET);
 
 		Auction memory auction = auctioneerAuction.getAuction(0);
 
@@ -203,10 +175,10 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		params[0] = _getBaseSingleAuctionParams();
 		params[0].unlockTimestamp = _getDayInFuture2PMTimestamp(2);
 		params[0].isPrivate = true;
+		uint256 lot = auctioneerAuction.lotCount();
 		auctioneer.createAuctions(params);
 
-		// Warp to private auction unlock
-		vm.warp(params[0].unlockTimestamp + 1 hours);
+		_warpToUnlockTimestamp(lot);
 
 		// USER 1
 
@@ -218,10 +190,8 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		assertEq(permitted, true, "User 1 permitted");
 
 		// user 1 can bid
-		BidOptions memory options = BidOptions({ paymentType: PaymentType.WALLET, multibid: 1, message: "", rune: 0 });
-
-		_expectEmitAuctionEvent_Bid_FromOptions(1, user1, options);
-		_bidWithOptions(user1, 1, options);
+		_expectEmitAuctionEvent_Bid(user1, lot, 0, "", 1);
+		_bidWithOptions(user1, lot, 0, "", 1, PaymentType.WALLET);
 
 		// USER 2
 
@@ -236,8 +206,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		// user 2 bid revert
 		vm.expectRevert(PrivateAuction.selector);
 
-		options = BidOptions({ paymentType: PaymentType.WALLET, multibid: 1, message: "", rune: 0 });
-		_bidWithOptions(user2, 1, options);
+		_bidWithOptions(user2, lot, 0, "", 1, PaymentType.WALLET);
 
 		// USER 3
 
@@ -249,10 +218,8 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		assertEq(permitted, true, "User 3 permitted");
 
 		// user 3 can bid
-		options = BidOptions({ paymentType: PaymentType.WALLET, multibid: 1, message: "", rune: 0 });
-
-		_expectEmitAuctionEvent_Bid_FromOptions(1, user3, options);
-		_bidWithOptions(user3, 1, options);
+		_expectEmitAuctionEvent_Bid(user3, lot, 0, "", 1);
+		_bidWithOptions(user3, lot, 0, "", 1, PaymentType.WALLET);
 
 		// USER 4
 
@@ -266,8 +233,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 
 		// user 2 bid revert
 		vm.expectRevert(PrivateAuction.selector);
-
-		_bidWithOptions(user4, 1, options);
+		_bidWithOptions(user4, lot, 0, "", 1, PaymentType.WALLET);
 	}
 
 	// VOUCHER
@@ -279,8 +245,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		vm.expectRevert(abi.encodeWithSelector(ERC20InsufficientBalance.selector, user1, 0, 1e18));
 
 		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
-		BidOptions memory options = BidOptions({ paymentType: PaymentType.VOUCHER, multibid: 1, message: "", rune: 0 });
-		_bidWithOptions(user1, 0, options);
+		_bidWithOptions(user1, 0, 0, "", 1, PaymentType.VOUCHER);
 	}
 	function test_bid_Voucher_ExpectRevert_InsufficientAllowance() public {
 		_giveVoucher(user1, 10e18);
@@ -288,8 +253,7 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		vm.expectRevert(abi.encodeWithSelector(ERC20InsufficientAllowance.selector, address(auctioneer), 0, 1e18));
 
 		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
-		BidOptions memory options = BidOptions({ paymentType: PaymentType.VOUCHER, multibid: 1, message: "", rune: 0 });
-		_bidWithOptions(user1, 0, options);
+		_bidWithOptions(user1, 0, 0, "", 1, PaymentType.VOUCHER);
 	}
 	function test_bid_Voucher_ExpectEmit_Bid() public {
 		_giveVoucher(user1, 10e18);
@@ -299,10 +263,8 @@ contract AuctioneerBidTest is AuctioneerHelper {
 
 		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
 
-		BidOptions memory options = BidOptions({ paymentType: PaymentType.VOUCHER, multibid: 1, message: "", rune: 0 });
-
-		_expectEmitAuctionEvent_Bid_FromOptions(0, user1, options);
-		_bidWithOptions(user1, 0, options);
+		_expectEmitAuctionEvent_Bid(user1, 0, 0, "", 1);
+		_bidWithOptions(user1, 0, 0, "", 1, PaymentType.VOUCHER);
 	}
 	function test_bid_Voucher_ExpectEmit_Multibid() public {
 		_giveVoucher(user1, 10e18);
@@ -313,22 +275,52 @@ contract AuctioneerBidTest is AuctioneerHelper {
 		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
 
 		uint256 multibid = 6;
-		BidOptions memory options = BidOptions({
-			paymentType: PaymentType.VOUCHER,
-			multibid: multibid,
-			message: "",
-			rune: 0
-		});
 
-		_expectEmitAuctionEvent_Bid_FromOptions(0, user1, options);
-		_bidWithOptions(user1, 0, options);
+		_expectEmitAuctionEvent_Bid(user1, 0, 0, "", multibid);
+		_bidWithOptions(user1, 0, 0, "", multibid, PaymentType.VOUCHER);
 	}
 
 	// GAS
 
-	function test_bid_GAS_WALLET() public {
-		vm.warp(_getNextDay2PMTimestamp() + 1 hours);
-		BidOptions memory options = BidOptions({ paymentType: PaymentType.WALLET, multibid: 1, message: "", rune: 0 });
-		_bidWithOptions(user1, 0, options);
+	function testFuzz_bid_and_switch(uint256 bidCount) public {
+		vm.assume(bidCount > 0 && bidCount < 500);
+
+		_warpToUnlockTimestamp(runicLot);
+
+		vm.prank(userG1);
+		auctioneer.bid{ value: bidCost * bidCount }(
+			runicLot,
+			1,
+			"QBSzRNr20LqaavZSowuacuVnobp1LT0b05APlkTFF85i93qJjglVAlrres66bdXT",
+			bidCount,
+			PaymentType.WALLET
+		);
+
+		vm.prank(userG2);
+		auctioneer.bid{ value: bidCost * 53 }(
+			runicLot,
+			2,
+			"QBSzRNr2aaaaavZSowuacuVnobp1LT0b05APlkTFF85i93qJjglVAlrres66bdXT",
+			53,
+			PaymentType.WALLET
+		);
+
+		vm.prank(userG1);
+		auctioneer.bid{ value: bidCost }(
+			runicLot,
+			2,
+			"QBSzRNr20LqaavZSowuacuVnobp1LT0b05aaakTFF85i93qJjglVAlrres66bdXT",
+			1,
+			PaymentType.WALLET
+		);
+
+		vm.prank(userG1);
+		auctioneer.bid{ value: bidCost * 3 }(
+			runicLot,
+			1,
+			"QBSzRNr2aaaaasnthvZSowuacuVnobp1LT0b05APlkTFF85i93qJjglVAlrres66bdXT",
+			3,
+			PaymentType.WALLET
+		);
 	}
 }

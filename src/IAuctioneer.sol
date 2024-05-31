@@ -18,16 +18,6 @@ struct BidRune {
 	uint256 bids;
 }
 
-struct BidOptions {
-	PaymentType paymentType;
-	uint256 multibid;
-	string message;
-	uint8 rune;
-}
-struct ClaimLotOptions {
-	PaymentType paymentType;
-}
-
 struct PermitData {
 	address token;
 	uint256 value;
@@ -163,10 +153,6 @@ struct AuctionExt {
 	uint256 activeWindow;
 }
 
-struct AuctionMinimalData {
-	uint256 lot;
-	bool fastPolling;
-}
 struct DailyAuctions {
 	uint256 day;
 	uint256[] lots;
@@ -211,6 +197,7 @@ error ETHTransferFailed();
 error MustBidAtLeastOnce();
 error NotWinner();
 error UserAlreadyClaimedLot();
+error InvalidBidCount();
 error InvalidRune();
 error InvalidRuneSymbol();
 error InvalidRunesCount();
@@ -220,6 +207,13 @@ error CannotHaveNFTsWithRunes();
 error IncorrectETHPaymentAmount();
 error SentETHButNotWalletPayment();
 error Muted();
+
+// Migration & Multisig
+error NotMultisig();
+error MigrationAlreadyQueued();
+error MigrationNotQueued();
+error MigrationDestMismatch();
+error Deprecated();
 
 interface AuctioneerEvents {
 	// ADMIN
@@ -256,7 +250,7 @@ interface AuctioneerEvents {
 		uint8 _rune,
 		uint8 _prevRune,
 		uint256 _bid,
-		uint256 _multibid,
+		uint256 _bidCount,
 		uint256 _timestamp
 	);
 	event SelectedRune(
@@ -276,4 +270,9 @@ interface AuctioneerEvents {
 		uint256 _burnEmissions,
 		bool _harvestToFarm
 	);
+
+	// MIGRATION
+	event MigrationQueued(address indexed _migrator, address indexed _dest);
+	event MigrationCancelled(address indexed _migrator, address indexed _dest);
+	event MigrationExecuted(address indexed _migrator, address indexed _dest, uint256 _unallocated);
 }

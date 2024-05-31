@@ -48,7 +48,6 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 	using SafeERC20 for IERC20;
 
 	address public auctioneer;
-	bool public linked;
 	uint256 public goPid = 0;
 	uint256 public totalEthDistributed = 0;
 
@@ -67,7 +66,8 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 	bool public initializedEmissions = false;
 	uint256 public constant REWARD_PRECISION = 1e18;
 
-	constructor(IERC20 _go, IERC20 _voucher) Ownable(msg.sender) {
+	constructor(address _auctioneer, IERC20 _go, IERC20 _voucher) Ownable(msg.sender) {
+		auctioneer = _auctioneer;
 		GO = _go;
 		goEmission.token = GO;
 		VOUCHER = _voucher;
@@ -75,12 +75,6 @@ contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, Auctioneer
 		ethEmission.token = IERC20(address(0));
 
 		_add(10000, GO);
-	}
-
-	function link() public {
-		if (linked) revert AlreadyLinked();
-		linked = true;
-		auctioneer = msg.sender;
 	}
 
 	modifier validPid(uint256 pid) {

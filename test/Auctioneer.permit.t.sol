@@ -87,20 +87,13 @@ contract AuctioneerPermitTest is AuctioneerHelper, AuctioneerFarmEvents {
 
 		assertEq(VOUCHER.allowance(user1, address(auctioneer)), 0, "User1 not approved VOUCHER for auctioneer");
 
-		BidOptions memory options = BidOptions({
-			paymentType: PaymentType.VOUCHER,
-			multibid: 1,
-			message: "Hello World",
-			rune: 0
-		});
 		PermitData memory permitData = getPermitData(user1, user1PK, address(auctioneer), address(VOUCHER), 10e18);
 
+		_expectEmitAuctionEvent_Bid(user1, 0, 0, "Hello World", 1);
 		_expectTokenTransfer(VOUCHER, user1, dead, 1e18);
 
-		_expectEmitAuctionEvent_Bid_FromOptions(0, user1, options);
-
 		vm.prank(user1);
-		auctioneer.bidWithPermit(0, options, permitData);
+		auctioneer.bidWithPermit(0, 0, "Hello World", 1, PaymentType.VOUCHER, permitData);
 
 		assertEq(auctioneer.getAuctionUser(0, user1).bids, 1, "User has bid");
 		assertEq(VOUCHER.allowance(user1, address(auctioneer)), 9e18, "User1 approved VOUCHER for auctioneer");

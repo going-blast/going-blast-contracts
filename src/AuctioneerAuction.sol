@@ -47,7 +47,6 @@ import { GBMath, AuctionViewUtils, AuctionMutateUtils, AuctionParamsUtils } from
 // ,,         ,    ,      ,           ,    *
 
 interface IAuctioneerAuction {
-	function link() external;
 	function runeSwitchPenalty() external view returns (uint256);
 	function runicLastBidderBonus() external view returns (uint256);
 	function updateTreasury(address _treasury) external;
@@ -55,15 +54,20 @@ interface IAuctioneerAuction {
 	function privateAuctionRequirement() external view returns (uint256);
 	function createAuction(AuctionParams memory _params, uint256 _emissions) external payable returns (uint256 lot);
 	function cancelAuction(uint256 _lot) external returns (uint256 unlockTimestamp, uint256 cancelledEmissions);
+	struct MarkBidPayload {
+		address user;
+		uint8 prevRune;
+		uint8 newRune;
+		uint256 existingBidCount;
+		uint256 arrivingBidCount;
+		PaymentType paymentType;
+		uint256 userGoBalance;
+	}
 	function markBid(
 		uint256 _lot,
-		address _user,
-		uint256 _prevUserBids,
-		uint8 _prevRune,
-		uint256 _userGoBalance,
-		BidOptions memory _options
-	) external returns (uint256 bid, uint256 bidCost);
-	function selectRune(uint256 _lot, uint256 _userBids, uint8 _prevRune, uint8 _rune) external;
+		MarkBidPayload memory _payload
+	) external returns (uint256 userBidsAfterPenalty, uint256 bid, uint256 bidCost);
+	function selectRune(uint256 _lot, uint256 _userBids, uint8 _prevRune, uint8 _rune) external returns (uint256);
 	function claimLot(
 		uint256 _lot,
 		address _user,
@@ -109,7 +113,6 @@ contract AuctioneerAuction is
 	using EnumerableSet for EnumerableSet.UintSet;
 
 	// ADMIN
-	bool public linked;
 	address public auctioneer;
 	address public treasury;
 	address public teamTreasury;
@@ -132,21 +135,17 @@ contract AuctioneerAuction is
 	uint256 public runicLastBidderBonus = 2000;
 
 	constructor(
+		address _auctioneer,
 		uint256 _bidCost,
 		uint256 _bidIncrement,
 		uint256 _startingBid,
 		uint256 _privateAuctionRequirement
 	) Ownable(msg.sender) {
+		auctioneer = _auctioneer;
 		bidCost = _bidCost;
 		bidIncrement = _bidIncrement;
 		startingBid = _startingBid;
 		privateAuctionRequirement = _privateAuctionRequirement;
-	}
-
-	function link() public {
-		if (linked) revert AlreadyLinked();
-		linked = true;
-		auctioneer = msg.sender;
 	}
 
 	// RECEIVERS
@@ -340,60 +339,65 @@ contract AuctioneerAuction is
 
 	// BID
 
-	function _switchRuneUpdateData(uint256 _lot, uint256 _userBids, uint8 _prevRune, uint8 _newRune) internal {
-		if (_prevRune == _newRune) return;
+	function _switchRuneUpdateData(
+		uint256 _lot,
+		uint256 _userBids,
+		uint8 _prevRune,
+		uint8 _newRune
+	) internal returns (uint256 userBidsAfterPenalty) {
+		// Exit if no rune switch
+		if (_prevRune == _newRune) return _userBids;
 
-		// Remove data from prevRune
+		// Remove existing bids from users previous rune
 		if (_prevRune != 0 && _userBids > 0) {
 			auctions[_lot].runes[_prevRune].bids -= _userBids;
 		}
 
-		if (_userBids > 0) {
-			auctions[_lot].runes[_newRune].bids += _userBids.scaleByBP(10000 - runeSwitchPenalty);
-			auctions[_lot].bidData.bids += _userBids.scaleByBP(10000 - runeSwitchPenalty);
-			auctions[_lot].bidData.bids -= _userBids;
-		}
+		if (_userBids == 0) return _userBids;
+
+		// Incur rune switch penalty and update state
+		//	 errata: `user.bids < 4 ? user.bids ...` prevents kneecapping users that have 1 or 2 bids and lose 50% - 100% of them
+		userBidsAfterPenalty = _userBids < 4 ? _userBids : _userBids.scaleByBP(10000 - runeSwitchPenalty);
+		auctions[_lot].runes[_newRune].bids += userBidsAfterPenalty;
+		auctions[_lot].bidData.bids = auctions[_lot].bidData.bids + userBidsAfterPenalty - _userBids;
 	}
 
 	function markBid(
 		uint256 _lot,
-		address _user,
-		uint256 _prevUserBids,
-		uint8 _prevRune,
-		uint256 _userGoBalance,
-		BidOptions memory _options
+		MarkBidPayload memory _payload
 	)
 		external
 		onlyAuctioneer
 		validAuctionLot(_lot)
-		validRune(_lot, _options.rune)
-		returns (uint256 bid, uint256 auctionBidCost)
+		validRune(_lot, _payload.newRune)
+		returns (uint256 userBidsAfterPenalty, uint256 bid, uint256 auctionBidCost)
 	{
 		Auction storage auction = auctions[_lot];
 		auction.validateBiddingOpen();
 
 		// VALIDATE: User can participate in auction
-		if (auction.isPrivate && _userGoBalance < privateAuctionRequirement) revert PrivateAuction();
+		if (auction.isPrivate && _payload.userGoBalance < privateAuctionRequirement) revert PrivateAuction();
 
 		// Update auction with new bid
-		auction.bidData.bid += bidIncrement * _options.multibid;
-		auction.bidData.bidUser = _user;
+		auction.bidData.bid += bidIncrement * _payload.arrivingBidCount;
+		auction.bidData.bids += _payload.arrivingBidCount;
+		auction.bidData.bidUser = _payload.user;
 		auction.bidData.bidTimestamp = block.timestamp;
-		if (_options.paymentType != PaymentType.VOUCHER) {
-			auction.bidData.revenue += auction.bidData.bidCost * _options.multibid;
-		}
-		auction.bidData.bids += _options.multibid;
 		auction.bidData.nextBidBy = auction.getNextBidBy();
+
+		if (_payload.paymentType != PaymentType.VOUCHER) {
+			auction.bidData.revenue += auction.bidData.bidCost * _payload.arrivingBidCount;
+		}
 
 		// Runes
 		if (auction.runes.length > 0) {
-			_switchRuneUpdateData(_lot, _prevUserBids, _prevRune, _options.rune);
-			auction.runes[_options.rune].bids += _options.multibid;
-			auction.bidData.bidRune = _options.rune;
+			auction.runes[_payload.newRune].bids += _payload.arrivingBidCount;
+			auction.bidData.bidRune = _payload.newRune;
 		}
 
 		bid = auction.bidData.bid;
 		auctionBidCost = auction.bidData.bidCost;
+		userBidsAfterPenalty = _switchRuneUpdateData(_lot, _payload.existingBidCount, _payload.prevRune, _payload.newRune);
 	}
 
 	function selectRune(
@@ -401,10 +405,10 @@ contract AuctioneerAuction is
 		uint256 _userBids,
 		uint8 _prevRune,
 		uint8 _rune
-	) external onlyAuctioneer validAuctionLot(_lot) validRune(_lot, _rune) {
+	) external onlyAuctioneer validAuctionLot(_lot) validRune(_lot, _rune) returns (uint256 userBidsAfterPenalty) {
 		if (auctions[_lot].isEnded()) revert AuctionEnded();
 		if (auctions[_lot].runes.length == 0) revert InvalidRune();
-		_switchRuneUpdateData(_lot, _userBids, _prevRune, _rune);
+		userBidsAfterPenalty = _switchRuneUpdateData(_lot, _userBids, _prevRune, _rune);
 	}
 
 	// CLAIM

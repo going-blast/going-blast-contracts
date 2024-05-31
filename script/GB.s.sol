@@ -16,7 +16,7 @@ import { AuctioneerFarm } from "../src/AuctioneerFarm.sol";
 import { GoToken } from "../src/GoToken.sol";
 import { VoucherToken } from "../src/VoucherToken.sol";
 import { GBMath, AuctionParamsUtils } from "../src/AuctionUtils.sol";
-import { AuctionParams, EpochData, PaymentType, BidOptions } from "../src/IAuctioneer.sol";
+import { AuctionParams, EpochData, PaymentType } from "../src/IAuctioneer.sol";
 import { GoingBlastPresale, PresaleOptions } from "../src/GoingBlastPresale.sol";
 import { GoingBlastAirdrop } from "../src/GoingBlastAirdrop.sol";
 
@@ -106,20 +106,26 @@ contract GBScripts is GBScriptUtils {
 
 		// CORE
 
-		auctioneer = new Auctioneer(GO, VOUCHER, WETH);
+		auctioneer = new Auctioneer(multisig, GO, VOUCHER, WETH);
 		writeContractAddress("Auctioneer", address(auctioneer));
 
 		console.log("Bid Cost %s, increment %s, starting %s", bidCost, bidIncrement, startingBid);
 
-		auctioneerAuction = new AuctioneerAuction(bidCost, bidIncrement, startingBid, privateAuctionRequirement);
+		auctioneerAuction = new AuctioneerAuction(
+			address(auctioneer),
+			bidCost,
+			bidIncrement,
+			startingBid,
+			privateAuctionRequirement
+		);
 		writeContractAddress("AuctioneerAuction", address(auctioneerAuction));
 
-		auctioneerEmissions = new AuctioneerEmissions(GO);
+		auctioneerEmissions = new AuctioneerEmissions(address(auctioneer), GO);
 		writeContractAddress("AuctioneerEmissions", address(auctioneerEmissions));
 
 		auctioneer.link(address(auctioneerEmissions), address(auctioneerAuction));
 
-		auctioneerFarm = new AuctioneerFarm(GO, VOUCHER);
+		auctioneerFarm = new AuctioneerFarm(address(auctioneer), GO, VOUCHER);
 		writeContractAddress("AuctioneerFarm", address(auctioneerFarm));
 
 		auctioneer.updateFarm(address(auctioneerFarm));
@@ -348,9 +354,6 @@ contract GBScripts is GBScriptUtils {
 		if (block.timestamp < auctioneerAuction.getAuction(lot).unlockTimestamp) return;
 
 		vm.broadcast(user);
-		auctioneer.bid{ value: bidCost }(
-			lot,
-			BidOptions({ multibid: 1, rune: rune, paymentType: PaymentType.WALLET, message: message })
-		);
+		auctioneer.bid{ value: bidCost }(lot, rune, message, 1, PaymentType.WALLET);
 	}
 }

@@ -46,7 +46,6 @@ interface IAuctioneerEmissions {
 	function emissionTaxDuration() external view returns (uint256);
 	function emissionsInitialized() external view returns (bool);
 
-	function link() external;
 	function allocateAuctionEmissions(uint256 _unlockTimestamp, uint256 _bp) external returns (uint256 emissions);
 	function deAllocateEmissions(uint256 _unlockTimestamp, uint256 _emissionsToDeAllocate) external;
 	function transferEmissions(address _to, uint256 _amount) external;
@@ -56,6 +55,7 @@ interface IAuctioneerEmissions {
 		uint256 _emissionsEarnedTimestamp,
 		bool _harvestToFarm
 	) external returns (uint256 harvested, uint256 burned);
+	function executeMigration(address _dest) external returns (uint256 unallocated);
 }
 
 // Emission handling
@@ -65,7 +65,6 @@ contract AuctioneerEmissions is IAuctioneerEmissions, Ownable, AuctioneerEvents 
 
 	address public auctioneer;
 	bool public emissionsInitialized = false;
-	bool public linked = false;
 
 	// EMISSIONS
 	IERC20 public GO;
@@ -81,15 +80,9 @@ contract AuctioneerEmissions is IAuctioneerEmissions, Ownable, AuctioneerEvents 
 	uint256 public earlyHarvestTax = 5000;
 	address public deadAddress = 0x000000000000000000000000000000000000dEaD;
 
-	constructor(IERC20 _go) Ownable(msg.sender) {
+	constructor(address _auctioneer, IERC20 _go) Ownable(msg.sender) {
+		auctioneer = _auctioneer;
 		GO = _go;
-	}
-
-	function link() public {
-		if (linked) revert AlreadyLinked();
-		linked = true;
-
-		auctioneer = msg.sender;
 	}
 
 	///////////////////
@@ -117,6 +110,21 @@ contract AuctioneerEmissions is IAuctioneerEmissions, Ownable, AuctioneerEvents 
 
 		emissionTaxDuration = _emissionTaxDuration;
 		emit UpdatedEmissionTaxDuration(_emissionTaxDuration);
+	}
+
+	// Escape hatch for serious bugs or upgrades
+	// Only callable by Auctioneer
+	// Auctioneer migration function is behind 7 day timelock and 4 party multisig
+	function executeMigration(address _dest) public onlyAuctioneer returns (uint256 unallocated) {
+		unallocated = 0;
+
+		// Can't pull GO from already running auctions.
+		// Cancel upcoming auctions to free some GO allocations before migrating.
+		for (uint8 i = 0; i < 8; i++) {
+			unallocated += epochEmissionsRemaining[i];
+		}
+
+		GO.safeTransfer(_dest, unallocated);
 	}
 
 	///////////////////

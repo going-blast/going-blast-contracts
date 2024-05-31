@@ -27,32 +27,6 @@ contract AuctioneerMutingTest is AuctioneerHelper {
 		_createDefaultDay1Auction();
 	}
 
-	/*
-
-
-
-- [ ] Muted users tests
-  - [ ] Add "mods" to allow moderating the chat
-  - [ ] updated in state
-  - [ ] Can update whether a user is muted
-  - [ ] Only admin can mute user
-  - [ ] Muting a user removes their alias
-  - [ ] Message Auction
-    - [ ] Revert if user muted with "Muted"
-  - [ ] Bid
-    - [ ] Unmuted user can send message with alias
-    - [ ] Muted users message and alias removed
-  - [ ] SelectRune
-    - [ ] Unmuted user can send message with alias
-    - [ ] Muted users message and alias removed
-  - [ ] Claimed
-    - [ ] Unmuted user can send message with alias
-    - [ ] Muted users message and alias removed
-  - [ ] Set Alias reverts if muted
-
-
-	*/
-
 	function _expectEmitMutedUser(address user, bool muted) public {
 		vm.expectEmit(true, true, true, true);
 		emit MutedUser(user, muted);
@@ -125,19 +99,11 @@ contract AuctioneerMutingTest is AuctioneerHelper {
 
 		_warpToUnlockTimestamp(0);
 
-		_expectEmitAuctionEvent_Bid(0, user1, "", 0, 1);
-		_bidWithOptions(
-			user1,
-			0,
-			BidOptions({ paymentType: PaymentType.WALLET, message: "IM A BAD GUY", rune: 0, multibid: 1 })
-		);
+		_expectEmitAuctionEvent_Bid(user1, 0, 0, "", 1);
+		_bidWithOptions(user1, 0, 0, "IM A BAD GUY", 1, PaymentType.WALLET);
 
-		_expectEmitAuctionEvent_Bid(0, user2, "IM A GOOD GUY", 0, 1);
-		_bidWithOptions(
-			user2,
-			0,
-			BidOptions({ paymentType: PaymentType.WALLET, message: "IM A GOOD GUY", rune: 0, multibid: 1 })
-		);
+		_expectEmitAuctionEvent_Bid(user2, 0, 0, "IM A GOOD GUY", 1);
+		_bidWithOptions(user2, 0, 0, "IM A GOOD GUY", 1, PaymentType.WALLET);
 	}
 	function test_mutedUser_SelectRune_ExpectCensored() public {
 		uint256 lot = _createDailyAuctionWithRunes(2, true);
