@@ -37,6 +37,8 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 
 	address public treasury = address(50);
 	address public treasury2 = address(51);
+	address public teamTreasury = address(52);
+	address public teamTreasury2 = address(53);
 
 	address payable public user1;
 	uint256 public user1PK;
@@ -78,6 +80,8 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		vm.label(liquidity, "liquidity");
 		vm.label(treasury, "treasury");
 		vm.label(treasury2, "treasury2");
+		vm.label(teamTreasury, "teamTreasury");
+		vm.label(teamTreasury2, "teamTreasury2");
 		vm.label(user1, "user1");
 		vm.label(user2, "user2");
 		vm.label(user3, "user3");
@@ -108,14 +112,14 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		user2PK = user2PKTemp;
 		users = [user1, user2, user3, user4];
 
-		setLabels();
-
 		WETH = IWETH(address(new WETH9()));
 		GO = new GoToken();
 		GO_LP = new BasicERC20("UniswapV2Pair", "GO_LP");
 		VOUCHER = new VoucherToken();
 		XXToken = new BasicERC20("XX", "XX");
 		YYToken = new BasicERC20("YY", "YY");
+
+		setLabels();
 
 		_createAndLinkAuctioneers();
 
@@ -175,6 +179,10 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		_giveWETH(treasury, 5e18);
 		_approveWeth(treasury, address(auctioneer), UINT256_MAX);
 		_treasuryApproveNFTs();
+	}
+
+	function _setupAuctioneerTeamTreasury() public {
+		auctioneer.updateTeamTreasury(teamTreasury);
 	}
 
 	function _distributeGO() public {
@@ -457,6 +465,19 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		}
 	}
 
+	function _createDailyPrivateAuctionWithRunes(uint8 numRunes, bool warp) internal returns (uint256 lot) {
+		AuctionParams[] memory params = new AuctionParams[](1);
+		params[0] = _getRunesAuctionParams(numRunes);
+		params[0].emissionBP = 2000;
+		params[0].isPrivate = true;
+		auctioneer.createAuctions(params);
+		lot = auctioneerAuction.lotCount() - 1;
+
+		if (warp) {
+			_warpToUnlockTimestamp(lot);
+		}
+	}
+
 	function _injectFarmETH(uint256 amount) public {
 		vm.deal(address(auctioneer), amount);
 		vm.prank(address(auctioneer));
@@ -544,8 +565,10 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		uint256 multibid
 	) public {
 		(uint8 prevRune, string memory _alias) = auctioneer.getAliasAndRune(lot, user);
+		uint256 expectedBid = auctioneerAuction.getAuction(lot).bidData.bid + (multibid * bidIncrement);
+
 		vm.expectEmit(true, true, true, true);
-		emit Bid(lot, user, message, _alias, rune, prevRune, multibid, block.timestamp);
+		emit Bid(lot, user, message, _alias, rune, prevRune, expectedBid, multibid, block.timestamp);
 	}
 	function _expectEmitAuctionEvent_Bid_FromOptions(uint256 lot, address user, BidOptions memory options) public {
 		_expectEmitAuctionEvent_Bid(lot, user, options.message, options.rune, options.multibid);

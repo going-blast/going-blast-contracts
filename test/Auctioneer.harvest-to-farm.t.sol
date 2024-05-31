@@ -22,6 +22,7 @@ contract AuctioneerHarvestToFarmTest is AuctioneerHelper, AuctioneerFarmEvents {
 		_distributeGO();
 		_initializeAuctioneerEmissions();
 		_setupAuctioneerTreasury();
+		_setupAuctioneerTeamTreasury();
 		_giveUsersTokensAndApprove();
 		_auctioneerUpdateFarm();
 		_initializeFarmEmissions();

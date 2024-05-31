@@ -17,6 +17,7 @@ contract AuctioneerFarmInitializeEmissionsTest is AuctioneerHelper, AuctioneerFa
 		_distributeGO();
 		_initializeAuctioneerEmissions();
 		_setupAuctioneerTreasury();
+		_setupAuctioneerTeamTreasury();
 		_giveUsersTokensAndApprove();
 		_auctioneerUpdateFarm();
 		_createDefaultDay1Auction();

@@ -17,6 +17,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		_distributeGO();
 		_initializeAuctioneerEmissions();
 		_setupAuctioneerTreasury();
+		_setupAuctioneerTeamTreasury();
 
 		// _giveUsersTokensAndApprove();
 		// _auctioneerUpdateFarm();
@@ -68,6 +69,25 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 
 		// EXECUTE
 		vm.expectRevert(TreasuryNotSet.selector);
+
+		AuctionParams[] memory params = new AuctionParams[](1);
+		params[0] = _getBaseSingleAuctionParams();
+
+		auctioneer.createAuctions(params);
+	}
+
+	function test_createAuctions_RevertWhen_TeamTreasuryNotSet() public {
+		// SETUP
+		_createAndLinkAuctioneers();
+		_setupAuctioneerTreasury();
+
+		vm.prank(treasury);
+		GO.safeTransfer(address(auctioneerEmissions), 1e18);
+
+		auctioneerEmissions.initializeEmissions(_getNextDay2PMTimestamp());
+
+		// EXECUTE
+		vm.expectRevert(TeamTreasuryNotSet.selector);
 
 		AuctionParams[] memory params = new AuctionParams[](1);
 		params[0] = _getBaseSingleAuctionParams();

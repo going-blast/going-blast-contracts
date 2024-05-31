@@ -5,7 +5,6 @@
 		"GO": "0xD29F6Ad3f0Abe621b082294d7E07e9Ea4FAD93aA",
 		"VOUCHER": "0x6686acA8a3eb3F6686B42eBAdb1C302FeEfe3Ce0",
 		"Auctioneer": "0x8B6EB517151787d4F75B61f705e4b0c0588e2a1A",
-		"AuctioneerUser": "0xC840Fe2c851761e1Ac5f4678487Da2aB40CdFe1b",
 		"AuctioneerEmissions": "0xe0d56F0C493CC0867eedbd3Cf52652Bda66426D1",
 		"AuctioneerFarm": "0xC4103A46066637a9d1d19De7b1e3beee5AeE8f17"
 	},
@@ -21,6 +20,6 @@
 		"earlyHarvestTax": 5000,
 		"emissionTaxDurationDays": 30,
 		"treasury": "0x2370b8Ff222e12CC95b0c455B904211A58c28d21",
-		"treasurySplit": 2000
+		"teamTreasurySplit": 2000
 	}
 }

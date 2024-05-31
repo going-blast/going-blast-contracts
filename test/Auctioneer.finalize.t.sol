@@ -19,6 +19,7 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 		_distributeGO();
 		_initializeAuctioneerEmissions();
 		_setupAuctioneerTreasury();
+		_setupAuctioneerTeamTreasury();
 		_giveUsersTokensAndApprove();
 		_auctioneerUpdateFarm();
 		_initializeFarmEmissions();
@@ -198,6 +199,7 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 		assertLt(revenue, lotValue, "Validate revenue < lotValue");
 
 		_prepExpectETHBalChange(0, treasury);
+		_prepExpectETHBalChange(0, teamTreasury);
 		_prepExpectETHBalChange(0, address(farm));
 		_prepExpectETHBalChange(0, address(auctioneer));
 
@@ -207,6 +209,9 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 		// Treasury should receive full lot value
 		_expectETHBalChange(0, treasury, int256(revenue), "Treasury");
 		_expectETHBalChange(0, address(auctioneer), -1 * int256(revenue), "Auctioneer");
+
+		// TeamTreasury should receive nothing
+		_expectETHBalChange(0, address(teamTreasury), 0, "TeamTreasury");
 
 		// Farm should receive nothing
 		_expectETHBalChange(0, address(farm), 0, "Farm");
@@ -230,6 +235,7 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 		assertLt(revenue, (lotValue * 110) / 100, "Validate revenue < 110% lotValue");
 
 		_prepExpectETHBalChange(0, treasury);
+		_prepExpectETHBalChange(0, teamTreasury);
 		_prepExpectETHBalChange(0, address(farm));
 		_prepExpectETHBalChange(0, address(auctioneer));
 
@@ -239,6 +245,9 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 		// Treasury should receive full lot value
 		_expectETHBalChange(0, treasury, int256(revenue), "Treasury");
 		_expectETHBalChange(0, address(auctioneer), -1 * int256(revenue), "Auctioneer");
+
+		// Team treasury should receive nothing
+		_expectETHBalChange(0, teamTreasury, 0, "TeamTreasury");
 
 		// Farm should receive nothing
 		_expectETHBalChange(0, address(farm), 0, "Farm");
@@ -271,12 +280,14 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 		uint256 lotValue110Perc = lotValue.scaleByBP(11000);
 		assertGt(revenue, lotValue110Perc, "Validate revenue > 110% lotValue");
 
-		uint256 treasurySplit = auctioneerAuction.treasurySplit();
+		uint256 teamTreasurySplit = auctioneerAuction.teamTreasurySplit();
 		uint256 profit = revenue - lotValue110Perc;
-		uint256 treasuryExpectedDisbursement = lotValue110Perc + profit.scaleByBP(treasurySplit);
-		uint256 farmExpectedDisbursement = profit.scaleByBP(10000 - treasurySplit);
+		uint256 treasuryExpectedDisbursement = lotValue110Perc;
+		uint256 teamTreasuryExpectedDisbursement = profit.scaleByBP(teamTreasurySplit);
+		uint256 farmExpectedDisbursement = profit.scaleByBP(10000 - teamTreasurySplit);
 
 		_prepExpectETHBalChange(0, treasury);
+		_prepExpectETHBalChange(0, teamTreasury);
 		_prepExpectETHBalChange(0, address(farm));
 		_prepExpectETHBalChange(0, address(auctioneer));
 
@@ -284,6 +295,7 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 		auctioneer.finalizeAuction(0);
 
 		_expectETHBalChange(0, treasury, int256(treasuryExpectedDisbursement), "Treasury");
+		_expectETHBalChange(0, teamTreasury, int256(teamTreasuryExpectedDisbursement), "TeamTreasury");
 		_expectETHBalChange(0, address(farm), int256(farmExpectedDisbursement), "Farm");
 		_expectETHBalChange(0, address(auctioneer), -1 * int256(revenue), "Auctioneer");
 	}

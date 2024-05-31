@@ -19,6 +19,7 @@ contract AuctioneerMessageTest is AuctioneerHelper {
 		_distributeGO();
 		_initializeAuctioneerEmissions();
 		_setupAuctioneerTreasury();
+		_setupAuctioneerTeamTreasury();
 		_giveUsersTokensAndApprove();
 		_auctioneerUpdateFarm();
 		_initializeFarmEmissions();
@@ -28,16 +29,57 @@ contract AuctioneerMessageTest is AuctioneerHelper {
 		// Create single token auction
 		params[0] = _getBaseSingleAuctionParams();
 		// Create multi token auction
-		params[1] = _getMultiTokenSingleAuctionParams();
+		params[1] = _getBaseSingleAuctionParams();
+		params[1].isPrivate = true;
 
-		// Create single token + nfts auction
 		auctioneer.createAuctions(params);
 	}
 
-	function test_messageAuction_ExpectEmit() public {
+	function test_messageAuction_ExpectEmit_BiddingOpenAuction() public {
+		_warpToUnlockTimestamp(0);
+
 		_expectEmitAuctionEvent_Message(0, user1, "TEST TEST TEST");
 
 		vm.prank(user1);
 		auctioneer.messageAuction(0, "TEST TEST TEST");
+	}
+
+	function test_messageAuction_ExpectEmit_PreBidding() public {
+		_expectEmitAuctionEvent_Message(0, user1, "TEST TEST TEST");
+
+		vm.prank(user1);
+		auctioneer.messageAuction(0, "TEST TEST TEST");
+	}
+
+	function test_messageAuction_ExpectRevert_InvalidAuctionLot() public {
+		vm.expectRevert(InvalidAuctionLot.selector);
+
+		vm.prank(user1);
+		auctioneer.messageAuction(2, "TEST TEST TEST");
+	}
+
+	function test_messageAuction_ExpectRevert_AuctionEnded() public {
+		_warpToAuctionEndTimestamp(0);
+
+		vm.expectRevert(AuctionEnded.selector);
+
+		vm.prank(user1);
+		auctioneer.messageAuction(0, "TEST TEST TEST");
+	}
+
+	function test_messageAuction_ExpectRevert_PrivateAuction() public {
+		_warpToUnlockTimestamp(1);
+
+		vm.expectRevert(PrivateAuction.selector);
+
+		vm.prank(user1);
+		auctioneer.messageAuction(1, "TEST TEST TEST");
+
+		_giveGO(user1, 300e18);
+
+		_expectEmitAuctionEvent_Message(1, user1, "TEST TEST TEST");
+
+		vm.prank(user1);
+		auctioneer.messageAuction(1, "TEST TEST TEST");
 	}
 }

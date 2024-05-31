@@ -20,6 +20,7 @@ contract AuctioneerNFTsTest is AuctioneerHelper {
 		_distributeGO();
 		_initializeAuctioneerEmissions();
 		_setupAuctioneerTreasury();
+		_setupAuctioneerTeamTreasury();
 		_giveUsersTokensAndApprove();
 	}
 

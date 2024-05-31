@@ -6,6 +6,34 @@ Contracts, tests, coverage, and deployment scripts of the Going Blast ecosystem.
 
 ```
 
+- [ ] Calculate bid penalty more elegantly (1 * 0.2 = 0.2, should round to 0, not ceil to 1)
+- [ ] Verbal Blacklisting
+  - [ ] Revert on Message Auction
+  - [ ] Alias not included in events
+  - [ ] Message not included in events
+- [x] Validate Auction Running
+  - [x] Public validator
+  - [x] Prevent sending messages after auction closes
+- [x] Private auction sandboxing
+  - [x] Switching runes
+  - [x] Message Auction
+- [x] Break apart project and team treasury
+- [ ] Add migration functionality
+  - [ ] Add multisig wallet address
+  - [ ] Add 7 day timelock
+  - [ ] GO sent to multisig, then injected into new contract
+
+- [x] Tests
+  - [x] Cannot send message after auction closes
+  - [x] Cannot switch rune after auction closes
+  - [x] Cannot select rune for private auction
+  - [x] Cannot send message for private auction
+  - [x] Revenue (up to 110% lot value) distributed to projectTreasury
+  - [x] Split profit distributions between teamTreasury and farm
+  - [x] Fallback farm distribution to treasury if farm not receivable
+  - [ ] Cant claim lot not participated in
+
+
 - [x] Changes allowed by subgraph
   - [x] Remove alias from bid event
   - [x] Remove timestamp from bid event
@@ -16,6 +44,9 @@ Contracts, tests, coverage, and deployment scripts of the Going Blast ecosystem.
   - [x] Add message to claim lot
   - [x] Remove list of harvestable lots from AuctioneerUser
   - [x] Remove list of interacted lots from AuctioneerUser
+  - [x] Add bid back in for frontend ease
+
+
 
 ToDos:
 - [x] Add prevRune to Bid Emit Event, so that the frontend can show that someone has switched rune

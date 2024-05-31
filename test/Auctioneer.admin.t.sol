@@ -39,6 +39,27 @@ contract AuctioneerAdminTest is AuctioneerHelper {
 		auctioneer.updateTreasury(treasury2);
 	}
 
+	// SET TEAM TREASURY
+
+	function test_updateTeamTreasury() public {
+		auctioneer.updateTeamTreasury(treasury2);
+		assertEq((treasury2), auctioneer.teamTreasury());
+	}
+	function test_updateTeamTreasury_ExpectEmit_UpdatedTeamTreasury() public {
+		vm.expectEmit(true, true, true, true);
+		emit UpdatedTeamTreasury(treasury2);
+		auctioneer.updateTeamTreasury(treasury2);
+	}
+	function test_updateTeamTreasury_RevertWhen_TeamTreasuryIsZeroAddress() public {
+		vm.expectRevert(ZeroAddress.selector);
+		auctioneer.updateTeamTreasury((address(0)));
+	}
+	function test_updateTeamTreasury_RevertWhen_CallerIsNotOwner() public {
+		vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, address(0)));
+		vm.prank(address(0));
+		auctioneer.updateTeamTreasury(treasury2);
+	}
+
 	// SET FARM
 	function test_updateFarm() public {
 		auctioneer.updateFarm(address(farm));
@@ -56,23 +77,23 @@ contract AuctioneerAdminTest is AuctioneerHelper {
 	}
 
 	// SET TREASURY SPLIT
-	function test_updateTreasurySplit() public {
-		auctioneerAuction.updateTreasurySplit(5000);
-		assertEq(auctioneerAuction.treasurySplit(), 5000);
+	function test_updateTeamTreasurySplit() public {
+		auctioneerAuction.updateTeamTreasurySplit(5000);
+		assertEq(auctioneerAuction.teamTreasurySplit(), 5000);
 	}
-	function test_updateTreasurySplit_ExpectEmit_UpdatedTreasurySplit() public {
+	function test_updateTeamTreasurySplit_ExpectEmit_UpdatedTeamTreasurySplit() public {
 		vm.expectEmit(true, true, true, true);
-		emit UpdatedTreasurySplit(4000);
-		auctioneerAuction.updateTreasurySplit(4000);
+		emit UpdatedTeamTreasurySplit(4000);
+		auctioneerAuction.updateTeamTreasurySplit(4000);
 	}
-	function test_updateTreasurySplit_RevertWhen_CallerIsNotOwner() public {
+	function test_updateTeamTreasurySplit_RevertWhen_CallerIsNotOwner() public {
 		vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, address(0)));
 		vm.prank(address(0));
-		auctioneerAuction.updateTreasurySplit(4000);
+		auctioneerAuction.updateTeamTreasurySplit(4000);
 	}
-	function test_updateTreasurySplit_RevertWhen_CutIsTooSteep() public {
+	function test_updateTeamTreasurySplit_RevertWhen_CutIsTooSteep() public {
 		vm.expectRevert(TooSteep.selector);
-		auctioneerAuction.updateTreasurySplit(5001);
+		auctioneerAuction.updateTeamTreasurySplit(5001);
 	}
 
 	// SET FARM

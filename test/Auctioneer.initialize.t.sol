@@ -16,6 +16,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 
 		_distributeGO();
 		_setupAuctioneerTreasury();
+		_setupAuctioneerTeamTreasury();
 
 		// _initializeAuctioneerEmissions();
 		// _giveUsersTokensAndApprove();

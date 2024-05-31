@@ -14,6 +14,7 @@ contract AuctioneerAliasTest is AuctioneerHelper {
 		super.setUp();
 		_distributeGO();
 		_setupAuctioneerTreasury();
+		_setupAuctioneerTeamTreasury();
 	}
 
 	function test_setAlias_RevertWhen_InvalidAlias() public {

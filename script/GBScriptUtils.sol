@@ -42,7 +42,7 @@ contract GBScriptUtils is Script, ChainJsonUtils {
 	uint256 public earlyHarvestTax = 5000;
 	uint256 public emissionTaxDuration = 30 days;
 	address public treasury;
-	uint256 public treasurySplit = 2000;
+	uint256 public teamTreasurySplit = 2000;
 
 	modifier broadcast() {
 		string memory mnemonic = vm.envString("MNEMONIC");
@@ -86,7 +86,7 @@ contract GBScriptUtils is Script, ChainJsonUtils {
 		earlyHarvestTax = readUint(auctioneerConfigPath("earlyHarvestTax"));
 		emissionTaxDuration = readUint(auctioneerConfigPath("emissionTaxDurationDays")) * 1 days;
 		treasury = readAddress(auctioneerConfigPath("treasury"));
-		treasurySplit = readUint(auctioneerConfigPath("treasurySplit"));
+		teamTreasurySplit = readUint(auctioneerConfigPath("teamTreasurySplit"));
 		_;
 	}
 }

@@ -301,10 +301,10 @@ contract GBScripts is GBScriptUtils {
 			console.log("  . skipped");
 		}
 
-		console.log(". sync treasurySplit");
-		if (treasurySplit != auctioneerAuction.treasurySplit()) {
-			console.log("  . treasurySplit updated %s --> %s", auctioneerAuction.treasurySplit(), treasurySplit);
-			auctioneerAuction.updateTreasurySplit(treasurySplit);
+		console.log(". sync teamTreasurySplit");
+		if (teamTreasurySplit != auctioneerAuction.teamTreasurySplit()) {
+			console.log("  . teamTreasurySplit updated %s --> %s", auctioneerAuction.teamTreasurySplit(), teamTreasurySplit);
+			auctioneerAuction.updateTeamTreasurySplit(teamTreasurySplit);
 		} else {
 			console.log("  . skipped");
 		}

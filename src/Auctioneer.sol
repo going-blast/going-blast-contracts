@@ -59,6 +59,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 
 	// ADMIN
 	address public treasury;
+	address public teamTreasury;
 	address public deadAddress = 0x000000000000000000000000000000000000dEaD;
 
 	IERC20 public GO;
@@ -102,6 +103,12 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 		auctioneerAuction.updateTreasury(treasury);
 		emit UpdatedTreasury(_treasury);
 	}
+	function updateTeamTreasury(address _teamTreasury) public onlyOwner {
+		if (_teamTreasury == address(0)) revert ZeroAddress();
+		teamTreasury = _teamTreasury;
+		auctioneerAuction.updateTeamTreasury(teamTreasury);
+		emit UpdatedTeamTreasury(_teamTreasury);
+	}
 
 	function updateFarm(address _farm) public onlyOwner {
 		auctioneerFarm = IAuctioneerFarm(_farm);
@@ -135,6 +142,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 	function createAuctions(AuctionParams[] memory _params) public onlyOwner nonReentrant {
 		if (!auctioneerEmissions.emissionsInitialized()) revert EmissionsNotInitialized();
 		if (treasury == address(0)) revert TreasuryNotSet();
+		if (teamTreasury == address(0)) revert TeamTreasuryNotSet();
 
 		uint256 ethAmount = 0;
 
@@ -217,6 +225,8 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 
 	// MESSAGE
 	function messageAuction(uint256 _lot, string memory _message) public {
+		auctioneerAuction.validateAuctionRunning(_lot);
+		auctioneerAuction.validatePrivateAuctionEligibility(_lot, _userGOBalance(msg.sender));
 		emit Messaged(_lot, msg.sender, _message, userAlias[msg.sender], auctionUsers[_lot][msg.sender].rune);
 	}
 
@@ -244,7 +254,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 		uint8 prevRune = user.rune;
 
 		// Auction bid
-		uint256 bidCost = auctioneerAuction.markBid(
+		(uint256 auctionBid, uint256 bidCost) = auctioneerAuction.markBid(
 			_lot,
 			msg.sender,
 			user.bids,
@@ -282,12 +292,15 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 			userAlias[msg.sender],
 			_options.rune,
 			prevRune,
+			auctionBid,
 			_options.multibid,
 			block.timestamp
 		);
 	}
 
 	function selectRune(uint256 _lot, uint8 _rune, string calldata _message) public nonReentrant {
+		auctioneerAuction.validatePrivateAuctionEligibility(_lot, _userGOBalance(msg.sender));
+
 		AuctionUser storage user = auctionUsers[_lot][msg.sender];
 
 		auctioneerAuction.selectRune(_lot, user.bids, user.rune, _rune);
@@ -334,15 +347,19 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 	}
 
 	function _distributeLotProfit(uint256 _lot, uint256 _userShareOfPayment) internal {
-		(uint256 treasuryDistribution, uint256 farmDistribution) = auctioneerAuction.getProfitDistributions(
+		(uint256 farmDistribution, uint256 teamTreasuryDistribution) = auctioneerAuction.getProfitDistributions(
 			_lot,
 			_userShareOfPayment
 		);
 
-		_sendDistributions(treasuryDistribution, farmDistribution);
+		_sendDistributions(0, farmDistribution, teamTreasuryDistribution);
 	}
 
-	function _sendDistributions(uint256 treasuryDistribution, uint256 farmDistribution) internal {
+	function _sendDistributions(
+		uint256 treasuryDistribution,
+		uint256 farmDistribution,
+		uint256 teamTreasuryDistribution
+	) internal {
 		if (farmDistribution > 0) {
 			if (address(auctioneerFarm) != address(0) && auctioneerFarm.distributionReceivable()) {
 				// Only send farm distribution if the farm exists and can handle the distribution
@@ -357,6 +374,11 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 			(bool sent, ) = treasury.call{ value: treasuryDistribution }("");
 			if (!sent) revert ETHTransferFailed();
 		}
+
+		if (teamTreasuryDistribution > 0) {
+			(bool sent, ) = teamTreasury.call{ value: teamTreasuryDistribution }("");
+			if (!sent) revert ETHTransferFailed();
+		}
 	}
 
 	// FINALIZE
@@ -369,7 +391,8 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 			bool triggerCancellation,
 			uint256 treasuryEmissions,
 			uint256 treasuryETHDistribution,
-			uint256 farmETHDistribution
+			uint256 farmETHDistribution,
+			uint256 teamTreasuryETHDistribution
 		) = auctioneerAuction.finalizeAuction(_lot);
 
 		if (triggerCancellation) {
@@ -380,7 +403,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 			auctioneerEmissions.transferEmissions(treasury, treasuryEmissions);
 		}
 
-		_sendDistributions(treasuryETHDistribution, farmETHDistribution);
+		_sendDistributions(treasuryETHDistribution, farmETHDistribution, teamTreasuryETHDistribution);
 	}
 
 	// HARVEST

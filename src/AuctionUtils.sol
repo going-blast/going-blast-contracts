@@ -133,33 +133,30 @@ library AuctionViewUtils {
 	function getProfitDistributions(
 		Auction storage,
 		uint256 amount,
-		uint256 treasurySplit
-	) internal pure returns (uint256 treasuryAmount, uint256 farmAmount) {
+		uint256 teamTreasurySplit
+	) internal pure returns (uint256 farmAmount, uint256 teamTreasuryAmount) {
 		// Calculate distributions
-		treasuryAmount = amount.scaleByBP(treasurySplit);
-		farmAmount = amount - treasuryAmount;
+		teamTreasuryAmount = amount.scaleByBP(teamTreasurySplit);
+		farmAmount = amount - teamTreasuryAmount;
 	}
 
 	function getRevenueDistributions(
 		Auction storage auction,
-		uint256 treasurySplit
-	) internal view returns (uint256 treasuryAmount, uint256 farmAmount) {
+		uint256 teamTreasurySplit
+	) internal view returns (uint256 treasuryAmount, uint256 farmAmount, uint256 teamTreasuryAmount) {
 		uint256 lotValue = auction.rewards.estimatedValue;
-		uint256 reimbursement = auction.bidData.revenue;
 		uint256 profit = 0;
+
+		treasuryAmount = auction.bidData.revenue;
 
 		// Calculate profit, reduce reimbursement
 		if (auction.bidData.revenue > lotValue.scaleByBP(11000)) {
-			reimbursement = lotValue.scaleByBP(11000);
-			profit = auction.bidData.revenue - reimbursement;
+			treasuryAmount = lotValue.scaleByBP(11000);
+			profit = auction.bidData.revenue - treasuryAmount;
 		}
 
-		treasuryAmount = reimbursement;
-
 		if (profit > 0) {
-			(uint256 profitTreasuryAmount, uint256 profitFarmAmount) = getProfitDistributions(auction, profit, treasurySplit);
-			treasuryAmount += profitTreasuryAmount;
-			farmAmount += profitFarmAmount;
+			(farmAmount, teamTreasuryAmount) = getProfitDistributions(auction, profit, teamTreasurySplit);
 		}
 	}
 }

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 pragma experimental ABIEncoderV2;
 
+import { console } from "forge-std/console.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -51,6 +52,7 @@ interface IAuctioneerAuction {
 	function runeSwitchPenalty() external view returns (uint256);
 	function runicLastBidderBonus() external view returns (uint256);
 	function updateTreasury(address _treasury) external;
+	function updateTeamTreasury(address _teamTreasury) external;
 	function privateAuctionRequirement() external view returns (uint256);
 	function createAuction(AuctionParams memory _params, uint256 _emissions) external payable returns (uint256 lot);
 	function cancelAuction(uint256 _lot) external returns (uint256 unlockTimestamp, uint256 cancelledEmissions);
@@ -61,7 +63,7 @@ interface IAuctioneerAuction {
 		uint8 _prevRune,
 		uint256 _userGoBalance,
 		BidOptions memory _options
-	) external returns (uint256 bidCost);
+	) external returns (uint256 bid, uint256 bidCost);
 	function selectRune(uint256 _lot, uint256 _userBids, uint8 _prevRune, uint8 _rune) external;
 	function claimLot(
 		uint256 _lot,
@@ -77,16 +79,18 @@ interface IAuctioneerAuction {
 			bool triggerCancellation,
 			uint256 treasuryEmissions,
 			uint256 treasuryETHDistribution,
-			uint256 farmETHDistribution
+			uint256 farmETHDistribution,
+			uint256 teamTreasuryDistribution
 		);
 	function getProfitDistributions(
 		uint256 _lot,
 		uint256 _amount
-	) external view returns (uint256 treasuryDistribution, uint256 farmDistribution);
+	) external view returns (uint256 farmDistribution, uint256 teamTreasuryDistribution);
 	function validateAndGetHarvestData(
 		uint256 _lot
 	) external view returns (uint256 unlockTimestamp, uint256 bids, uint256 biddersEmissions);
-
+	function validateAuctionRunning(uint256 _lot) external view;
+	function validatePrivateAuctionEligibility(uint256 _lot, uint256 _goBalance) external view;
 	function getAuction(uint256 _lot) external view returns (Auction memory auction);
 }
 
@@ -109,7 +113,8 @@ contract AuctioneerAuction is
 	bool public linked;
 	address public auctioneer;
 	address public treasury;
-	uint256 public treasurySplit = 2000;
+	address public teamTreasury;
+	uint256 public teamTreasurySplit = 2000;
 	address public deadAddress = 0x000000000000000000000000000000000000dEaD;
 
 	// Auctions
@@ -171,16 +176,31 @@ contract AuctioneerAuction is
 		_;
 	}
 
+	// EXTERNAL MODIFIERS
+
+	function validateAuctionEnded(uint256 _lot) public view validAuctionLot(_lot) {
+		auctions[_lot].validateEnded();
+	}
+	function validateAuctionRunning(uint256 _lot) public view validAuctionLot(_lot) {
+		if (auctions[_lot].isEnded()) revert AuctionEnded();
+	}
+	function validatePrivateAuctionEligibility(uint256 _lot, uint256 _goBalance) public view validAuctionLot(_lot) {
+		if (auctions[_lot].isPrivate && _goBalance < privateAuctionRequirement) revert PrivateAuction();
+	}
+
 	// Admin
 
 	function updateTreasury(address _treasury) public onlyAuctioneer {
 		treasury = _treasury;
 	}
+	function updateTeamTreasury(address _teamTreasury) public onlyAuctioneer {
+		teamTreasury = _teamTreasury;
+	}
 
-	function updateTreasurySplit(uint256 _treasurySplit) public onlyOwner {
-		if (_treasurySplit > 5000) revert TooSteep();
-		treasurySplit = _treasurySplit;
-		emit UpdatedTreasurySplit(_treasurySplit);
+	function updateTeamTreasurySplit(uint256 _teamTreasurySplit) public onlyOwner {
+		if (_teamTreasurySplit > 5000) revert TooSteep();
+		teamTreasurySplit = _teamTreasurySplit;
+		emit UpdatedTeamTreasurySplit(_teamTreasurySplit);
 	}
 
 	function updateStartingBid(uint256 _startingBid) public onlyOwner {
@@ -343,7 +363,13 @@ contract AuctioneerAuction is
 		uint8 _prevRune,
 		uint256 _userGoBalance,
 		BidOptions memory _options
-	) external onlyAuctioneer validAuctionLot(_lot) validRune(_lot, _options.rune) returns (uint256 auctionBidCost) {
+	)
+		external
+		onlyAuctioneer
+		validAuctionLot(_lot)
+		validRune(_lot, _options.rune)
+		returns (uint256 bid, uint256 auctionBidCost)
+	{
 		Auction storage auction = auctions[_lot];
 		auction.validateBiddingOpen();
 
@@ -367,6 +393,7 @@ contract AuctioneerAuction is
 			auction.bidData.bidRune = _options.rune;
 		}
 
+		bid = auction.bidData.bid;
 		auctionBidCost = auction.bidData.bidCost;
 	}
 
@@ -376,7 +403,7 @@ contract AuctioneerAuction is
 		uint8 _prevRune,
 		uint8 _rune
 	) external onlyAuctioneer validAuctionLot(_lot) validRune(_lot, _rune) {
-		if (auctions[_lot].isEnded()) revert CantSwitchRune();
+		if (auctions[_lot].isEnded()) revert AuctionEnded();
 		if (auctions[_lot].runes.length == 0) revert InvalidRune();
 		_switchRuneUpdateData(_lot, _userBids, _prevRune, _rune);
 	}
@@ -416,8 +443,14 @@ contract AuctioneerAuction is
 	function getProfitDistributions(
 		uint256 _lot,
 		uint256 _amount
-	) public view onlyAuctioneer validAuctionLot(_lot) returns (uint256 treasuryDistribution, uint256 farmDistribution) {
-		return auctions[_lot].getProfitDistributions(_amount, treasurySplit);
+	)
+		public
+		view
+		onlyAuctioneer
+		validAuctionLot(_lot)
+		returns (uint256 farmDistribution, uint256 teamTreasuryDistribution)
+	{
+		return auctions[_lot].getProfitDistributions(_amount, teamTreasurySplit);
 	}
 
 	// FINALIZE
@@ -432,22 +465,32 @@ contract AuctioneerAuction is
 			bool triggerCancellation,
 			uint256 treasuryEmissions,
 			uint256 treasuryETHDistribution,
-			uint256 farmETHDistribution
+			uint256 farmETHDistribution,
+			uint256 teamTreasuryETHDistribution
 		)
 	{
 		Auction storage auction = auctions[_lot];
 
 		// Exit if already finalized
-		if (auction.finalized) return (false, 0, 0, 0);
+		if (auction.finalized) return (false, 0, 0, 0, 0);
 
 		auction.validateEnded();
 
 		// FALLBACK: cancel auction instead of finalizing if auction has 0 bids
-		if (auction.bidData.bids == 0) return (true, 0, 0, 0);
+		if (auction.bidData.bids == 0) return (true, 0, 0, 0, 0);
 		triggerCancellation = false;
 
-		// Distribute lot revenue to treasury and farm
-		(treasuryETHDistribution, farmETHDistribution) = auction.getRevenueDistributions(treasurySplit);
+		// Distribute lot revenue to treasury, farm, and team treasury
+		(treasuryETHDistribution, farmETHDistribution, teamTreasuryETHDistribution) = auction.getRevenueDistributions(
+			teamTreasurySplit
+		);
+
+		console.log(
+			"Rev dist, treasury %s, farm %s, teamTreasury %s",
+			treasuryETHDistribution,
+			farmETHDistribution,
+			teamTreasuryETHDistribution
+		);
 
 		// Send marked emissions to treasury
 		treasuryEmissions = auction.emissions.treasuryEmission;

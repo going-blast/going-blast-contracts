@@ -5,7 +5,6 @@
 		"GO": "",
 		"VOUCHER": "",
 		"auctioneer": "",
-		"auctioneerUser": "",
 		"auctioneerEmissions": "",
 		"auctioneerFarm": ""
 	},
@@ -21,6 +20,6 @@
 		"earlyHarvestTax": 5000,
 		"emissionTaxDurationDays": 30,
 		"treasury": "",
-		"treasurySplit": 2000
+		"teamTreasurySplit": 2000
 	}
 }

@@ -19,6 +19,7 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 		_distributeGO();
 		_initializeAuctioneerEmissions();
 		_setupAuctioneerTreasury();
+		_setupAuctioneerTeamTreasury();
 		_giveUsersTokensAndApprove();
 		_giveTreasuryXXandYYandApprove();
 
@@ -156,21 +157,22 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 		auctioneer.finalizeAuction(0);
 
 		uint256 lotPrice = auctioneerAuction.getAuction(0).bidData.bid;
+		uint256 teamTreasurySplit = auctioneerAuction.teamTreasurySplit();
+		uint256 teamTreasuryCut = lotPrice.scaleByBP(teamTreasurySplit);
+		uint256 farmCut = lotPrice.scaleByBP(10000 - teamTreasurySplit);
+
 		vm.deal(user1, lotPrice * 5);
 
 		_prepExpectETHBalChange(0, treasury);
+		_prepExpectETHBalChange(0, teamTreasury);
 		_prepExpectETHBalChange(0, address(farm));
 
 		// Claim
 		vm.prank(user1);
 		auctioneer.claimLot{ value: lotPrice }(0, "");
 
-		_expectETHBalChange(
-			0,
-			treasury,
-			int256(lotPrice),
-			"Treasury. Should increase by full price, fallback from farm cut"
-		);
+		_expectETHBalChange(0, treasury, int256(farmCut), "Project Treasury receives farm cut (farm not receivable)");
+		_expectETHBalChange(0, teamTreasury, int256(teamTreasuryCut), "TeamTreasury receives expected cut");
 		_expectETHBalChange(0, address(farm), int256(0), "Farm. Should not increase (0 staked)");
 	}
 
@@ -203,11 +205,12 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 		auctioneer.finalizeAuction(0);
 
 		uint256 lotPrice = auctioneerAuction.getAuction(0).bidData.bid;
-		uint256 treasurySplit = auctioneerAuction.treasurySplit();
-		uint256 treasuryCut = lotPrice.scaleByBP(treasurySplit);
-		uint256 farmCut = lotPrice.scaleByBP(10000 - treasurySplit);
+		uint256 teamTreasurySplit = auctioneerAuction.teamTreasurySplit();
+		uint256 teamTreasuryCut = lotPrice.scaleByBP(teamTreasurySplit);
+		uint256 farmCut = lotPrice.scaleByBP(10000 - teamTreasurySplit);
 
 		_prepExpectETHBalChange(0, treasury);
+		_prepExpectETHBalChange(0, teamTreasury);
 		_prepExpectETHBalChange(0, address(farm));
 
 		uint256 ethPerShareInit = farm.getPool(goPid).accEthPerShare;
@@ -218,7 +221,8 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 		vm.deal(user1, lotPrice);
 		auctioneer.claimLot{ value: lotPrice }(0, "");
 
-		_expectETHBalChange(0, treasury, int256(treasuryCut), "Treasury. Increase by cut of lot price");
+		_expectETHBalChange(0, treasury, 0, "Project Treasury. No change");
+		_expectETHBalChange(0, teamTreasury, int256(teamTreasuryCut), "TeamTreasury. Increase by cut of lot price");
 		_expectETHBalChange(0, address(farm), int256(farmCut), "Farm. Increase by cut of lot price");
 
 		// Farm ethPerShare should increase

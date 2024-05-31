@@ -178,6 +178,7 @@ error GONotYetReceived();
 error EmissionsNotInitialized();
 error AlreadyInitialized();
 error TreasuryNotSet();
+error TeamTreasuryNotSet();
 error TooManyAuctionsPerDay();
 error InvalidDailyEmissionBP();
 error Invalid();
@@ -232,8 +233,9 @@ interface AuctioneerEvents {
 	event UpdatedEmissionTaxDuration(uint256 _emissionTax);
 	event UpdatedRuneSwitchPenalty(uint256 _penalty);
 	event UpdatedTreasury(address indexed _treasury);
+	event UpdatedTeamTreasury(address indexed _teamTreasury);
 	event UpdatedFarm(address indexed _farm);
-	event UpdatedTreasurySplit(uint256 _split);
+	event UpdatedTeamTreasurySplit(uint256 _split);
 	event UpdatedPrivateAuctionRequirement(uint256 _requirement);
 	event UpdatedAlias(address indexed _user, string _alias);
 	event UpdatedRunicLastBidderBonus(uint256 _bonus);
@@ -251,6 +253,7 @@ interface AuctioneerEvents {
 		string _alias,
 		uint8 _rune,
 		uint8 _prevRune,
+		uint256 _bid,
 		uint256 _multibid,
 		uint256 _timestamp
 	);

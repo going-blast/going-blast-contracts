@@ -6,9 +6,11 @@ import "../src/IAuctioneer.sol";
 import { AuctioneerHelper } from "./Auctioneer.base.t.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../src/IAuctioneerFarm.sol";
+import { GBMath } from "../src/AuctionUtils.sol";
 
 contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 	using SafeERC20 for IERC20;
+	using GBMath for uint256;
 
 	function setUp() public override {
 		super.setUp();
@@ -16,6 +18,7 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		_distributeGO();
 		_initializeAuctioneerEmissions();
 		_setupAuctioneerTreasury();
+		_setupAuctioneerTeamTreasury();
 		_giveUsersTokensAndApprove();
 		_auctioneerUpdateFarm();
 		_initializeFarmEmissions();
@@ -304,13 +307,19 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		vm.warp(block.timestamp + 1 days);
 
 		uint256 auctionETH = 1e18;
-		uint256 revenue = auctioneerAuction.getAuction(lot).bidData.revenue;
+		// Revenue less than auction value, 100% goes to treasury
+		uint256 treasuryRevenueCut = auctioneerAuction.getAuction(lot).bidData.revenue;
 		uint256 lotPrice = auctioneerAuction.getAuction(lot).bidData.bid;
+		uint256 teamTreasuryProfitCut = lotPrice.scaleByBP(auctioneerAuction.teamTreasurySplit());
+		uint256 farmProfitCut = lotPrice - teamTreasuryProfitCut;
 		vm.deal(user2, lotPrice);
 
 		_prepExpectETHBalChange(0, user2);
-		_prepExpectETHBalChange(0, treasury);
 		_prepExpectETHBalChange(0, address(auctioneerAuction));
+
+		_prepExpectETHBalChange(0, treasury);
+		_prepExpectETHBalChange(0, teamTreasury);
+		_prepExpectETHBalChange(0, address(farm));
 
 		vm.prank(user2);
 		auctioneer.claimLot{ value: lotPrice }(lot, "");
@@ -323,16 +332,24 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		);
 		_expectETHBalChange(
 			0,
-			treasury,
-			int256(lotPrice) + int256(revenue),
-			"Treasury. Increase by lot price (claim) and revenue (finalize)"
-		);
-		_expectETHBalChange(
-			0,
 			address(auctioneerAuction),
 			int256(auctionETH) * -1,
 			"AuctioneerAuction. Decrease by prize amount"
 		);
+
+		_expectETHBalChange(
+			0,
+			treasury,
+			int256(treasuryRevenueCut + farmProfitCut),
+			"Treasury receives farmCut (claim) and revenue (finalize)"
+		);
+		_expectETHBalChange(
+			0,
+			teamTreasury,
+			int256(teamTreasuryProfitCut),
+			"Team Treasury receives teamTreasuryCut (claim)"
+		);
+		_expectETHBalChange(0, address(farm), 0, "Farm not receivable, no cut");
 	}
 
 	function test_runes_win_Expect_2RunesUserShareSplit() public {
@@ -358,12 +375,16 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		{
 			// USER 3
 			UserLotInfo memory user3LotInfo = getUserLotInfo(lot, user3);
+			uint256 user3TeamTreasuryCut = user3LotInfo.price.scaleByBP(auctioneerAuction.teamTreasurySplit());
+			uint256 user3FarmCut = user3LotInfo.price - user3TeamTreasuryCut;
 			vm.deal(user3, user3LotInfo.price);
 			uint256 user3Prize = (auctionETH * user3LotInfo.shareOfLot) / 1e18;
 
 			_prepExpectETHBalChange(0, user3);
 			_prepExpectETHBalChange(0, address(auctioneer));
 			_prepExpectETHBalChange(0, treasury);
+			_prepExpectETHBalChange(0, teamTreasury);
+			_prepExpectETHBalChange(0, address(farm));
 
 			vm.prank(user3);
 			auctioneer.claimLot{ value: user3LotInfo.price }(lot, "");
@@ -376,7 +397,9 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 				"User 3. Increase by prize, decrease by price"
 			);
 			_expectETHBalChange(0, address(auctioneer), int256(0), "Auctioneer");
-			_expectETHBalChange(0, treasury, int256(user3LotInfo.price), "Treasury");
+			_expectETHBalChange(0, treasury, int256(user3FarmCut), "Project Treasury receives farms cut");
+			_expectETHBalChange(0, teamTreasury, int256(user3TeamTreasuryCut), "Team Treasury receives cut");
+			_expectETHBalChange(0, address(farm), int256(0), "Farm not receivable, receives nothing");
 		}
 
 		{
@@ -384,10 +407,14 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 			UserLotInfo memory user4LotInfo = getUserLotInfo(lot, user4);
 			vm.deal(user4, user4LotInfo.price);
 			uint256 user4Prize = (auctionETH * user4LotInfo.shareOfLot) / 1e18;
+			uint256 user4TeamTreasuryCut = user4LotInfo.price.scaleByBP(auctioneerAuction.teamTreasurySplit());
+			uint256 user4FarmCut = user4LotInfo.price - user4TeamTreasuryCut;
 
 			_prepExpectETHBalChange(1, user4);
 			_prepExpectETHBalChange(1, address(auctioneer));
 			_prepExpectETHBalChange(1, treasury);
+			_prepExpectETHBalChange(1, teamTreasury);
+			_prepExpectETHBalChange(1, address(farm));
 
 			vm.prank(user4);
 			auctioneer.claimLot{ value: user4LotInfo.price }(lot, "");
@@ -400,7 +427,9 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 				"User 4. Increase by prize, decrease by price"
 			);
 			_expectETHBalChange(1, address(auctioneer), int256(0), "Auctioneer");
-			_expectETHBalChange(1, treasury, int256(user4LotInfo.price), "Treasury");
+			_expectETHBalChange(1, treasury, int256(user4FarmCut), "Treasury receives farm cut");
+			_expectETHBalChange(1, teamTreasury, int256(user4TeamTreasuryCut), "Team Treasury receives cut");
+			_expectETHBalChange(1, address(farm), 0, "Farm not receivable, no cut");
 		}
 	}
 
@@ -548,6 +577,40 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 	}
 
 	// PRESELECT
+
+	function test_runes_selectRune_ExpectRevert_InvalidAuctionLot() public {
+		vm.expectRevert(InvalidAuctionLot.selector);
+
+		vm.prank(user1);
+		auctioneer.selectRune(2, 1, "TEST TEST TEST");
+	}
+
+	function test_runes_selectRune_ExpectRevert_AuctionEnded() public {
+		uint256 lot = _createDailyAuctionWithRunes(2, true);
+
+		_warpToAuctionEndTimestamp(lot);
+
+		vm.expectRevert(AuctionEnded.selector);
+
+		vm.prank(user1);
+		auctioneer.selectRune(lot, 1, "TEST TEST TEST");
+	}
+
+	function test_runes_selectRune_ExpectRevert_PrivateAuction() public {
+		uint256 lot = _createDailyPrivateAuctionWithRunes(2, true);
+
+		vm.expectRevert(PrivateAuction.selector);
+
+		vm.prank(user1);
+		auctioneer.selectRune(lot, 1, "TEST TEST TEST");
+
+		_giveGO(user1, 300e18);
+
+		_expectEmitAuctionEvent_SwitchRune(lot, user1, "TEST TEST TEST", 1);
+
+		vm.prank(user1);
+		auctioneer.selectRune(lot, 1, "TEST TEST TEST");
+	}
 
 	function test_runes_selectRune_ExpectEmit_SelectedRune() public {
 		uint256 lot = _createDailyAuctionWithRunes(2, true);
