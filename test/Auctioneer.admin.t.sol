@@ -34,7 +34,7 @@ contract AuctioneerAdminTest is AuctioneerHelper {
 		auctioneer.updateTreasury((address(0)));
 	}
 	function test_updateTreasury_RevertWhen_CallerIsNotOwner() public {
-		vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, address(0)));
+		_expectRevertNotAdmin(address(0));
 		vm.prank(address(0));
 		auctioneer.updateTreasury(treasury2);
 	}
@@ -55,7 +55,7 @@ contract AuctioneerAdminTest is AuctioneerHelper {
 		auctioneer.updateTeamTreasury((address(0)));
 	}
 	function test_updateTeamTreasury_RevertWhen_CallerIsNotOwner() public {
-		vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, address(0)));
+		_expectRevertNotAdmin(address(0));
 		vm.prank(address(0));
 		auctioneer.updateTeamTreasury(treasury2);
 	}
@@ -71,7 +71,7 @@ contract AuctioneerAdminTest is AuctioneerHelper {
 		auctioneer.updateFarm(address(farm));
 	}
 	function test_updateFarm_RevertWhen_CallerIsNotOwner() public {
-		vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, address(0)));
+		_expectRevertNotAdmin(address(0));
 		vm.prank(address(0));
 		auctioneer.updateFarm(address(farm));
 	}

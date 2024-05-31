@@ -27,7 +27,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 
 	// CREATE
 	function test_createAuctions_RevertWhen_CallerIsNotOwner() public {
-		vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, address(0)));
+		_expectRevertNotAdmin(address(0));
 
 		AuctionParams[] memory params = new AuctionParams[](1);
 		params[0] = _getBaseSingleAuctionParams();

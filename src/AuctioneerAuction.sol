@@ -2,7 +2,6 @@
 pragma solidity ^0.8.20;
 pragma experimental ABIEncoderV2;
 
-import { console } from "forge-std/console.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -483,13 +482,6 @@ contract AuctioneerAuction is
 		// Distribute lot revenue to treasury, farm, and team treasury
 		(treasuryETHDistribution, farmETHDistribution, teamTreasuryETHDistribution) = auction.getRevenueDistributions(
 			teamTreasurySplit
-		);
-
-		console.log(
-			"Rev dist, treasury %s, farm %s, teamTreasury %s",
-			treasuryETHDistribution,
-			farmETHDistribution,
-			teamTreasuryETHDistribution
 		);
 
 		// Send marked emissions to treasury

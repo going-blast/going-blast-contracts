@@ -27,7 +27,7 @@ contract AuctioneerCancelTest is AuctioneerHelper {
 		params[0] = _getBaseSingleAuctionParams();
 		auctioneer.createAuctions(params);
 
-		vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, address(0)));
+		_expectRevertNotAdmin(address(0));
 
 		vm.prank(address(0));
 		auctioneer.cancelAuction(0);

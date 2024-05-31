@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 pragma experimental ABIEncoderV2;
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -48,7 +48,7 @@ import { IAuctioneerAuction } from "./AuctioneerAuction.sol";
 //      * ,            *,  ,      ,,    ,   , ,,    ,     ,
 // ,,         ,    ,      ,           ,    *
 
-contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
+contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYield {
 	using GBMath for uint256;
 	using SafeERC20 for IERC20;
 
@@ -71,13 +71,26 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 	mapping(address => string) public userAlias;
 	mapping(string => address) public aliasUser;
 
-	constructor(IERC20 _go, IERC20 _voucher, IWETH _weth) Ownable(msg.sender) {
+	// MUTING
+	mapping(address => bool) public mutedUsers;
+	bytes32 public constant MOD_ROLE = keccak256("MOD_ROLE");
+
+	constructor(IERC20 _go, IERC20 _voucher, IWETH _weth) {
 		GO = _go;
 		VOUCHER = _voucher;
 		WETH = _weth;
+
+		// Access control
+		_grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+		_grantRole(MOD_ROLE, msg.sender);
 	}
 
-	function link(address _auctioneerEmissions, address _auctioneerAuction) public onlyOwner {
+	modifier onlyAdmin() {
+		_checkRole(DEFAULT_ADMIN_ROLE);
+		_;
+	}
+
+	function link(address _auctioneerEmissions, address _auctioneerAuction) public onlyAdmin {
 		if (_auctioneerEmissions == address(0) || _auctioneerAuction == address(0)) revert ZeroAddress();
 		if (address(auctioneerEmissions) != address(0)) revert AlreadyLinked();
 		if (address(auctioneerAuction) != address(0)) revert AlreadyLinked();
@@ -97,32 +110,44 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 
 	// Admin
 
-	function updateTreasury(address _treasury) public onlyOwner {
+	function updateTreasury(address _treasury) public onlyAdmin {
 		if (_treasury == address(0)) revert ZeroAddress();
 		treasury = _treasury;
 		auctioneerAuction.updateTreasury(treasury);
 		emit UpdatedTreasury(_treasury);
 	}
-	function updateTeamTreasury(address _teamTreasury) public onlyOwner {
+	function updateTeamTreasury(address _teamTreasury) public onlyAdmin {
 		if (_teamTreasury == address(0)) revert ZeroAddress();
 		teamTreasury = _teamTreasury;
 		auctioneerAuction.updateTeamTreasury(teamTreasury);
 		emit UpdatedTeamTreasury(_teamTreasury);
 	}
 
-	function updateFarm(address _farm) public onlyOwner {
+	function updateFarm(address _farm) public onlyAdmin {
 		auctioneerFarm = IAuctioneerFarm(_farm);
 		auctioneerFarm.link();
 		emit UpdatedFarm(address(auctioneerFarm));
 	}
 
+	function muteUser(address _user, bool _muted) public onlyRole(MOD_ROLE) {
+		mutedUsers[_user] = _muted;
+
+		// remove users alias if exists and being muted
+		if (_muted && bytes(userAlias[_user]).length != 0) {
+			aliasUser[userAlias[_user]] = address(0);
+			userAlias[_user] = "";
+		}
+
+		emit MutedUser(_user, _muted);
+	}
+
 	// BLAST
 
-	function initializeBlast() public onlyOwner {
+	function initializeBlast() public onlyAdmin {
 		_initializeBlast();
 	}
 
-	function claimYieldAll(address _recipient, uint256 _minClaimRateBips) public onlyOwner {
+	function claimYieldAll(address _recipient, uint256 _minClaimRateBips) public onlyAdmin {
 		_claimYieldAll(_recipient, _minClaimRateBips);
 	}
 
@@ -139,7 +164,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 	// CORE
 	///////////////////
 
-	function createAuctions(AuctionParams[] memory _params) public onlyOwner nonReentrant {
+	function createAuctions(AuctionParams[] memory _params) public onlyAdmin nonReentrant {
 		if (!auctioneerEmissions.emissionsInitialized()) revert EmissionsNotInitialized();
 		if (treasury == address(0)) revert TreasuryNotSet();
 		if (teamTreasury == address(0)) revert TeamTreasuryNotSet();
@@ -186,7 +211,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 
 	// CANCEL
 
-	function cancelAuction(uint256 _lot) public onlyOwner {
+	function cancelAuction(uint256 _lot) public onlyAdmin {
 		(uint256 unlockTimestamp, uint256 cancelledEmissions) = auctioneerAuction.cancelAuction(_lot);
 
 		auctioneerEmissions.deAllocateEmissions(unlockTimestamp, cancelledEmissions);
@@ -225,6 +250,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 
 	// MESSAGE
 	function messageAuction(uint256 _lot, string memory _message) public {
+		if (mutedUsers[msg.sender]) revert Muted();
 		auctioneerAuction.validateAuctionRunning(_lot);
 		auctioneerAuction.validatePrivateAuctionEligibility(_lot, _userGOBalance(msg.sender));
 		emit Messaged(_lot, msg.sender, _message, userAlias[msg.sender], auctionUsers[_lot][msg.sender].rune);
@@ -288,7 +314,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 		emit Bid(
 			_lot,
 			msg.sender,
-			_options.message,
+			mutedUsers[msg.sender] ? "" : _options.message,
 			userAlias[msg.sender],
 			_options.rune,
 			prevRune,
@@ -305,7 +331,14 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 
 		auctioneerAuction.selectRune(_lot, user.bids, user.rune, _rune);
 
-		emit SelectedRune(_lot, msg.sender, _message, userAlias[msg.sender], _rune, user.rune);
+		emit SelectedRune(
+			_lot,
+			msg.sender,
+			mutedUsers[msg.sender] ? "" : _message,
+			userAlias[msg.sender],
+			_rune,
+			user.rune
+		);
 
 		// Incur rune switch penalty
 		if (user.rune != _rune) {
@@ -343,7 +376,7 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 			finalize(_lot);
 		}
 
-		emit Claimed(_lot, msg.sender, _message, userAlias[msg.sender], user.rune);
+		emit Claimed(_lot, msg.sender, mutedUsers[msg.sender] ? "" : _message, userAlias[msg.sender], user.rune);
 	}
 
 	function _distributeLotProfit(uint256 _lot, uint256 _userShareOfPayment) internal {
@@ -467,6 +500,8 @@ contract Auctioneer is Ownable, ReentrancyGuard, AuctioneerEvents, BlastYield {
 	///////////////////
 
 	function setAlias(string memory _alias) public nonReentrant {
+		if (mutedUsers[msg.sender]) revert Muted();
+
 		if (bytes(_alias).length < 3 || bytes(_alias).length > 9) revert InvalidAlias();
 		if (aliasUser[_alias] != address(0)) revert AliasTaken();
 

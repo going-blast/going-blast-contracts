@@ -219,12 +219,14 @@ error CantSwitchRune();
 error CannotHaveNFTsWithRunes();
 error IncorrectETHPaymentAmount();
 error SentETHButNotWalletPayment();
+error Muted();
 
 interface AuctioneerEvents {
 	// ADMIN
 	event Linked(address indexed _auctioneer, address indexed _auctioneerEmissions, address _auctioneerAuction);
 	event Initialized();
 	event InitializedEmissions();
+	event MutedUser(address indexed _user, bool _muted);
 
 	// CONSTS
 	event UpdatedStartingBid(uint256 _startingBid);

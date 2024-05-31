@@ -6,11 +6,28 @@ Contracts, tests, coverage, and deployment scripts of the Going Blast ecosystem.
 
 ```
 
-- [ ] Calculate bid penalty more elegantly (1 * 0.2 = 0.2, should round to 0, not ceil to 1)
-- [ ] Verbal Blacklisting
-  - [ ] Revert on Message Auction
-  - [ ] Alias not included in events
-  - [ ] Message not included in events
+- [x] Muted users tests
+  - [x] Add "mods" to allow moderating the chat
+  - [x] updated in state
+  - [x] Can update whether a user is muted
+  - [x] Only admin can mute user
+  - [x] Muting a user removes their alias
+  - [x] Message Auction
+    - [x] Revert if user muted with "Muted"
+  - [x] Bid
+    - [x] Unmuted user can send message with alias
+    - [x] Muted users message and alias removed
+  - [x] SelectRune
+    - [x] Unmuted user can send message with alias
+    - [x] Muted users message and alias removed
+  - [x] Claimed
+    - [x] Unmuted user can send message with alias
+    - [x] Muted users message and alias removed
+  - [x] Set Alias reverts if muted
+- [x] Verbal Blacklisting
+  - [x] Revert on Message Auction
+  - [x] Alias not included in events
+  - [x] Message not included in events
 - [x] Validate Auction Running
   - [x] Public validator
   - [x] Prevent sending messages after auction closes
@@ -18,10 +35,16 @@ Contracts, tests, coverage, and deployment scripts of the Going Blast ecosystem.
   - [x] Switching runes
   - [x] Message Auction
 - [x] Break apart project and team treasury
+
+
+- [ ] Calculate bid penalty more elegantly (1 * 0.2 = 0.2, should round to 0, not ceil to 1)
+
 - [ ] Add migration functionality
   - [ ] Add multisig wallet address
   - [ ] Add 7 day timelock
   - [ ] GO sent to multisig, then injected into new contract
+
+
 
 - [x] Tests
   - [x] Cannot send message after auction closes

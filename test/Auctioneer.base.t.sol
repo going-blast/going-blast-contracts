@@ -489,8 +489,22 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	error OwnableUnauthorizedAccount(address account);
 	error ERC20InsufficientAllowance(address spender, uint256 allowance, uint256 needed);
 	error ERC20InsufficientBalance(address sender, uint256 balance, uint256 needed);
-
 	event Transfer(address indexed from, address indexed to, uint256 value);
+
+	// ACCESS CONTROL
+
+	error AccessControlUnauthorizedAccount(address account, bytes32 role);
+	bytes32 public DEFAULT_ADMIN_ROLE = 0x00;
+	bytes32 public MOD_ROLE = keccak256("MOD_ROLE");
+
+	function _expectRevertNotAdmin(address account) public {
+		vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, account, DEFAULT_ADMIN_ROLE));
+	}
+	function _expectRevertNotModerator(address account) public {
+		vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, account, MOD_ROLE));
+	}
+
+	// TOKEN / ETH MOVEMENT HELPERS
 
 	mapping(uint256 => mapping(address => uint256)) private ethBalances;
 
