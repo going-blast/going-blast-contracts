@@ -38,8 +38,8 @@ import { IAuctioneerFarm } from "./IAuctioneerFarm.sol";
 //   ,         ,*            ,,* *,   ,   **                        ,
 //      * ,            *,  ,      ,,    ,   , ,,    ,     ,
 //          ,    ,      ,           ,    *
+// -- ARCH --
 
-// Dont need everything from most math libs, and nearing contract size limit
 library GBMath {
 	function transformDec(uint256 amount, uint8 from, uint8 to) internal pure returns (uint256) {
 		return (amount * 10 ** to) / 10 ** from;

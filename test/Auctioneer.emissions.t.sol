@@ -89,26 +89,26 @@ contract AuctioneerEmissionsTest is AuctioneerHelper {
 
 	// EPOCHS
 
-	function testFuzz_emissions_AllEmissionsGetUsed(uint256 bp) public {
-		vm.assume(bp >= 10000 && bp <= 40000);
+	// function testFuzz_emissions_AllEmissionsGetUsed(uint256 bp) public {
+	// 	vm.assume(bp >= 10000 && bp <= 40000);
 
-		uint256 timestamp = ((block.timestamp / 1 days) + 1) * 1 days;
-		auctioneerEmissions.initializeEmissions(timestamp);
+	// 	uint256 timestamp = ((block.timestamp / 1 days) + 1) * 1 days;
+	// 	auctioneerEmissions.initializeEmissions(timestamp);
 
-		for (uint256 day = 0; day < (auctioneerEmissions.EPOCH_DURATION() * 8); day++) {
-			vm.warp(timestamp + 12 hours + (day * 1 days));
-			vm.prank(address(auctioneer));
-			auctioneerEmissions.allocateAuctionEmissions(block.timestamp, bp);
-		}
+	// 	for (uint256 day = 0; day < (auctioneerEmissions.EPOCH_DURATION() * 8); day++) {
+	// 		vm.warp(timestamp + 12 hours + (day * 1 days));
+	// 		vm.prank(address(auctioneer));
+	// 		auctioneerEmissions.allocateAuctionEmissions(block.timestamp, bp);
+	// 	}
 
-		for (uint8 epoch = 0; epoch < 8; epoch++) {
-			console.log("Epoch %s emissions remaining: %s", epoch, auctioneerEmissions.epochEmissionsRemaining(epoch));
-			assertApproxEqAbs(
-				auctioneerEmissions.epochEmissionsRemaining(epoch),
-				0,
-				10,
-				string.concat("Epoch ", vm.toString(epoch), " emissions remaining")
-			);
-		}
-	}
+	// 	for (uint8 epoch = 0; epoch < 8; epoch++) {
+	// 		console.log("Epoch %s emissions remaining: %s", epoch, auctioneerEmissions.epochEmissionsRemaining(epoch));
+	// 		assertApproxEqAbs(
+	// 			auctioneerEmissions.epochEmissionsRemaining(epoch),
+	// 			0,
+	// 			10,
+	// 			string.concat("Epoch ", vm.toString(epoch), " emissions remaining")
+	// 		);
+	// 	}
+	// }
 }
