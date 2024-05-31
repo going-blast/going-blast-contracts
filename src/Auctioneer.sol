@@ -201,10 +201,8 @@ contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYi
 	}
 
 	function selectRune(uint256 _lot, uint8 _rune, string calldata _message) external nonReentrant {
-		auctioneerAuction.validatePrivateAuctionEligibility(_lot, _userGoBalance(msg.sender));
-
 		AuctionUser storage user = auctionUsers[_lot][msg.sender];
-		user.bids = auctioneerAuction.selectRune(_lot, user.bids, user.rune, _rune);
+		user.bids = auctioneerAuction.selectRune(_lot, user.bids, user.rune, _rune, _userGoBalance(msg.sender));
 
 		uint8 prevRune = user.rune;
 		user.rune = _rune;
@@ -361,9 +359,9 @@ contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYi
 
 		AuctionUser storage user = auctionUsers[_lot][msg.sender];
 
-		(uint256 userBidsAfterPenalty, uint256 auctionBid, uint256 bidCost) = auctioneerAuction.markBid(
+		(uint256 userBidsAfterPenalty, uint256 auctionBid, uint256 bidCost) = auctioneerAuction.bid(
 			_lot,
-			IAuctioneerAuction.MarkBidPayload({
+			IAuctioneerAuction.BidData({
 				user: msg.sender,
 				prevRune: user.rune,
 				newRune: _rune,

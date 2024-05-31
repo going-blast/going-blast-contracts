@@ -140,7 +140,6 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		params[3] = singleAuctionParam;
 		params[4] = singleAuctionParam;
 
-		// 5 Auctions needs 5 times the ETH
 		auctioneer.createAuctions(params);
 	}
 
@@ -150,7 +149,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		AuctionParams[] memory params = new AuctionParams[](2);
 
 		params[0] = _getBaseSingleAuctionParams();
-		params[0].emissionBP = 10000;
+		params[0].emissionBP = 17500;
 
 		params[1] = _getBaseSingleAuctionParams();
 		params[1].emissionBP = 25000;
@@ -319,6 +318,38 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		auctioneer.createAuctions(params);
 	}
 
+	function test_createAuctions_expectLotAndLotCountIncrement() public {
+		// Lot 0
+		vm.expectEmit(true, false, false, false);
+		emit AuctionCreated(0);
+
+		AuctionParams[] memory params = new AuctionParams[](1);
+		params[0] = _getBaseSingleAuctionParams();
+
+		auctioneer.createAuctions(params);
+		assertEq(auctioneerAuction.lotCount(), 1, "Lot count is 1");
+
+		// Lot 1
+		vm.expectEmit(true, false, false, false);
+		emit AuctionCreated(1);
+
+		params = new AuctionParams[](1);
+		params[0] = _getBaseSingleAuctionParams();
+
+		auctioneer.createAuctions(params);
+		assertEq(auctioneerAuction.lotCount(), 2, "Lot count is 2");
+
+		// Lot 2
+		vm.expectEmit(true, false, false, false);
+		emit AuctionCreated(2);
+
+		params = new AuctionParams[](1);
+		params[0] = _getBaseSingleAuctionParams();
+
+		auctioneer.createAuctions(params);
+		assertEq(auctioneerAuction.lotCount(), 3, "Lot count is 3");
+	}
+
 	function test_createAuctions_createSingleAuction_SuccessfulUpdateOfContractState() public {
 		AuctionParams[] memory params = new AuctionParams[](1);
 		AuctionParams memory auction = _getBaseSingleAuctionParams();
@@ -393,7 +424,11 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		assertEq(auction.bidData.bids, 0, "Bids should be 0");
 		assertEq(auction.bidData.revenue, 0, "Revenue should be 0");
 		assertEq(auction.bidData.bid, auctioneerAuction.startingBid(), "Initial bid amount should be starting bid");
-		assertEq(auction.bidData.bidTimestamp, params[0].unlockTimestamp, "Last bid timestamp should be unlock timestamp");
+		assertEq(
+			auction.bidData.bidTimestamp,
+			params[0].unlockTimestamp,
+			"Last bid timestamp should be unlock timestamp"
+		);
 		assertEq(auction.bidData.bidUser, address(0), "Bidding user should be empty");
 		assertEq(auction.bidData.bidRune, 0, "Bidding rune should be 0");
 		assertEq(auction.finalized, false, "Not finalized");

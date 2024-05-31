@@ -41,6 +41,15 @@ import { GBMath } from "./AuctionUtils.sol";
 //   ,         ,*            ,,* *,   ,   **                        ,
 //      * ,            *,  ,      ,,    ,   , ,,    ,     ,
 // ,,         ,    ,      ,           ,    *
+// -- ARCH --
+
+// NOTES
+// 	. Daily Emission
+// 			Maximum daily allowable emission bonus is 40000
+// 			Most days, the emission will be 10000
+// 			This allows us to scale up or down the number of auctions per week
+// 			An emission BP over 10000 means it is using emissions scheduled for other days
+// 			This will not overflow the epoch's emissions though, because the daily emission amount is calculated from remaining days
 
 interface IAuctioneerEmissions {
 	function emissionTaxDuration() external view returns (uint256);
