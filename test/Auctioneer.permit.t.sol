@@ -24,7 +24,14 @@ contract SigUtils {
 	function getStructHash(Permit memory _permit) internal pure returns (bytes32) {
 		return
 			keccak256(
-				abi.encode(PERMIT_TYPEHASH, _permit.owner, _permit.spender, _permit.value, _permit.nonce, _permit.deadline)
+				abi.encode(
+					PERMIT_TYPEHASH,
+					_permit.owner,
+					_permit.spender,
+					_permit.value,
+					_permit.nonce,
+					_permit.deadline
+				)
 			);
 	}
 
@@ -89,8 +96,8 @@ contract AuctioneerPermitTest is AuctioneerHelper, AuctioneerFarmEvents {
 
 		PermitData memory permitData = getPermitData(user1, user1PK, address(auctioneer), address(VOUCHER), 10e18);
 
-		_expectEmitAuctionEvent_Bid(user1, 0, 0, "Hello World", 1);
 		_expectTokenTransfer(VOUCHER, user1, dead, 1e18);
+		_expectEmitAuctionEvent_Bid(user1, 0, 0, "Hello World", 1);
 
 		vm.prank(user1);
 		auctioneer.bidWithPermit(0, 0, "Hello World", 1, PaymentType.VOUCHER, permitData);

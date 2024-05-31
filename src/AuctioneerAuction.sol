@@ -169,7 +169,8 @@ contract AuctioneerAuction is
 	}
 
 	modifier validRune(uint256 _lot, uint8 _rune) {
-		if (auctions[_lot].runes.length > 0 && (_rune == 0 || _rune >= auctions[_lot].runes.length)) revert InvalidRune();
+		if (auctions[_lot].runes.length > 0 && (_rune == 0 || _rune >= auctions[_lot].runes.length))
+			revert InvalidRune();
 		if (auctions[_lot].runes.length == 0 && _rune != 0) revert InvalidRune();
 		_;
 	}
@@ -397,7 +398,12 @@ contract AuctioneerAuction is
 
 		bid = auction.bidData.bid;
 		auctionBidCost = auction.bidData.bidCost;
-		userBidsAfterPenalty = _switchRuneUpdateData(_lot, _payload.existingBidCount, _payload.prevRune, _payload.newRune);
+		userBidsAfterPenalty = _switchRuneUpdateData(
+			_lot,
+			_payload.existingBidCount,
+			_payload.prevRune,
+			_payload.newRune
+		);
 	}
 
 	function selectRune(

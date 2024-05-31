@@ -47,53 +47,55 @@ import { IAuctioneerAuction } from "./AuctioneerAuction.sol";
 //   ,         ,*            ,,* *,   ,   **                        ,
 //      * ,            *,  ,      ,,    ,   , ,,    ,     ,
 // ,,         ,    ,      ,           ,    *
+// -- ARCH --
 
 contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYield {
 	using GBMath for uint256;
 	using SafeERC20 for IERC20;
 
-	// FACETS (not really)
-	IAuctioneerEmissions public auctioneerEmissions;
-	IAuctioneerAuction public auctioneerAuction;
-	IAuctioneerFarm public auctioneerFarm;
-
-	// ADMIN
-	address public treasury;
-	address public teamTreasury;
-	address public deadAddress = 0x000000000000000000000000000000000000dEaD;
-
 	IERC20 public GO;
 	IERC20 public VOUCHER;
 	IWETH public WETH;
 
-	// USER
+	address public treasury;
+	address public teamTreasury;
+	address public deadAddress = 0x000000000000000000000000000000000000dEaD;
+
+	IAuctioneerEmissions public auctioneerEmissions;
+	IAuctioneerAuction public auctioneerAuction;
+	IAuctioneerFarm public auctioneerFarm;
+
 	mapping(uint256 => mapping(address => AuctionUser)) public auctionUsers;
 	mapping(address => string) public userAlias;
 	mapping(string => address) public aliasUser;
 
-	// MUTING
 	mapping(address => bool) public mutedUsers;
 	bytes32 public constant MOD_ROLE = keccak256("MOD_ROLE");
 
+	address public multisig;
+	bool public deprecated = false;
+	uint256 public migrationQueueTimestamp;
+	address public migrationDestination;
+	uint256 public migrationDelay = 7 days;
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 	constructor(address _multisig, IERC20 _go, IERC20 _voucher, IWETH _weth) {
 		multisig = _multisig;
+		_grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+		_grantRole(MOD_ROLE, msg.sender);
+
 		GO = _go;
 		VOUCHER = _voucher;
 		WETH = _weth;
-
-		// Access control
-		_grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-		_grantRole(MOD_ROLE, msg.sender);
 	}
 
-	modifier onlyAdmin() {
-		_checkRole(DEFAULT_ADMIN_ROLE);
-		_;
-	}
-
-	function link(address _auctioneerEmissions, address _auctioneerAuction) public onlyAdmin {
-		if (_auctioneerEmissions == address(0) || _auctioneerAuction == address(0)) revert ZeroAddress();
-		if (address(auctioneerEmissions) != address(0) || address(auctioneerAuction) != address(0)) revert AlreadyLinked();
+	function link(address _auctioneerEmissions, address _auctioneerAuction) external onlyAdmin {
+		if (_auctioneerEmissions == address(0)) revert ZeroAddress();
+		if (_auctioneerAuction == address(0)) revert ZeroAddress();
+		if (address(auctioneerEmissions) != address(0)) revert AlreadyLinked();
+		if (address(auctioneerAuction) != address(0)) revert AlreadyLinked();
 
 		auctioneerEmissions = IAuctioneerEmissions(_auctioneerEmissions);
 		auctioneerAuction = IAuctioneerAuction(_auctioneerAuction);
@@ -101,41 +103,175 @@ contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYi
 		emit Linked(address(this), _auctioneerEmissions, _auctioneerAuction);
 	}
 
-	// RECEIVERS
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	receive() external payable {}
 
-	// Admin
+	modifier onlyAdmin() {
+		_checkRole(DEFAULT_ADMIN_ROLE);
+		_;
+	}
+	modifier onlyMultisig() {
+		if (multisig != msg.sender) revert NotMultisig();
+		_;
+	}
+	modifier notDeprecated() {
+		if (deprecated) revert Deprecated();
+		_;
+	}
 
-	function updateTreasury(address _treasury) public onlyAdmin {
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	function initializeBlast() external onlyAdmin {
+		_initializeBlast();
+	}
+
+	function claimYieldAll(address _recipient, uint256 _minClaimRateBips) external onlyAdmin {
+		_claimYieldAll(_recipient, _minClaimRateBips);
+	}
+
+	function updateTreasury(address _treasury) external onlyAdmin {
 		if (_treasury == address(0)) revert ZeroAddress();
+
 		treasury = _treasury;
 		auctioneerAuction.updateTreasury(treasury);
 		emit UpdatedTreasury(_treasury);
 	}
 
-	function updateTeamTreasury(address _teamTreasury) public onlyAdmin {
+	function updateTeamTreasury(address _teamTreasury) external onlyAdmin {
 		if (_teamTreasury == address(0)) revert ZeroAddress();
+
 		teamTreasury = _teamTreasury;
 		auctioneerAuction.updateTeamTreasury(teamTreasury);
 		emit UpdatedTeamTreasury(_teamTreasury);
 	}
 
-	function updateFarm(address _farm) public onlyAdmin {
+	function updateFarm(address _farm) external onlyAdmin {
 		auctioneerFarm = IAuctioneerFarm(_farm);
 		emit UpdatedFarm(address(auctioneerFarm));
 	}
 
-	function muteUser(address _user, bool _muted) public onlyRole(MOD_ROLE) {
+	function muteUser(address _user, bool _muted) external onlyRole(MOD_ROLE) {
 		mutedUsers[_user] = _muted;
-
-		// remove users alias if exists and being muted
-		if (_muted && bytes(userAlias[_user]).length != 0) {
-			aliasUser[userAlias[_user]] = address(0);
-			userAlias[_user] = "";
-		}
+		aliasUser[userAlias[_user]] = address(0);
+		userAlias[_user] = "";
 
 		emit MutedUser(_user, _muted);
+	}
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	function createAuctions(AuctionParams[] memory _params) external onlyAdmin nonReentrant notDeprecated {
+		if (!auctioneerEmissions.emissionsInitialized()) revert EmissionsNotInitialized();
+		if (treasury == address(0)) revert TreasuryNotSet();
+		if (teamTreasury == address(0)) revert TeamTreasuryNotSet();
+
+		for (uint8 i = 0; i < _params.length; i++) {
+			_createAuction(_params[i]);
+		}
+	}
+
+	function cancelAuction(uint256 _lot) external onlyAdmin {
+		_cancelAuction(_lot);
+	}
+
+	function bid(
+		uint256 _lot,
+		uint8 _rune,
+		string calldata _message,
+		uint256 _bidCount,
+		PaymentType _paymentType
+	) external payable nonReentrant {
+		_bid(_lot, _rune, _message, _bidCount, _paymentType);
+	}
+
+	function bidWithPermit(
+		uint256 _lot,
+		uint8 _rune,
+		string calldata _message,
+		uint256 _bidCount,
+		PaymentType _paymentType,
+		PermitData memory _permitData
+	) external payable nonReentrant {
+		_selfPermit(_permitData);
+		_bid(_lot, _rune, _message, _bidCount, _paymentType);
+	}
+
+	function selectRune(uint256 _lot, uint8 _rune, string calldata _message) external nonReentrant {
+		auctioneerAuction.validatePrivateAuctionEligibility(_lot, _userGoBalance(msg.sender));
+
+		AuctionUser storage user = auctionUsers[_lot][msg.sender];
+		user.bids = auctioneerAuction.selectRune(_lot, user.bids, user.rune, _rune);
+
+		uint8 prevRune = user.rune;
+		user.rune = _rune;
+
+		emit SelectedRune(
+			_lot,
+			msg.sender,
+			mutedUsers[msg.sender] ? "" : _message,
+			userAlias[msg.sender],
+			_rune,
+			prevRune
+		);
+	}
+
+	function messageAuction(uint256 _lot, string memory _message) external {
+		if (mutedUsers[msg.sender]) revert Muted();
+
+		auctioneerAuction.validateAuctionRunning(_lot);
+		auctioneerAuction.validatePrivateAuctionEligibility(_lot, _userGoBalance(msg.sender));
+
+		emit Messaged(_lot, msg.sender, _message, userAlias[msg.sender], auctionUsers[_lot][msg.sender].rune);
+	}
+
+	function finalizeAuction(uint256 _lot) external nonReentrant {
+		_finalizeAuction(_lot);
+	}
+
+	function claimLot(uint256 _lot, string calldata _message) external payable nonReentrant {
+		AuctionUser storage user = auctionUsers[_lot][msg.sender];
+
+		if (user.lotClaimed) revert UserAlreadyClaimedLot();
+		user.lotClaimed = true;
+
+		(uint256 userShareOfPayment, bool triggerFinalization) = auctioneerAuction.claimLot(
+			_lot,
+			msg.sender,
+			user.bids,
+			user.rune
+		);
+
+		_takeUserPayment(msg.sender, PaymentType.WALLET, userShareOfPayment, 0);
+		_distributeLotPayment(_lot, userShareOfPayment);
+
+		if (triggerFinalization) _finalizeAuction(_lot);
+
+		emit Claimed(_lot, msg.sender, mutedUsers[msg.sender] ? "" : _message, userAlias[msg.sender], user.rune);
+	}
+
+	function harvestAuctionsEmissions(uint256[] memory _lots, bool _harvestToFarm) external nonReentrant {
+		for (uint256 i = 0; i < _lots.length; i++) {
+			_harvestAuctionEmissions(_lots[i], _harvestToFarm);
+		}
+	}
+
+	function setAlias(string memory _alias) external nonReentrant {
+		if (mutedUsers[msg.sender]) revert Muted();
+		if (bytes(_alias).length < 3 || bytes(_alias).length > 9) revert InvalidAlias();
+		if (aliasUser[_alias] != address(0)) revert AliasTaken();
+
+		// Free previous alias
+		aliasUser[userAlias[msg.sender]] = address(0);
+
+		// Set new alias
+		userAlias[msg.sender] = _alias;
+		aliasUser[_alias] = msg.sender;
+
+		emit UpdatedAlias(msg.sender, _alias);
 	}
 
 	// MIGRATION
@@ -152,23 +288,7 @@ contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYi
 	//      -- Arch
 	//
 
-	address public multisig;
-	bool public deprecated = false;
-	uint256 migrationQueueTimestamp;
-	address migrationDestination;
-	uint256 migrationDelay = 7 days;
-
-	modifier onlyMultisig() {
-		if (multisig != msg.sender) revert NotMultisig();
-		_;
-	}
-
-	modifier notDeprecated() {
-		if (deprecated) revert Deprecated();
-		_;
-	}
-
-	function queueMigration(address _dest) public onlyMultisig notDeprecated {
+	function queueMigration(address _dest) external onlyMultisig notDeprecated {
 		if (_dest == address(0)) revert ZeroAddress();
 		if (migrationQueueTimestamp != 0) revert MigrationAlreadyQueued();
 
@@ -177,7 +297,8 @@ contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYi
 
 		emit MigrationQueued(multisig, _dest);
 	}
-	function cancelMigration(address _dest) public onlyMultisig {
+
+	function cancelMigration(address _dest) external onlyMultisig {
 		if (migrationQueueTimestamp == 0) revert MigrationNotQueued();
 		if (migrationDestination != _dest) revert MigrationDestMismatch();
 
@@ -186,7 +307,8 @@ contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYi
 
 		emit MigrationQueued(multisig, _dest);
 	}
-	function executeMigration(address _dest) public onlyMultisig {
+
+	function executeMigration(address _dest) external onlyMultisig {
 		if (migrationQueueTimestamp == 0) revert MigrationNotQueued();
 		if (migrationDestination != _dest) revert MigrationDestMismatch();
 
@@ -196,84 +318,132 @@ contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYi
 		emit MigrationExecuted(multisig, _dest, unallocated);
 	}
 
-	// BLAST
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	function initializeBlast() public onlyAdmin {
-		_initializeBlast();
-	}
+	function _createAuction(AuctionParams memory _param) internal {
+		uint256 wethAmount = 0;
 
-	function claimYieldAll(address _recipient, uint256 _minClaimRateBips) public onlyAdmin {
-		_claimYieldAll(_recipient, _minClaimRateBips);
-	}
-
-	// PRIVATE AUCTION
-
-	function _userGoBalance(address _user) internal view returns (uint256 bal) {
-		bal = GO.balanceOf(_user);
-		if (address(auctioneerFarm) != address(0)) {
-			bal += auctioneerFarm.getEqualizedUserStaked(_user);
-		}
-	}
-
-	///////////////////
-	// CORE
-	///////////////////
-
-	function createAuctions(AuctionParams[] memory _params) public onlyAdmin nonReentrant notDeprecated {
-		if (!auctioneerEmissions.emissionsInitialized()) revert EmissionsNotInitialized();
-		if (treasury == address(0)) revert TreasuryNotSet();
-		if (teamTreasury == address(0)) revert TeamTreasuryNotSet();
-
-		uint256 ethAmount = 0;
-
-		// Pull WETH from treasury, must use WETH so that the owner doesn't also need to be the treasury
-		for (uint8 i = 0; i < _params.length; i++) {
-			for (uint8 j = 0; j < _params[i].tokens.length; j++) {
-				if (_params[i].tokens[j].token == address(0)) {
-					ethAmount += _params[i].tokens[j].amount;
-				}
-			}
+		for (uint8 i = 0; i < _param.tokens.length; i++) {
+			if (_param.tokens[i].token != address(0)) continue;
+			wethAmount += _param.tokens[i].amount;
 		}
 
-		if (ethAmount > 0) {
-			IERC20(address(WETH)).safeTransferFrom(treasury, address(this), ethAmount);
-			WETH.withdraw(ethAmount);
+		if (wethAmount > 0) {
+			IERC20(address(WETH)).safeTransferFrom(treasury, address(this), wethAmount);
+			WETH.withdraw(wethAmount);
 		}
 
-		for (uint8 i = 0; i < _params.length; i++) {
-			// Allocate Emissions
-			uint256 auctionEmissions = auctioneerEmissions.allocateAuctionEmissions(
-				_params[i].unlockTimestamp,
-				_params[i].emissionBP
-			);
+		uint256 auctionEmissions = auctioneerEmissions.allocateAuctionEmissions(
+			_param.unlockTimestamp,
+			_param.emissionBP
+		);
 
-			// Reset lotETH to prevent blending
-			uint256 lotEth = 0;
+		uint256 lot = auctioneerAuction.createAuction{ value: wethAmount }(_param, auctionEmissions);
 
-			// Get amount of ETH that needs to be sent
-			for (uint8 j = 0; j < _params[i].tokens.length; j++) {
-				if (_params[i].tokens[j].token == address(0)) {
-					lotEth = _params[i].tokens[j].amount;
-				}
-			}
-
-			// Create Auction
-			uint256 lot = auctioneerAuction.createAuction{ value: lotEth }(_params[i], auctionEmissions);
-
-			emit AuctionCreated(lot);
-		}
+		emit AuctionCreated(lot);
 	}
 
-	// CANCEL
-
-	function cancelAuction(uint256 _lot) public onlyAdmin {
+	function _cancelAuction(uint256 _lot) internal {
 		(uint256 unlockTimestamp, uint256 cancelledEmissions) = auctioneerAuction.cancelAuction(_lot);
-
 		auctioneerEmissions.deAllocateEmissions(unlockTimestamp, cancelledEmissions);
 		emit AuctionCancelled(_lot);
 	}
 
-	// USER PAYMENT
+	function _bid(
+		uint256 _lot,
+		uint8 _rune,
+		string calldata _message,
+		uint256 _bidCount,
+		PaymentType _paymentType
+	) internal {
+		if (_bidCount == 0) revert InvalidBidCount();
+
+		AuctionUser storage user = auctionUsers[_lot][msg.sender];
+
+		(uint256 userBidsAfterPenalty, uint256 auctionBid, uint256 bidCost) = auctioneerAuction.markBid(
+			_lot,
+			IAuctioneerAuction.MarkBidPayload({
+				user: msg.sender,
+				prevRune: user.rune,
+				newRune: _rune,
+				existingBidCount: user.bids,
+				arrivingBidCount: _bidCount,
+				paymentType: _paymentType,
+				userGoBalance: _userGoBalance(msg.sender)
+			})
+		);
+
+		uint8 prevRune = user.rune;
+		user.rune = _rune;
+		user.bids = userBidsAfterPenalty + _bidCount;
+
+		_takeUserPayment(msg.sender, _paymentType, bidCost * _bidCount, _bidCount * 1e18);
+
+		emit Bid(
+			_lot,
+			msg.sender,
+			mutedUsers[msg.sender] ? "" : _message,
+			userAlias[msg.sender],
+			_rune,
+			prevRune,
+			auctionBid,
+			_bidCount,
+			block.timestamp
+		);
+	}
+
+	function _harvestAuctionEmissions(uint256 _lot, bool _harvestToFarm) internal {
+		AuctionUser storage user = auctionUsers[_lot][msg.sender];
+		if (user.emissionsHarvested || user.bids == 0) return;
+
+		(uint256 unlockTimestamp, uint256 auctionBids, uint256 biddersEmissions) = auctioneerAuction
+			.validateAndGetHarvestData(_lot);
+
+		if (biddersEmissions == 0) return;
+
+		(uint256 harvested, uint256 burned) = auctioneerEmissions.harvestEmissions(
+			msg.sender,
+			(biddersEmissions * user.bids) / auctionBids,
+			unlockTimestamp,
+			_harvestToFarm
+		);
+
+		user.emissionsHarvested = true;
+		user.harvestedEmissions = harvested;
+		user.burnedEmissions = burned;
+
+		if (_harvestToFarm && harvested > 0) {
+			GO.safeIncreaseAllowance(address(auctioneerFarm), harvested);
+			auctioneerFarm.depositLockedGo(
+				harvested,
+				payable(msg.sender),
+				unlockTimestamp + auctioneerEmissions.emissionTaxDuration()
+			);
+		}
+
+		emit UserHarvestedLotEmissions(_lot, msg.sender, harvested, burned, _harvestToFarm);
+	}
+
+	function _finalizeAuction(uint256 _lot) internal {
+		(
+			bool triggerCancellation,
+			uint256 treasuryEmissions,
+			uint256 treasuryETHDistribution,
+			uint256 farmETHDistribution,
+			uint256 teamTreasuryETHDistribution
+		) = auctioneerAuction.finalizeAuction(_lot);
+
+		if (triggerCancellation) {
+			_cancelAuction(_lot);
+		}
+
+		if (treasuryEmissions > 0) {
+			auctioneerEmissions.transferEmissions(treasury, treasuryEmissions);
+		}
+
+		_transferDistributions(treasuryETHDistribution, farmETHDistribution, teamTreasuryETHDistribution);
+	}
 
 	function _selfPermit(PermitData memory _permitData) internal {
 		IERC20Permit(_permitData.token).permit(
@@ -286,7 +456,6 @@ contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYi
 			_permitData.s
 		);
 	}
-
 	function _takeUserPayment(
 		address _user,
 		PaymentType _paymentType,
@@ -303,147 +472,16 @@ contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYi
 		}
 	}
 
-	// MESSAGE
-	function messageAuction(uint256 _lot, string memory _message) public {
-		if (mutedUsers[msg.sender]) revert Muted();
-		auctioneerAuction.validateAuctionRunning(_lot);
-		auctioneerAuction.validatePrivateAuctionEligibility(_lot, _userGoBalance(msg.sender));
-		emit Messaged(_lot, msg.sender, _message, userAlias[msg.sender], auctionUsers[_lot][msg.sender].rune);
-	}
-
-	// BID
-
-	function bidWithPermit(
-		uint256 _lot,
-		uint8 _rune,
-		string calldata _message,
-		uint256 _bidCount,
-		PaymentType _paymentType,
-		PermitData memory _permitData
-	) public payable nonReentrant {
-		_selfPermit(_permitData);
-		_bid(_lot, _rune, _message, _bidCount, _paymentType);
-	}
-
-	function bid(
-		uint256 _lot,
-		uint8 _rune,
-		string calldata _message,
-		uint256 _bidCount,
-		PaymentType _paymentType
-	) public payable nonReentrant {
-		_bid(_lot, _rune, _message, _bidCount, _paymentType);
-	}
-
-	function _bid(
-		uint256 _lot,
-		uint8 _rune,
-		string calldata _message,
-		uint256 _bidCount,
-		PaymentType _paymentType
-	) internal {
-		if (_bidCount == 0) revert InvalidBidCount();
-
-		// User bid
-		AuctionUser storage user = auctionUsers[_lot][msg.sender];
-		uint8 prevRune = user.rune;
-
-		// Auction bid
-		(uint256 userBidsAfterPenalty, uint256 auctionBid, uint256 bidCost) = auctioneerAuction.markBid(
-			_lot,
-			IAuctioneerAuction.MarkBidPayload({
-				user: msg.sender,
-				prevRune: prevRune,
-				newRune: _rune,
-				existingBidCount: user.bids,
-				arrivingBidCount: _bidCount,
-				paymentType: _paymentType,
-				userGoBalance: _userGoBalance(msg.sender)
-			})
-		);
-
-		emit Bid(
-			_lot,
-			msg.sender,
-			mutedUsers[msg.sender] ? "" : _message,
-			userAlias[msg.sender],
-			_rune,
-			user.rune,
-			auctionBid,
-			_bidCount,
-			block.timestamp
-		);
-
-		user.bids = userBidsAfterPenalty + _bidCount;
-		user.rune = _rune;
-
-		_takeUserPayment(msg.sender, _paymentType, bidCost * _bidCount, _bidCount * 1e18);
-	}
-
-	function selectRune(uint256 _lot, uint8 _rune, string calldata _message) public nonReentrant {
-		auctioneerAuction.validatePrivateAuctionEligibility(_lot, _userGoBalance(msg.sender));
-
-		AuctionUser storage user = auctionUsers[_lot][msg.sender];
-
-		user.bids = auctioneerAuction.selectRune(_lot, user.bids, user.rune, _rune);
-
-		emit SelectedRune(
-			_lot,
-			msg.sender,
-			mutedUsers[msg.sender] ? "" : _message,
-			userAlias[msg.sender],
-			_rune,
-			user.rune
-		);
-
-		// Incur rune switch penalty
-		if (user.rune != _rune) {
-			user.rune = _rune;
-		}
-	}
-
-	// CLAIM
-
-	function claimLot(uint256 _lot, string calldata _message) public payable nonReentrant {
-		AuctionUser storage user = auctionUsers[_lot][msg.sender];
-
-		// Winner has already paid for and claimed the lot (or their share of it)
-		if (user.lotClaimed) revert UserAlreadyClaimedLot();
-
-		// Mark lot as claimed
-		user.lotClaimed = true;
-
-		(uint256 userShareOfPayment, bool triggerFinalization) = auctioneerAuction.claimLot(
-			_lot,
-			msg.sender,
-			user.bids,
-			user.rune
-		);
-
-		// Take Payment
-		_takeUserPayment(msg.sender, PaymentType.WALLET, userShareOfPayment, 0);
-
-		// Distribute Payment
-		_distributeLotProfit(_lot, userShareOfPayment);
-
-		// Finalize
-		if (triggerFinalization) {
-			finalize(_lot);
-		}
-
-		emit Claimed(_lot, msg.sender, mutedUsers[msg.sender] ? "" : _message, userAlias[msg.sender], user.rune);
-	}
-
-	function _distributeLotProfit(uint256 _lot, uint256 _userShareOfPayment) internal {
+	function _distributeLotPayment(uint256 _lot, uint256 _userShareOfPayment) internal {
 		(uint256 farmDistribution, uint256 teamTreasuryDistribution) = auctioneerAuction.getProfitDistributions(
 			_lot,
 			_userShareOfPayment
 		);
 
-		_sendDistributions(0, farmDistribution, teamTreasuryDistribution);
+		_transferDistributions(0, farmDistribution, teamTreasuryDistribution);
 	}
 
-	function _sendDistributions(
+	function _transferDistributions(
 		uint256 treasuryDistribution,
 		uint256 farmDistribution,
 		uint256 teamTreasuryDistribution
@@ -469,120 +507,34 @@ contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYi
 		}
 	}
 
-	// FINALIZE
-
-	function finalizeAuction(uint256 _lot) public nonReentrant {
-		finalize(_lot);
-	}
-	function finalize(uint256 _lot) internal {
-		(
-			bool triggerCancellation,
-			uint256 treasuryEmissions,
-			uint256 treasuryETHDistribution,
-			uint256 farmETHDistribution,
-			uint256 teamTreasuryETHDistribution
-		) = auctioneerAuction.finalizeAuction(_lot);
-
-		if (triggerCancellation) {
-			cancelAuction(_lot);
-		}
-
-		if (treasuryEmissions > 0) {
-			auctioneerEmissions.transferEmissions(treasury, treasuryEmissions);
-		}
-
-		_sendDistributions(treasuryETHDistribution, farmETHDistribution, teamTreasuryETHDistribution);
-	}
-
-	// HARVEST
-
-	function harvestAuctionsEmissions(uint256[] memory _lots, bool _harvestToFarm) public nonReentrant {
-		for (uint256 i = 0; i < _lots.length; i++) {
-			harvestAuctionEmissions(_lots[i], _harvestToFarm);
+	function _userGoBalance(address _user) internal view returns (uint256 bal) {
+		bal = GO.balanceOf(_user);
+		if (address(auctioneerFarm) != address(0)) {
+			bal += auctioneerFarm.getEqualizedUserStaked(_user);
 		}
 	}
 
-	function harvestAuctionEmissions(uint256 _lot, bool _harvestToFarm) internal {
-		AuctionUser storage user = auctionUsers[_lot][msg.sender];
-
-		// Exit if user already harvested emissions from auction
-		// Exit early if nothing to claim
-		if (user.emissionsHarvested || user.bids == 0) return;
-
-		(uint256 unlockTimestamp, uint256 auctionBids, uint256 biddersEmissions) = auctioneerAuction
-			.validateAndGetHarvestData(_lot);
-
-		if (biddersEmissions == 0) return;
-
-		// Mark harvested
-		user.emissionsHarvested = true;
-
-		// Signal auctioneerEmissions to harvest user's emissions
-		(uint256 harvested, uint256 burned) = auctioneerEmissions.harvestEmissions(
-			msg.sender,
-			(biddersEmissions * user.bids) / auctionBids,
-			unlockTimestamp,
-			_harvestToFarm
-		);
-
-		user.harvestedEmissions = harvested;
-		user.burnedEmissions = burned;
-
-		if (_harvestToFarm && harvested > 0) {
-			GO.safeIncreaseAllowance(address(auctioneerFarm), harvested);
-			auctioneerFarm.depositLockedGo(
-				harvested,
-				payable(msg.sender),
-				unlockTimestamp + auctioneerEmissions.emissionTaxDuration()
-			);
-		}
-
-		emit UserHarvestedLotEmissions(_lot, msg.sender, harvested, burned, _harvestToFarm);
-	}
-
-	// VIEW
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	function getUserPrivateAuctionData(
 		address _user
-	) public view returns (uint256 userGO, uint256 requirement, bool permitted) {
+	) external view returns (uint256 userGO, uint256 requirement, bool permitted) {
 		userGO = _userGoBalance(_user);
 		requirement = auctioneerAuction.privateAuctionRequirement();
 		permitted = userGO >= requirement;
 	}
 
-	///////////////////
-	// ALIAS
-	///////////////////
-
-	function setAlias(string memory _alias) public nonReentrant {
-		if (mutedUsers[msg.sender]) revert Muted();
-
-		if (bytes(_alias).length < 3 || bytes(_alias).length > 9) revert InvalidAlias();
-		if (aliasUser[_alias] != address(0)) revert AliasTaken();
-
-		// Clear out old alias if it exists
-		if (bytes(userAlias[msg.sender]).length != 0) {
-			aliasUser[userAlias[msg.sender]] = address(0);
-		}
-
-		userAlias[msg.sender] = _alias;
-		aliasUser[_alias] = msg.sender;
-
-		emit UpdatedAlias(msg.sender, _alias);
-	}
-
-	// USER VIEW
-
-	function getAliasAndRune(uint256 _lot, address _user) public view returns (uint8 rune, string memory _alias) {
+	function getAliasAndRune(uint256 _lot, address _user) external view returns (uint8 rune, string memory _alias) {
 		rune = auctionUsers[_lot][_user].rune;
 		_alias = userAlias[_user];
 	}
 
-	function getAuctionUser(uint256 _lot, address _user) public view returns (AuctionUser memory) {
+	function getAuctionUser(uint256 _lot, address _user) external view returns (AuctionUser memory) {
 		return auctionUsers[_lot][_user];
 	}
 
-	function getUserLotInfos(uint256[] memory _lots, address _user) public view returns (UserLotInfo[] memory infos) {
+	function getUserLotInfos(uint256[] memory _lots, address _user) external view returns (UserLotInfo[] memory infos) {
 		infos = new UserLotInfo[](_lots.length);
 
 		uint256 lot;
