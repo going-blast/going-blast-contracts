@@ -198,30 +198,30 @@ contract AuctioneerAuction is
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	function initializeBlast() public onlyOwner {
+	function initializeBlast() external onlyOwner {
 		_initializeBlast();
 	}
 
-	function claimYieldAll(address _recipient, uint256 _minClaimRateBips) public onlyOwner {
+	function claimYieldAll(address _recipient, uint256 _minClaimRateBips) external onlyOwner {
 		_claimYieldAll(_recipient, _minClaimRateBips);
 	}
 
-	function updateTreasury(address _treasury) public onlyAuctioneer {
+	function updateTreasury(address _treasury) external onlyAuctioneer {
 		treasury = _treasury;
 	}
 
-	function updateTeamTreasury(address _teamTreasury) public onlyAuctioneer {
+	function updateTeamTreasury(address _teamTreasury) external onlyAuctioneer {
 		teamTreasury = _teamTreasury;
 	}
 
-	function updateTeamTreasurySplit(uint256 _teamTreasurySplit) public onlyOwner {
+	function updateTeamTreasurySplit(uint256 _teamTreasurySplit) external onlyOwner {
 		if (_teamTreasurySplit > 5000) revert TooSteep();
 
 		teamTreasurySplit = _teamTreasurySplit;
 		emit UpdatedTeamTreasurySplit(_teamTreasurySplit);
 	}
 
-	function updateStartingBid(uint256 _startingBid) public onlyOwner {
+	function updateStartingBid(uint256 _startingBid) external onlyOwner {
 		if (_startingBid == 0) revert Invalid();
 		if (_startingBid > 0.1e18) revert Invalid();
 
@@ -229,7 +229,7 @@ contract AuctioneerAuction is
 		emit UpdatedStartingBid(_startingBid);
 	}
 
-	function updateBidCost(uint256 _bidCost) public onlyOwner {
+	function updateBidCost(uint256 _bidCost) external onlyOwner {
 		if (_bidCost == 0) revert Invalid();
 		if (_bidCost > 0.1e18) revert Invalid();
 
@@ -237,19 +237,19 @@ contract AuctioneerAuction is
 		emit UpdatedBidCost(_bidCost);
 	}
 
-	function updatePrivateAuctionRequirement(uint256 _requirement) public onlyOwner {
+	function updatePrivateAuctionRequirement(uint256 _requirement) external onlyOwner {
 		privateAuctionRequirement = _requirement;
 		emit UpdatedPrivateAuctionRequirement(_requirement);
 	}
 
-	function updateRuneSwitchPenalty(uint256 _penalty) public onlyOwner {
+	function updateRuneSwitchPenalty(uint256 _penalty) external onlyOwner {
 		if (_penalty > 10000) revert Invalid();
 
 		runeSwitchPenalty = _penalty;
 		emit UpdatedRuneSwitchPenalty(_penalty);
 	}
 
-	function updateRunicLastBidderBonus(uint256 _bonus) public onlyOwner {
+	function updateRunicLastBidderBonus(uint256 _bonus) external onlyOwner {
 		if (_bonus > 5000) revert Invalid();
 
 		runicLastBidderBonus = _bonus;
@@ -487,22 +487,22 @@ contract AuctioneerAuction is
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	function getAuction(uint256 _lot) public view validAuctionLot(_lot) returns (Auction memory) {
+	function getAuction(uint256 _lot) external view validAuctionLot(_lot) returns (Auction memory) {
 		return auctions[_lot];
 	}
 
-	function getAuctionsPerDay(uint256 _day) public view returns (uint256) {
+	function getAuctionsPerDay(uint256 _day) external view returns (uint256) {
 		return auctionsOnDay[_day].values().length;
 	}
 
-	function getAuctionsOnDay(uint256 _day) public view returns (uint256[] memory) {
+	function getAuctionsOnDay(uint256 _day) external view returns (uint256[] memory) {
 		return auctionsOnDay[_day].values();
 	}
 
 	function getDailyAuctions(
 		uint256 lookBackDays,
 		uint256 lookForwardDays
-	) public view returns (DailyAuctions[] memory data) {
+	) external view returns (DailyAuctions[] memory data) {
 		uint256 currentDay = block.timestamp / 1 days;
 		uint256[] memory dayLots;
 		uint256 day = currentDay - lookBackDays;
@@ -521,7 +521,7 @@ contract AuctioneerAuction is
 
 	function getAuctionExt(
 		uint256 _lot
-	) public view validAuctionLot(_lot) returns (Auction memory auction, AuctionExt memory ext) {
+	) external view validAuctionLot(_lot) returns (Auction memory auction, AuctionExt memory ext) {
 		auction = auctions[_lot];
 		ext = AuctionExt({
 			lot: auction.lot,
@@ -534,7 +534,7 @@ contract AuctioneerAuction is
 
 	function getAuctionExts(
 		uint256[] memory _lots
-	) public view returns (Auction[] memory auctionBases, AuctionExt[] memory auctionExts) {
+	) external view returns (Auction[] memory auctionBases, AuctionExt[] memory auctionExts) {
 		auctionBases = new Auction[](_lots.length);
 		auctionExts = new AuctionExt[](_lots.length);
 

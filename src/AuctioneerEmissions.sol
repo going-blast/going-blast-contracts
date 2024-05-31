@@ -43,14 +43,6 @@ import { GBMath } from "./AuctionUtils.sol";
 // ,,         ,    ,      ,           ,    *
 // -- ARCH --
 
-// NOTES
-// 	. Daily Emission
-// 			Maximum daily allowable emission bonus is 40000
-// 			Most days, the emission will be 10000
-// 			This allows us to scale up or down the number of auctions per week
-// 			An emission BP over 10000 means it is using emissions scheduled for other days
-// 			This will not overflow the epoch's emissions though, because the daily emission amount is calculated from remaining days
-
 interface IAuctioneerEmissions {
 	function emissionTaxDuration() external view returns (uint256);
 	function emissionsInitialized() external view returns (bool);
@@ -72,63 +64,69 @@ contract AuctioneerEmissions is IAuctioneerEmissions, Ownable, AuctioneerEvents 
 	using GBMath for uint256;
 	using SafeERC20 for IERC20;
 
-	address public auctioneer;
-	bool public emissionsInitialized = false;
-
-	// EMISSIONS
 	IERC20 public GO;
-	uint256 public startTimestamp;
-	uint256 public epochDuration = 90 days;
+	address public auctioneer;
+	address public deadAddress = 0x000000000000000000000000000000000000dEaD;
+
+	uint256 public constant EPOCH_DURATION = 90;
+	uint256 public constant EMISSION_PER_SHARE = 255e18;
+	uint256 public constant EMISSION_SHARES_TOTAL = 255;
+	uint256[8] public EMISSION_SHARES_PER_EPOCH = [128, 64, 32, 16, 8, 4, 2, 1];
+
+	bool public emissionsInitialized = false;
+	uint256 public earlyHarvestTax = 5000;
 	uint256 public emissionTaxDuration = 30 days;
-	uint256[8] public emissionSharePerEpoch = [128, 64, 32, 16, 8, 4, 2, 1];
-	uint256 public emissionSharesTotal = 255;
-	uint256 public emissionPerShare = 255e18;
+	uint256 public emissionsGenesisDay;
 	uint256[8] public epochEmissionsRemaining = [0, 0, 0, 0, 0, 0, 0, 0];
 
-	// HARVEST
-	uint256 public earlyHarvestTax = 5000;
-	address public deadAddress = 0x000000000000000000000000000000000000dEaD;
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	constructor(address _auctioneer, IERC20 _go) Ownable(msg.sender) {
 		auctioneer = _auctioneer;
 		GO = _go;
 	}
 
-	///////////////////
-	// MODIFIERS
-	///////////////////
+	function initializeEmissions(uint256 _unlockTimestamp) external onlyOwner {
+		if (GO.balanceOf(address(this)) == 0) revert GONotYetReceived();
+		if (emissionsInitialized) revert AlreadyInitialized();
+
+		emissionsInitialized = true;
+		emissionsGenesisDay = _unlockTimestamp / 1 days;
+
+		uint256 totalToEmit = GO.balanceOf(address(this));
+		for (uint8 i = 0; i < 8; i++) {
+			epochEmissionsRemaining[i] = (totalToEmit * EMISSION_SHARES_PER_EPOCH[i]) / EMISSION_SHARES_TOTAL;
+		}
+
+		emit InitializedEmissions();
+	}
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	modifier onlyAuctioneer() {
 		if (msg.sender != auctioneer) revert NotAuctioneer();
 		_;
 	}
 
-	///////////////////
-	// ADMIN
-	///////////////////
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	function updateEarlyHarvestTax(uint256 _earlyHarvestTax) public onlyOwner {
+	function updateEarlyHarvestTax(uint256 _earlyHarvestTax) external onlyOwner {
 		if (_earlyHarvestTax > 8000) revert Invalid();
 
 		earlyHarvestTax = _earlyHarvestTax;
 		emit UpdatedEarlyHarvestTax(_earlyHarvestTax);
 	}
 
-	function updateEmissionTaxDuration(uint256 _emissionTaxDuration) public onlyOwner {
+	function updateEmissionTaxDuration(uint256 _emissionTaxDuration) external onlyOwner {
 		if (_emissionTaxDuration > 60 days) revert Invalid();
 
 		emissionTaxDuration = _emissionTaxDuration;
 		emit UpdatedEmissionTaxDuration(_emissionTaxDuration);
 	}
-
-	// Escape hatch for serious bugs or upgrades
-	// Only callable by Auctioneer
-	// Auctioneer migration function is behind 7 day timelock and 4 party multisig
-	function executeMigration(address _dest) public onlyAuctioneer returns (uint256 unallocated) {
-		unallocated = 0;
-
-		// Can't pull GO from already running auctions.
-		// Cancel upcoming auctions to free some GO allocations before migrating.
+	function executeMigration(address _dest) external onlyAuctioneer returns (uint256 unallocated) {
 		for (uint8 i = 0; i < 8; i++) {
 			unallocated += epochEmissionsRemaining[i];
 		}
@@ -136,111 +134,24 @@ contract AuctioneerEmissions is IAuctioneerEmissions, Ownable, AuctioneerEvents 
 		GO.safeTransfer(_dest, unallocated);
 	}
 
-	///////////////////
-	// INITIALIZE
-	///////////////////
-
-	function initializeEmissions(uint256 _unlockTimestamp) public onlyOwner {
-		if (GO.balanceOf(address(this)) == 0) revert GONotYetReceived();
-		if (emissionsInitialized) revert AlreadyInitialized();
-
-		// Set start timestamp
-		startTimestamp = _unlockTimestamp;
-
-		// Spread emissions between epochs
-		uint256 totalToEmit = GO.balanceOf(address(this));
-		for (uint8 i = 0; i < 8; i++) {
-			epochEmissionsRemaining[i] = (totalToEmit * emissionSharePerEpoch[i]) / emissionSharesTotal;
-		}
-
-		emissionsInitialized = true;
-		emit InitializedEmissions();
-	}
-
-	///////////////////
-	// EPOCH
-	///////////////////
-
-	function _getEpochAtTimestamp(uint256 timestamp) internal view returns (uint256 epoch) {
-		if (startTimestamp == 0 || timestamp < startTimestamp) return 0;
-		epoch = (timestamp - startTimestamp) / epochDuration;
-	}
-
-	function _getEpochDataAtTimestamp(uint256 timestamp) internal view returns (EpochData memory epochData) {
-		epochData.epoch = _getEpochAtTimestamp(timestamp);
-
-		epochData.start = startTimestamp + (epochData.epoch * epochDuration);
-		epochData.end = epochData.start + epochDuration;
-
-		if (timestamp > epochData.end) {
-			epochData.daysRemaining = 0;
-		} else {
-			epochData.daysRemaining = ((epochData.end - timestamp) / 1 days);
-		}
-
-		// Emissions only exist for first 8 epochs, prevent array out of bounds
-		epochData.emissionsRemaining = epochData.epoch >= 8 ? 0 : epochEmissionsRemaining[epochData.epoch];
-
-		epochData.dailyEmission = (epochData.emissionsRemaining == 0 || epochData.daysRemaining == 0)
-			? 0
-			: epochData.emissionsRemaining / epochData.daysRemaining;
-	}
-
-	///////////////////
-	// ALLOCATION
-	///////////////////
-
-	function _getAuctionEmission(uint256 _unlockTimestamp, uint256 _bp) internal view returns (uint256 emissions) {
-		EpochData memory epochData = _getEpochDataAtTimestamp(_unlockTimestamp);
-		emissions = epochData.dailyEmission;
-
-		if (emissions == 0) return 0;
-
-		// Modulate with auction _bp (percent of daily emission)
-		emissions = emissions.scaleByBP(_bp);
-
-		// Check to prevent stealing emissions from next epoch
-		//  (would only happen if it's the last day of the epoch and _bp > 10000)
-		if (emissions > epochData.emissionsRemaining) {
-			emissions = epochData.emissionsRemaining;
-		}
-	}
-
-	function getAuctionEmission(uint256 _unlockTimestamp, uint256 _bp) public view returns (uint256 emissions) {
-		return _getAuctionEmission(_unlockTimestamp, _bp);
-	}
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	function allocateAuctionEmissions(
 		uint256 _unlockTimestamp,
 		uint256 _bp
-	) public onlyAuctioneer returns (uint256 emissions) {
-		uint256 epoch = _getEpochAtTimestamp(_unlockTimestamp);
-		emissions = _getAuctionEmission(_unlockTimestamp, _bp);
-
-		// Mark emissions as allocated
-		if (emissions > 0) {
-			epochEmissionsRemaining[epoch] -= emissions;
-		}
+	) external onlyAuctioneer returns (uint256 emissions) {
+		uint256 day = _unlockTimestamp / 1 days;
+		uint256 epoch = _getEpochAtDay(day);
+		emissions = _getAuctionEmissionOnDay(day, _bp);
+		epochEmissionsRemaining[epoch] -= emissions;
 	}
 
-	function deAllocateEmissions(uint256 _unlockTimestamp, uint256 _emissionsToDeAllocate) public onlyAuctioneer {
-		uint256 epoch = _getEpochAtTimestamp(_unlockTimestamp);
+	function deAllocateEmissions(uint256 _unlockTimestamp, uint256 _emissionsToDeAllocate) external onlyAuctioneer {
+		uint256 epoch = _getEpochAtDay(_unlockTimestamp / 1 days);
 		if (epoch < 8) {
 			epochEmissionsRemaining[epoch] += _emissionsToDeAllocate;
 		}
-	}
-
-	///////////////////
-	// TRANSFER
-	///////////////////
-
-	function _transferEmissions(address _to, uint256 _amount) internal {
-		if (_amount == 0) return;
-		GO.safeTransfer(_to, _amount);
-	}
-
-	function transferEmissions(address _to, uint256 _amount) public onlyAuctioneer {
-		_transferEmissions(_to, _amount);
 	}
 
 	function harvestEmissions(
@@ -248,41 +159,96 @@ contract AuctioneerEmissions is IAuctioneerEmissions, Ownable, AuctioneerEvents 
 		uint256 _emissions,
 		uint256 _emissionsEarnedTimestamp,
 		bool _harvestToFarm
-	) public onlyAuctioneer returns (uint256 harvested, uint256 burned) {
-		// If emissions should be taxed
+	) external onlyAuctioneer returns (uint256 harvested, uint256 burned) {
 		bool incursTax = !_harvestToFarm && block.timestamp < (_emissionsEarnedTimestamp + emissionTaxDuration);
 
-		// Calculate emission amounts
 		harvested = _emissions.scaleByBP(incursTax ? (10000 - earlyHarvestTax) : 10000);
 		burned = _emissions - harvested;
 
-		// Harvest emissions
 		_transferEmissions(_harvestToFarm ? auctioneer : _user, harvested);
-
-		// Burn emissions
 		_transferEmissions(deadAddress, burned);
 	}
 
-	///////////////////
-	// VIEW
-	///////////////////
+	function transferEmissions(address _to, uint256 _amount) external onlyAuctioneer {
+		_transferEmissions(_to, _amount);
+	}
 
-	function getEpochDataAtTimestamp(uint256 _timestamp) public view returns (EpochData memory epochData) {
-		return _getEpochDataAtTimestamp(_timestamp);
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	function _getEpochAtDay(uint256 day) internal view returns (uint256 epoch) {
+		if (emissionsGenesisDay == 0 || day < emissionsGenesisDay) return 0;
+		epoch = (day - emissionsGenesisDay) / EPOCH_DURATION;
 	}
-	function getCurrentEpochData() public view returns (uint256) {
-		return _getEpochAtTimestamp(block.timestamp);
+
+	function _getEpochDataAtDay(uint256 day) internal view returns (EpochData memory epochData) {
+		epochData.epoch = _getEpochAtDay(day);
+
+		epochData.start = emissionsGenesisDay + (epochData.epoch * EPOCH_DURATION);
+		epochData.end = epochData.start + (EPOCH_DURATION);
+
+		if (epochData.epoch >= 8) return epochData;
+
+		epochData.emissionsRemaining = epochEmissionsRemaining[epochData.epoch];
+
+		if (day > epochData.end) return epochData;
+
+		uint256 daysElapsed = day - epochData.start;
+		epochData.daysRemaining = daysElapsed > EPOCH_DURATION ? 0 : (EPOCH_DURATION - daysElapsed);
+
+		if (epochData.daysRemaining == 0 || epochData.emissionsRemaining == 0) return epochData;
+
+		epochData.dailyEmission = epochData.emissionsRemaining / epochData.daysRemaining;
 	}
-	function getEmissionSharePerEpoch() public view returns (uint256[] memory share) {
-		share = new uint256[](8);
+
+	// Maximum daily allowable emission bonus is 40000
+	// Most days, the emission will be 10000
+	// This allows us to scale up or down the number of auctions per week
+	// An emission BP over 10000 means it is using emissions scheduled for other days
+	// This will not overflow the epoch's emissions though, because the daily emission amount is calculated from remaining days
+	function _getAuctionEmissionOnDay(uint256 day, uint256 _bp) internal view returns (uint256 emissions) {
+		EpochData memory epochData = _getEpochDataAtDay(day);
+
+		emissions = epochData.dailyEmission;
+		if (emissions == 0) return emissions;
+
+		emissions = emissions.scaleByBP(_bp);
+		if (emissions <= epochData.emissionsRemaining) return emissions;
+
+		emissions = epochData.emissionsRemaining;
+	}
+
+	function _transferEmissions(address _to, uint256 _amount) internal {
+		if (_amount == 0) return;
+		GO.safeTransfer(_to, _amount);
+	}
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	function getAuctionEmission(uint256 _unlockTimestamp, uint256 _bp) external view returns (uint256 emissions) {
+		return _getAuctionEmissionOnDay(_unlockTimestamp / 1 days, _bp);
+	}
+
+	function getEpochDataAtTimestamp(uint256 _timestamp) external view returns (EpochData memory epochData) {
+		return _getEpochDataAtDay(_timestamp / 1 days);
+	}
+
+	function getCurrentEpochData() external view returns (uint256) {
+		return _getEpochAtDay(block.timestamp / 1 days);
+	}
+
+	function getEmissionSharePerEpoch() external view returns (uint256[] memory shares) {
+		shares = new uint256[](8);
 		for (uint8 i = 0; i < 8; i++) {
-			share[i] = emissionSharePerEpoch[i];
+			shares[i] = EMISSION_SHARES_PER_EPOCH[i];
 		}
 	}
-	function getEpochEmissionsRemaining() public view returns (uint256[] memory share) {
-		share = new uint256[](8);
+
+	function getEpochEmissionsRemaining() external view returns (uint256[] memory emissionsRemaining) {
+		emissionsRemaining = new uint256[](8);
 		for (uint8 i = 0; i < 8; i++) {
-			share[i] = epochEmissionsRemaining[i];
+			emissionsRemaining[i] = epochEmissionsRemaining[i];
 		}
 	}
 }
