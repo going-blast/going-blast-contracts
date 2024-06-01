@@ -39,11 +39,11 @@ Contracts, tests, coverage, and deployment scripts of the Going Blast ecosystem.
 
 - [x] Calculate bid penalty more elegantly (1 * 0.2 = 0.2, should round to 0, not ceil to 1)
 
-- [ ] Add migration functionality
-  - [ ] Add multisig wallet address
-  - [ ] Add 7 day timelock
-  - [ ] GO sent to multisig, then injected into new contract
-  - [ ] What to do about the farm?
+- [x] Add migration functionality
+  - [x] Add multisig wallet address
+  - [x] Add 7 day timelock
+  - [x] GO injected into new contract
+  - [ ] Test
 
 
 

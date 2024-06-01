@@ -21,10 +21,10 @@ contract AuctioneerEmissionsTest is AuctioneerHelper {
 
 	// INITIALIZE
 
-	function test_initialize_RevertWhen_GONotYetReceived() public {
+	function test_initialize_RevertWhen_EmissionsNotReceived() public {
 		_createAndLinkAuctioneers();
 
-		vm.expectRevert(GONotYetReceived.selector);
+		vm.expectRevert(EmissionsNotReceived.selector);
 
 		auctioneerEmissions.initializeEmissions(_getNextDay2PMTimestamp());
 	}

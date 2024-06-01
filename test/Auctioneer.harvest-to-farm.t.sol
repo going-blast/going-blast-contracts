@@ -3,9 +3,8 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
 import "../src/IAuctioneer.sol";
-import "../src/IAuctioneerFarm.sol";
 import { AuctioneerHelper } from "./Auctioneer.base.t.sol";
-import { AuctioneerFarm } from "../src/AuctioneerFarm.sol";
+import { AuctioneerFarm, AuctioneerFarmEvents, PendingAmounts } from "../src/AuctioneerFarm.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { GBMath, AuctionViewUtils } from "../src/AuctionUtils.sol";
 

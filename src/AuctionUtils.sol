@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.8.20;
 
-import "./IAuctioneer.sol";
+import { Auction, AuctionParams, BidWindow, BidWindowType, BidRune, TokenData, NftData, AuctionNotYetOpen, AuctionEnded, AuctionStillRunning, NotWinner, ETHTransferFailed, IncorrectETHPaymentAmount, UnlockAlreadyPassed, TooManyTokens, TooManyNFTs, CannotHaveNFTsWithRunes, NoRewards, InvalidBidWindowCount, InvalidWindowOrder, LastWindowNotInfinite, MultipleInfiniteWindows, WindowTooShort, InvalidBidWindowTimer, InvalidRunesCount, InvalidRuneSymbol, DuplicateRuneSymbols } from "./IAuctioneer.sol";
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { IAuctioneerFarm } from "./IAuctioneerFarm.sol";
+import { IAuctioneerFarm } from "./AuctioneerFarm.sol";
 
 //         ,                ,              ,   *,    ,  , ,   *,     ,
 //                               , , , ,   * * ,*     , *,,       ,      ,    .
@@ -171,7 +171,9 @@ library AuctionMutateUtils {
 			if (_params.windows[i].windowType == BidWindowType.INFINITE) {
 				closeTimestamp = openTimestamp + 315600000; // 10 years, hah
 			}
-			uint256 timer = _params.windows[i].windowType == BidWindowType.OPEN ? 0 : _params.windows[i].timer + _bonusTime;
+			uint256 timer = _params.windows[i].windowType == BidWindowType.OPEN
+				? 0
+				: _params.windows[i].timer + _bonusTime;
 			auction.windows.push(
 				BidWindow({
 					windowType: _params.windows[i].windowType,

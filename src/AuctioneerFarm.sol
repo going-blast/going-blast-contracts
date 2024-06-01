@@ -7,7 +7,6 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.s
 import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "./IAuctioneerFarm.sol";
 import { PermitData, AlreadyLinked, NotAuctioneer, ETHTransferFailed } from "./IAuctioneer.sol";
 import { BlastYield } from "./BlastYield.sol";
 
@@ -44,6 +43,65 @@ import { BlastYield } from "./BlastYield.sol";
 //      * ,            *,  ,      ,,    ,   , ,,    ,     ,
 // ,,         ,    ,      ,           ,    *
 // -- ARCH --
+
+struct PendingAmounts {
+	uint256 go;
+	uint256 voucher;
+	uint256 eth;
+}
+
+struct TokenEmission {
+	IERC20 token;
+	uint256 perSecond;
+	uint256 endTimestamp;
+}
+
+struct UserInfo {
+	uint256 amount;
+	uint256 goDebt;
+	uint256 voucherDebt;
+	uint256 ethDebt;
+	uint256 goUnlockTimestamp;
+}
+
+struct PoolInfo {
+	uint256 pid;
+	IERC20 token;
+	uint256 supply;
+	uint256 allocPoint;
+	uint256 lastRewardTimestamp;
+	uint256 accGoPerShare;
+	uint256 accVoucherPerShare;
+	uint256 accEthPerShare;
+}
+
+interface AuctioneerFarmEvents {
+	event SetEmission(address indexed _token, uint256 _perSecond, uint256 _duration);
+	event AddedPool(uint256 _pid, uint256 _allocPoint, address indexed _token);
+	event UpdatedPool(uint256 _pid, uint256 _allocPoint);
+
+	event ReceivedDistribution(uint256 _amount);
+
+	event Deposit(address indexed _user, uint256 _pid, uint256 _amount, address _to);
+	event Withdraw(address indexed _user, uint256 _pid, uint256 _amount, address _to);
+	event Harvest(address indexed _user, uint256 _pid, PendingAmounts _pending, address _to);
+	event EmergencyWithdraw(address indexed _user, uint256 _pid, uint256 _amount, address _to);
+}
+
+interface IAuctioneerFarm {
+	error BadWithdrawal();
+	error BadDeposit();
+	error NotEnoughEmissionToken();
+	error AlreadyAdded();
+	error AlreadyInitializedEmissions();
+	error InvalidPid();
+	error GoLocked();
+
+	function depositLockedGo(uint256 amount, address payable user, uint256 lockDuration) external;
+	function distributionReceivable() external view returns (bool);
+	function receiveDistribution() external payable;
+	function getEqualizedUserStaked(address _user) external view returns (uint256);
+}
 
 contract AuctioneerFarm is Ownable, ReentrancyGuard, IAuctioneerFarm, AuctioneerFarmEvents, BlastYield {
 	using SafeERC20 for IERC20;

@@ -6,7 +6,7 @@ import "../src/IAuctioneer.sol";
 import { AuctioneerHelper } from "./Auctioneer.base.t.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
-import "../src/IAuctioneerFarm.sol";
+import "../src/AuctioneerFarm.sol";
 
 contract SigUtils {
 	// keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");

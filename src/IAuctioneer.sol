@@ -160,7 +160,7 @@ struct DailyAuctions {
 
 error NotAuctioneer();
 error NotAuctioneerAuction();
-error GONotYetReceived();
+error EmissionsNotReceived();
 error EmissionsNotInitialized();
 error AlreadyInitialized();
 error TreasuryNotSet();

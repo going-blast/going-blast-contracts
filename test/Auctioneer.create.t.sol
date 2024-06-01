@@ -49,11 +49,11 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		auctioneer.createAuctions(params);
 	}
 
-	function test_createAuctions_RevertWhen_GONotYetReceived() public {
+	function test_createAuctions_RevertWhen_EmissionsNotReceived() public {
 		// SETUP
 		_createAndLinkAuctioneers();
 
-		vm.expectRevert(GONotYetReceived.selector);
+		vm.expectRevert(EmissionsNotReceived.selector);
 
 		auctioneerEmissions.initializeEmissions(_getNextDay2PMTimestamp());
 	}

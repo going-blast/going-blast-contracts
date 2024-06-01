@@ -6,7 +6,7 @@ import "../src/IAuctioneer.sol";
 import { AuctioneerHelper } from "./Auctioneer.base.t.sol";
 import { AuctioneerFarm } from "../src/AuctioneerFarm.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "../src/IAuctioneerFarm.sol";
+import "../src/AuctioneerFarm.sol";
 
 contract AuctioneerFarmWithdrawTest is AuctioneerHelper, AuctioneerFarmEvents {
 	using SafeERC20 for IERC20;
@@ -85,7 +85,11 @@ contract AuctioneerFarmWithdrawTest is AuctioneerHelper, AuctioneerFarmEvents {
 		farm.withdraw(goPid, 5e18, user1);
 
 		// goPerShare updated
-		assertEq(farm.getPool(goPid).accGoPerShare, expectedGoPerShare, "Go Reward Per Share updated as part of harvest");
+		assertEq(
+			farm.getPool(goPid).accGoPerShare,
+			expectedGoPerShare,
+			"Go Reward Per Share updated as part of harvest"
+		);
 
 		// User staked
 		uint256 expectedUser1Staked = 5e18;

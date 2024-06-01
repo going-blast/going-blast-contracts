@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 import "../src/IAuctioneer.sol";
 import { AuctioneerHelper } from "./Auctioneer.base.t.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "../src/IAuctioneerFarm.sol";
+import "../src/AuctioneerFarm.sol";
 import { GBMath } from "../src/AuctionUtils.sol";
 
 contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
@@ -126,7 +126,11 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		uint256 lot = auctioneerAuction.lotCount() - 1;
 
 		assertEq(auctioneerAuction.getAuction(lot).runes.length, 0, "Auction should not have any runes");
-		assertEq(auctioneerAuction.exposed_auction_hasRunes(lot), false, "Auction should not return true from .hasRunes");
+		assertEq(
+			auctioneerAuction.exposed_auction_hasRunes(lot),
+			false,
+			"Auction should not return true from .hasRunes"
+		);
 	}
 
 	function test_runes_create_3RunesParams_4RunesInAuction() public {
@@ -483,9 +487,21 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 			UserLotInfo memory user3Info = getUserLotInfo(lot, user3);
 			UserLotInfo memory user4Info = getUserLotInfo(lot, user4);
 
-			assertEq((expectedNonLastBidderShare * lotPrice) / 1e18, user1Info.price, "User1 price should not include bonus");
-			assertEq((expectedNonLastBidderShare * lotPrice) / 1e18, user2Info.price, "User2 price should not include bonus");
-			assertEq((expectedNonLastBidderShare * lotPrice) / 1e18, user3Info.price, "User3 price should not include bonus");
+			assertEq(
+				(expectedNonLastBidderShare * lotPrice) / 1e18,
+				user1Info.price,
+				"User1 price should not include bonus"
+			);
+			assertEq(
+				(expectedNonLastBidderShare * lotPrice) / 1e18,
+				user2Info.price,
+				"User2 price should not include bonus"
+			);
+			assertEq(
+				(expectedNonLastBidderShare * lotPrice) / 1e18,
+				user3Info.price,
+				"User3 price should not include bonus"
+			);
 			assertEq((expectedLastBidderShare * lotPrice) / 1e18, user4Info.price, "User4 price should include bonus");
 
 			assertApproxEqAbs(

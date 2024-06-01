@@ -6,7 +6,7 @@ import "../src/IAuctioneer.sol";
 import { AuctioneerHelper } from "./Auctioneer.base.t.sol";
 import { AuctioneerFarm } from "../src/AuctioneerFarm.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "../src/IAuctioneerFarm.sol";
+import "../src/AuctioneerFarm.sol";
 
 contract AuctioneerFarmDepositTest is AuctioneerHelper, AuctioneerFarmEvents {
 	using SafeERC20 for IERC20;
@@ -90,7 +90,11 @@ contract AuctioneerFarmDepositTest is AuctioneerHelper, AuctioneerFarmEvents {
 		// ethRewardPerShare
 		uint256 expectedEthRewardPerShare = (100e18 * farm.getPool(goPid).allocPoint * farm.REWARD_PRECISION()) /
 			(farm.getPool(goPid).supply * farm.totalAllocPoint());
-		assertEq(farm.getPool(goPid).accEthPerShare, expectedEthRewardPerShare, "ETH Reward per Share matches expected");
+		assertEq(
+			farm.getPool(goPid).accEthPerShare,
+			expectedEthRewardPerShare,
+			"ETH Reward per Share matches expected"
+		);
 
 		assertEq(farm.getPoolUser(goPid, user1).goDebt, 0, "User1 debt GO not yet initialized");
 		assertEq(farm.getPoolUser(goPid, user1).ethDebt, 0, "User1 debt ETH not yet initialized");
