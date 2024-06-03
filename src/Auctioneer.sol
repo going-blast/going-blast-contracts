@@ -296,7 +296,7 @@ contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYi
 		emit MigrationQueued(multisig, _dest);
 	}
 
-	function cancelMigration(address _dest) external onlyMultisig {
+	function cancelMigration(address _dest) external onlyMultisig notDeprecated {
 		if (migrationQueueTimestamp == 0) revert MigrationNotQueued();
 		if (migrationDestination != _dest) revert MigrationDestMismatch();
 
@@ -306,7 +306,7 @@ contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYi
 		emit MigrationQueued(multisig, _dest);
 	}
 
-	function executeMigration(address _dest) external onlyMultisig {
+	function executeMigration(address _dest) external onlyMultisig notDeprecated {
 		if (migrationQueueTimestamp == 0) revert MigrationNotQueued();
 		if (migrationDestination != _dest) revert MigrationDestMismatch();
 

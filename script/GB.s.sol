@@ -17,8 +17,34 @@ import { GoToken } from "../src/GoToken.sol";
 import { VoucherToken } from "../src/VoucherToken.sol";
 import { GBMath, AuctionParamsUtils } from "../src/AuctionUtils.sol";
 import { AuctionParams, EpochData, PaymentType } from "../src/IAuctioneer.sol";
-import { GoingBlastPresale, PresaleOptions } from "../src/GoingBlastPresale.sol";
 import { GoingBlastAirdrop } from "../src/GoingBlastAirdrop.sol";
+
+// ANVIL deployment flow
+// 	. Deploy tokens
+//  . Distribute GO
+// 	. Deploy core
+//  . Initialize Auctioneer Emissions (GO)
+//  . Initialize Auctioneer Farm Emissions (GO + VOUCHER)
+
+// MAINNET deployment flow
+//  . Deploy tokens
+//  . Initial GO distribution
+// 		. 20% to Presale
+// 		. 5% to Presale
+// 		. Rest to treasury, waiting for deployment
+//  . Deploy core
+// 	. Treasury approve VOUCH to airdrop
+//  . Manually distribute GO
+// 		. 60% to Auctioneer Emissions
+// 		. 20% to Presale (Treasury)
+// 		. 10% to Auctioneer Farm
+// 		. 5% to Initial Liquidity (Treasury)
+// 		. 5% to Team Treasury
+// 	. After Presale ends
+// 		. Treasury approve WETH to auctioneer
+// 		. Initialize Auctioneer Emissions
+// 		. Initialize Auctioneer Farm Emissions
+// 		. Create first auctions
 
 contract GBScripts is GBScriptUtils {
 	using SafeERC20 for IERC20;
@@ -28,21 +54,48 @@ contract GBScripts is GBScriptUtils {
 	error NotBlastChain();
 	error OnlyAnvil();
 
-	uint256 public GO_SUPPLY = 10000000e18;
+	uint256 public GO_SUPPLY = 1000000e18;
 
-	function fullDeploy() public broadcast loadChain loadConfigValues {
-		_ANVIL_setupTokens();
+	function ANVIL_deploy() public broadcast loadChain loadConfigValues {
+		if (!isAnvil)
+			return
+				// tokens
+				_deployTokens();
+		_setupWETH();
+
+		// -- To be done manually
+		_ANVIL_distributeGO();
+
+		// core
 		_deployCore();
 		_updateTreasury();
 		_updateTeamTreasury();
+
+		// initialize
 		_initializeAuctioneerEmissions();
-		_initializePresale();
-		_freezeContracts();
+		_initializeAuctioneerFarmEmissions();
+
+		// -- Local frontend testing setup
 		_ANVIL_initArch();
-		_ANVIL_initializeAuctioneerFarmEmissions();
+	}
+
+	function deployTokens() public broadcast loadChain loadConfigValues {
+		_deployTokens();
+		_setupWETH();
 	}
 
 	function deployCore() public broadcast loadChain loadConfigValues {
+		_deployCore();
+		_updateTreasury();
+		_updateTeamTreasury();
+	}
+
+	function initializeCore() public broadcast loadChain loadConfigValues {
+		_initializeAuctioneerEmissions();
+		_initializeAuctioneerFarmEmissions();
+	}
+
+	function fullDeploy() public broadcast loadChain loadConfigValues {
 		_deployCore();
 	}
 
@@ -54,11 +107,8 @@ contract GBScripts is GBScriptUtils {
 		_initializeAuctioneerEmissions();
 	}
 
-	function _ANVIL_setupTokens() internal {
+	function _setupWETH() internal {
 		if (isAnvil) {
-			// Anvil resets contracts frozen
-			writeBool(configPath("contractsFrozen"), false);
-
 			WETH = IWETH(address(new WETH9()));
 			writeContractAddress("WETH", address(WETH));
 		} else {
@@ -78,39 +128,52 @@ contract GBScripts is GBScriptUtils {
 		if (!sent) revert ETHTransferFailed();
 	}
 
-	function _ANVIL_initializeAuctioneerFarmEmissions() internal {
-		if (!isAnvil) return;
-
+	function _initializeAuctioneerFarmEmissions() internal {
 		// GO
 		uint256 farmGOEmissions = uint256(GO_SUPPLY).scaleByBP(500);
-		IERC20(GO).safeTransfer(address(auctioneerFarm), farmGOEmissions);
 		auctioneerFarm.initializeEmissions(farmGOEmissions, 180 days);
 		console.log("AuctioneerFarm GO emissions", GO.balanceOf(address(auctioneerFarm)));
 
 		// VOUCHER
-		VOUCHER.mint(address(auctioneerFarm), 100e18 * 180);
-		auctioneerFarm.setVoucherEmissions(100e18 * 180, 180 days);
+		uint256 farmVOUCHEREmissions = 200e18 * 180;
+		VOUCHER.mint(address(auctioneerFarm), farmVOUCHEREmissions);
+		auctioneerFarm.setVoucherEmissions(farmVOUCHEREmissions, 180 days);
 		console.log("AuctioneerFarm VOUCHER emissions", VOUCHER.balanceOf(address(auctioneerFarm)));
 	}
 
-	function _deployCore() internal {
-		// BLOCK NUMBER (for subgraph)
-		writeFirstBlock(block.number);
-
-		// TOKENS
-
+	function _deployTokens() internal {
 		GO = new GoToken();
 		writeContractAddress("GO", address(GO));
 
 		VOUCHER = new VoucherToken();
 		writeContractAddress("VOUCHER", address(VOUCHER));
+	}
+
+	function _ANVIL_distributeGO() internal {
+		if (!isAnvil) return;
+
+		uint256 proofOfBidEmissions = GO_SUPPLY.scaleByBP(6000);
+		IERC20(GO).safeTransfer(address(auctioneerEmissions), proofOfBidEmissions);
+
+		uint256 farmEmissions = GO_SUPPLY.scaleByBP(1000);
+		IERC20(GO).safeTransfer(address(auctioneerFarm), farmEmissions);
+
+		// Already in treasury
+		// uint256 lbpAmount = GO_SUPPLY.scaleByBP(2000);
+
+		// Already in treasury
+		// uint256 initialLiquidityAmount = GO_SUPPLY.scaleByBP(500);
+	}
+
+	function _deployCore() internal {
+		// BLOCK NUMBER (for subgraph)
+
+		writeFirstBlock(block.number);
 
 		// CORE
 
 		auctioneer = new Auctioneer(multisig, GO, VOUCHER, WETH);
 		writeContractAddress("Auctioneer", address(auctioneer));
-
-		console.log("Bid Cost %s, increment %s, starting %s", bidCost, bidIncrement, startingBid);
 
 		auctioneerAuction = new AuctioneerAuction(
 			address(auctioneer),
@@ -131,30 +194,10 @@ contract GBScripts is GBScriptUtils {
 
 		auctioneer.updateFarm(address(auctioneerFarm));
 
-		// PRESALE
-		PresaleOptions memory presaleOptions = PresaleOptions({
-			tokenDeposit: GO_SUPPLY.scaleByBP(2000 + 500),
-			hardCap: 32e18,
-			softCap: 16e18,
-			max: 0.5e18,
-			min: 0.001e18,
-			start: uint112(block.timestamp),
-			end: uint112(block.timestamp + 2 weeks),
-			liquidityBps: 2000 // 20% of supply for presale, 5% for liquidity. 5/20 = 0.2
-		});
-		presale = new GoingBlastPresale(
-			address(GO),
-			// @Todo: Replace with real DEX V2 router address
-			address(0),
-			presaleOptions
-		);
-		writeContractAddress("GoingBlastPresale", address(presale));
-
 		// @Todo: This shouldn't be part of the deployment script
 
 		// AIRDROP
-		address airdropTreasury = _getDefaultTreasuryAddress();
-		airdrop = new GoingBlastAirdrop(address(VOUCHER), airdropTreasury, 0);
+		airdrop = new GoingBlastAirdrop(address(VOUCHER), treasury, 0);
 		writeContractAddress("GoingBlastAirdrop", address(airdrop));
 
 		// INITIALIZE BLAST STUFF
@@ -165,39 +208,18 @@ contract GBScripts is GBScriptUtils {
 		}
 	}
 
-	function _getDefaultTreasuryAddress() internal returns (address) {
-		string memory mnemonic = vm.envString("MNEMONIC");
-		(address treasuryAdd, ) = deriveRememberKey(mnemonic, 1);
-		return treasuryAdd;
-	}
-
 	function _updateTreasury() internal {
-		treasury = _getDefaultTreasuryAddress();
-
 		auctioneer.updateTreasury(treasury);
 		writeAddress(auctioneerConfigPath("treasury"), treasury);
 	}
 
-	function _getDefaultTeamTreasuryAddress() internal returns (address) {
-		string memory mnemonic = vm.envString("MNEMONIC");
-		(address teamTreasuryAdd, ) = deriveRememberKey(mnemonic, 1);
-		return teamTreasuryAdd;
-	}
-
 	function _updateTeamTreasury() internal {
-		teamTreasury = _getDefaultTeamTreasuryAddress();
-
 		auctioneer.updateTeamTreasury(teamTreasury);
 		writeAddress(auctioneerConfigPath("teamTreasury"), teamTreasury);
 	}
 
 	function _initializeAuctioneerEmissions() internal {
 		if (auctioneerEmissions.emissionsInitialized()) revert AlreadyInitialized();
-
-		uint256 proofOfBidEmissions = GO_SUPPLY.scaleByBP(6000);
-		IERC20(GO).safeTransfer(address(auctioneerEmissions), proofOfBidEmissions);
-
-		console.log("AuctioneerEmissions GO amount", GO.balanceOf(address(auctioneerEmissions)));
 
 		uint256 unlockTimestamp = block.timestamp;
 		auctioneerEmissions.initializeEmissions(unlockTimestamp);
@@ -209,21 +231,18 @@ contract GBScripts is GBScriptUtils {
 		console.log("Daily emission set", currentEpochData.dailyEmission);
 	}
 
-	function _initializePresale() internal {
-		IERC20(GO).approve(address(presale), GO_SUPPLY.scaleByBP(2000 + 500));
-		presale.deposit();
-	}
-
 	function _freezeContracts() internal {
 		// This must be manually undone, will prevent contracts being overwritten
 		writeFreezeContracts();
 	}
 
 	function ANVIL_treasuryWrapETH() public broadcastTreasury loadChain loadContracts {
+		if (!isAnvil) return;
 		WETH.deposit{ value: 5e18 }();
 	}
 
-	function treasuryApproveAuctioneer() public broadcastTreasury loadChain loadContracts {
+	function ANVIL_treasuryApproveAuctioneer() public broadcastTreasury loadChain loadContracts {
+		if (!isAnvil) return;
 		WETH.approve(address(auctioneer), UINT256_MAX);
 	}
 

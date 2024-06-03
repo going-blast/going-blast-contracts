@@ -11,7 +11,6 @@ import { AuctioneerFarm } from "../src/AuctioneerFarm.sol";
 import { AuctioneerEmissions } from "../src/AuctioneerEmissions.sol";
 import { GoToken } from "../src/GoToken.sol";
 import { VoucherToken } from "../src/VoucherToken.sol";
-import { GoingBlastPresale } from "../src/GoingBlastPresale.sol";
 import { GoingBlastAirdrop } from "../src/GoingBlastAirdrop.sol";
 
 contract GBScriptUtils is Script, ChainJsonUtils {
@@ -22,7 +21,6 @@ contract GBScriptUtils is Script, ChainJsonUtils {
 	AuctioneerAuction public auctioneerAuction;
 	AuctioneerEmissions public auctioneerEmissions;
 	AuctioneerFarm public auctioneerFarm;
-	GoingBlastPresale public presale;
 	GoingBlastAirdrop public airdrop;
 	GoToken public GO;
 	VoucherToken public VOUCHER;
@@ -70,7 +68,6 @@ contract GBScriptUtils is Script, ChainJsonUtils {
 		auctioneerAuction = AuctioneerAuction(payable(readAddress(contractPath("AuctioneerAuction"))));
 		auctioneerEmissions = AuctioneerEmissions(readAddress(contractPath("AuctioneerEmissions")));
 		auctioneerFarm = AuctioneerFarm(readAddress(contractPath("AuctioneerFarm")));
-		presale = GoingBlastPresale(payable(readAddress(contractPath("GoingBlastPresale"))));
 		airdrop = GoingBlastAirdrop(readAddress(contractPath("GoingBlastAirdrop")));
 		GO = GoToken(readAddress(contractPath("GO")));
 		VOUCHER = VoucherToken(readAddress(contractPath("VOUCHER")));
@@ -89,10 +86,11 @@ contract GBScriptUtils is Script, ChainJsonUtils {
 		privateAuctionRequirement = readUint(auctioneerConfigPath("privateAuctionRequirement"));
 		earlyHarvestTax = readUint(auctioneerConfigPath("earlyHarvestTax"));
 		emissionTaxDuration = readUint(auctioneerConfigPath("emissionTaxDurationDays")) * 1 days;
+		teamTreasurySplit = readUint(auctioneerConfigPath("teamTreasurySplit"));
+
 		multisig = readAddress(auctioneerConfigPath("multisig"));
 		treasury = readAddress(auctioneerConfigPath("treasury"));
 		teamTreasury = readAddress(auctioneerConfigPath("teamTreasury"));
-		teamTreasurySplit = readUint(auctioneerConfigPath("teamTreasurySplit"));
 		_;
 	}
 }

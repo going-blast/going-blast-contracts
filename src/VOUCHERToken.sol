@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 
 contract VoucherToken is ERC20, Ownable, ERC20Permit {
-	constructor() ERC20("Going Blast Voucher", "VOUCHER") Ownable(msg.sender) ERC20Permit("Going Blast Voucher") {}
+	constructor() ERC20("Going Blast Voucher", "VOUCH") Ownable(msg.sender) ERC20Permit("Going Blast Voucher") {}
 
 	function mint(address to, uint256 amount) public onlyOwner {
 		_mint(to, amount);

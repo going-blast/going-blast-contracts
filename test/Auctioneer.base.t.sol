@@ -14,7 +14,6 @@ import { AuctioneerHarness, AuctioneerAuctionHarness } from "./AuctioneerHarness
 import { Auctioneer } from "../src/Auctioneer.sol";
 import { GBMath } from "../src/AuctionUtils.sol";
 import { AuctioneerEmissions } from "../src/AuctioneerEmissions.sol";
-import { GoingBlastPresale, PresaleOptions } from "../src/GoingBlastPresale.sol";
 import { GoingBlastAirdrop } from "../src/GoingBlastAirdrop.sol";
 
 abstract contract AuctioneerHelper is AuctioneerEvents, Test {
@@ -53,7 +52,6 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	AuctioneerAuctionHarness public auctioneerAuction;
 	AuctioneerEmissions public auctioneerEmissions;
 	AuctioneerFarm public farm;
-	GoingBlastPresale public presale;
 	GoingBlastAirdrop public airdrop;
 
 	IWETH public WETH;
@@ -92,7 +90,6 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		vm.label(address(auctioneerAuction), "auctioneerAuction");
 		vm.label(address(auctioneerEmissions), "auctioneerEmissions");
 		vm.label(address(farm), "farm");
-		vm.label(address(presale), "presale");
 		vm.label(address(airdrop), "airdrop");
 		vm.label(address(WETH), "WETH");
 		vm.label(address(0), "ETH_0");
@@ -125,7 +122,6 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 
 		_createAndLinkAuctioneers();
 
-		_createPresale();
 		_createAirdrop();
 
 		_createAndMintNFTs();
@@ -147,26 +143,6 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 
 		// LINK
 		auctioneer.link(address(auctioneerEmissions), address(auctioneerAuction));
-	}
-
-	function _createPresale() public {
-		PresaleOptions memory presaleOptions = PresaleOptions({
-			tokenDeposit: GO.totalSupply().scaleByBP(2000 + 500),
-			hardCap: 32e18,
-			softCap: 16e18,
-			max: 0.5e18,
-			min: 0.001e18,
-			start: uint112(block.timestamp),
-			end: uint112(block.timestamp + 2 weeks),
-			liquidityBps: 2000 // 20% of supply for presale, 5% for liquidity. 5/20 = 0.2
-		});
-
-		presale = new GoingBlastPresale(address(GO), address(0), presaleOptions);
-	}
-
-	function _startPresale() public {
-		IERC20(GO).approve(address(presale), GO.totalSupply().scaleByBP(2000 + 500));
-		presale.deposit();
 	}
 
 	function _createAirdrop() public {
@@ -523,7 +499,11 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		_expectETHBalChange(id, add, value, "");
 	}
 	function _expectETHBalChange(uint256 id, address add, int256 value, string memory label) public {
-		assertEq(add.balance, uint256(int256(ethBalances[id][add]) + value), string.concat("ETH value changed ", label));
+		assertEq(
+			add.balance,
+			uint256(int256(ethBalances[id][add]) + value),
+			string.concat("ETH value changed ", label)
+		);
 	}
 
 	function _prepExpectETHTransfer(uint256 id, address from, address to) public {
@@ -565,7 +545,12 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		vm.expectEmit(true, true, true, true);
 		emit Claimed(lot, user, message, _alias, rune);
 	}
-	function _expectEmitAuctionEvent_SwitchRune(uint256 lot, address user, string memory message, uint8 newRune) public {
+	function _expectEmitAuctionEvent_SwitchRune(
+		uint256 lot,
+		address user,
+		string memory message,
+		uint8 newRune
+	) public {
 		(uint8 prevRune, string memory _alias) = auctioneer.getAliasAndRune(lot, user);
 		vm.expectEmit(true, true, true, true);
 		emit SelectedRune(lot, user, message, _alias, newRune, prevRune);
