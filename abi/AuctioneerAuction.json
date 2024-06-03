@@ -3,6 +3,11 @@
     "type": "constructor",
     "inputs": [
       {
+        "name": "_auctioneer",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
         "name": "_bidCost",
         "type": "uint256",
         "internalType": "uint256"
@@ -221,6 +226,77 @@
   },
   {
     "type": "function",
+    "name": "bid",
+    "inputs": [
+      {
+        "name": "_lot",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_data",
+        "type": "tuple",
+        "internalType": "struct IAuctioneerAuction.BidData",
+        "components": [
+          {
+            "name": "user",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "prevRune",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "newRune",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "existingBidCount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "arrivingBidCount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "paymentType",
+            "type": "uint8",
+            "internalType": "enum PaymentType"
+          },
+          {
+            "name": "userGoBalance",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "userBidsAfterPenalty",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "auctionBid",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "auctionBidCost",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "bidCost",
     "inputs": [],
     "outputs": [
@@ -424,7 +500,7 @@
         ]
       },
       {
-        "name": "_emissions",
+        "name": "_allocatedEmissions",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -498,6 +574,11 @@
       },
       {
         "name": "farmETHDistribution",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "teamTreasuryETHDistribution",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -1304,12 +1385,12 @@
     ],
     "outputs": [
       {
-        "name": "treasuryDistribution",
+        "name": "farmDistribution",
         "type": "uint256",
         "internalType": "uint256"
       },
       {
-        "name": "farmDistribution",
+        "name": "teamTreasuryDistribution",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -1325,26 +1406,6 @@
   },
   {
     "type": "function",
-    "name": "link",
-    "inputs": [],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "linked",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool",
-        "internalType": "bool"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "lotCount",
     "inputs": [],
     "outputs": [
@@ -1355,77 +1416,6 @@
       }
     ],
     "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "markBid",
-    "inputs": [
-      {
-        "name": "_lot",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_user",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "_prevUserBids",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_prevRune",
-        "type": "uint8",
-        "internalType": "uint8"
-      },
-      {
-        "name": "_userGoBalance",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_options",
-        "type": "tuple",
-        "internalType": "struct BidOptions",
-        "components": [
-          {
-            "name": "paymentType",
-            "type": "uint8",
-            "internalType": "enum PaymentType"
-          },
-          {
-            "name": "multibid",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "message",
-            "type": "string",
-            "internalType": "string"
-          },
-          {
-            "name": "rune",
-            "type": "uint8",
-            "internalType": "uint8"
-          }
-        ]
-      }
-    ],
-    "outputs": [
-      {
-        "name": "bid",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "auctionBidCost",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -1553,17 +1543,54 @@
         "internalType": "uint8"
       },
       {
-        "name": "_rune",
+        "name": "_newRune",
         "type": "uint8",
         "internalType": "uint8"
+      },
+      {
+        "name": "_userGoBalance",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
-    "outputs": [],
+    "outputs": [
+      {
+        "name": "userBidsAfterPenalty",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
     "stateMutability": "nonpayable"
   },
   {
     "type": "function",
     "name": "startingBid",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "teamTreasury",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "teamTreasurySplit",
     "inputs": [],
     "outputs": [
       {
@@ -1596,19 +1623,6 @@
         "name": "",
         "type": "address",
         "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "treasurySplit",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -1680,10 +1694,10 @@
   },
   {
     "type": "function",
-    "name": "updateTreasury",
+    "name": "updateTeamTreasury",
     "inputs": [
       {
-        "name": "_treasury",
+        "name": "_teamTreasury",
         "type": "address",
         "internalType": "address"
       }
@@ -1693,12 +1707,25 @@
   },
   {
     "type": "function",
-    "name": "updateTreasurySplit",
+    "name": "updateTeamTreasurySplit",
     "inputs": [
       {
-        "name": "_treasurySplit",
+        "name": "_teamTreasurySplit",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "updateTreasury",
+    "inputs": [
+      {
+        "name": "_treasury",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "outputs": [],
@@ -1731,6 +1758,37 @@
         "internalType": "uint256"
       }
     ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "validateAuctionRunning",
+    "inputs": [
+      {
+        "name": "_lot",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "validatePrivateAuctionEligibility",
+    "inputs": [
+      {
+        "name": "_lot",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_goBalance",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
     "stateMutability": "view"
   },
   {
@@ -1819,7 +1877,7 @@
         "internalType": "uint256"
       },
       {
-        "name": "_multibid",
+        "name": "_bidCount",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
@@ -1965,6 +2023,88 @@
         "type": "uint8",
         "indexed": false,
         "internalType": "uint8"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "MigrationCancelled",
+    "inputs": [
+      {
+        "name": "_migrator",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "_dest",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "MigrationExecuted",
+    "inputs": [
+      {
+        "name": "_migrator",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "_dest",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "_unallocated",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "MigrationQueued",
+    "inputs": [
+      {
+        "name": "_migrator",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "_dest",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "MutedUser",
+    "inputs": [
+      {
+        "name": "_user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "_muted",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
       }
     ],
     "anonymous": false
@@ -2156,10 +2296,10 @@
   },
   {
     "type": "event",
-    "name": "UpdatedTreasury",
+    "name": "UpdatedTeamTreasury",
     "inputs": [
       {
-        "name": "_treasury",
+        "name": "_teamTreasury",
         "type": "address",
         "indexed": true,
         "internalType": "address"
@@ -2169,13 +2309,26 @@
   },
   {
     "type": "event",
-    "name": "UpdatedTreasurySplit",
+    "name": "UpdatedTeamTreasurySplit",
     "inputs": [
       {
         "name": "_split",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "UpdatedTreasury",
+    "inputs": [
+      {
+        "name": "_treasury",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
       }
     ],
     "anonymous": false
@@ -2241,11 +2394,6 @@
   },
   {
     "type": "error",
-    "name": "AlreadyLinked",
-    "inputs": []
-  },
-  {
-    "type": "error",
     "name": "AuctionEnded",
     "inputs": []
   },
@@ -2262,11 +2410,6 @@
   {
     "type": "error",
     "name": "CannotHaveNFTsWithRunes",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "CantSwitchRune",
     "inputs": []
   },
   {

@@ -45,6 +45,8 @@ Contracts, tests, coverage, and deployment scripts of the Going Blast ecosystem.
   - [x] GO injected into new contract
   - [ ] Test
 
+- [ ] Test update bid increment
+
 
 
 - [x] Tests

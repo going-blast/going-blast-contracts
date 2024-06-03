@@ -160,6 +160,30 @@ contract AuctioneerAdminTest is AuctioneerHelper {
 		auctioneerAuction.updateBidCost(0.11e18);
 	}
 
+	// SET BID INCREMENT
+	function test_updateBidIncrement() public {
+		auctioneerAuction.updateBidIncrement(0.005e18);
+		assertEq(0.005e18, auctioneerAuction.bidIncrement());
+	}
+	function test_updateBidIncrement_ExpectEmit_UpdatedBidIncrement() public {
+		vm.expectEmit(true, true, true, true);
+		emit UpdatedBidIncrement(0.005e18);
+		auctioneerAuction.updateBidIncrement(0.005e18);
+	}
+	function test_updateBidIncrement_RevertWhen_CallerIsNotOwner() public {
+		vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, address(0)));
+		vm.prank(address(0));
+		auctioneerAuction.updateBidIncrement(0.005e18);
+	}
+	function test_updateBidIncrement_RevertWhen_Invalid_TooLow() public {
+		vm.expectRevert(Invalid.selector);
+		auctioneerAuction.updateBidIncrement(0);
+	}
+	function test_updateBidIncrement_RevertWhen_Invalid_TooHigh() public {
+		vm.expectRevert(Invalid.selector);
+		auctioneerAuction.updateBidIncrement(0.11e18);
+	}
+
 	// SET EARLY HARVEST TAX
 	function test_updateEarlyHarvestTax() public {
 		auctioneerEmissions.updateEarlyHarvestTax(7000);

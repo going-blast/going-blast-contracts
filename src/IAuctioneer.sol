@@ -225,6 +225,7 @@ interface AuctioneerEvents {
 	// CONSTS
 	event UpdatedStartingBid(uint256 _startingBid);
 	event UpdatedBidCost(uint256 _bidCost);
+	event UpdatedBidIncrement(uint256 _bidIncrement);
 	event UpdatedEarlyHarvestTax(uint256 _earlyHarvestTax);
 	event UpdatedEmissionTaxDuration(uint256 _emissionTax);
 	event UpdatedRuneSwitchPenalty(uint256 _penalty);

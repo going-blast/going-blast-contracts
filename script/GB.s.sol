@@ -34,6 +34,7 @@ contract GBScripts is GBScriptUtils {
 		_ANVIL_setupTokens();
 		_deployCore();
 		_updateTreasury();
+		_updateTeamTreasury();
 		_initializeAuctioneerEmissions();
 		_initializePresale();
 		_freezeContracts();
@@ -177,6 +178,19 @@ contract GBScripts is GBScriptUtils {
 		writeAddress(auctioneerConfigPath("treasury"), treasury);
 	}
 
+	function _getDefaultTeamTreasuryAddress() internal returns (address) {
+		string memory mnemonic = vm.envString("MNEMONIC");
+		(address teamTreasuryAdd, ) = deriveRememberKey(mnemonic, 1);
+		return teamTreasuryAdd;
+	}
+
+	function _updateTeamTreasury() internal {
+		teamTreasury = _getDefaultTeamTreasuryAddress();
+
+		auctioneer.updateTeamTreasury(teamTreasury);
+		writeAddress(auctioneerConfigPath("teamTreasury"), teamTreasury);
+	}
+
 	function _initializeAuctioneerEmissions() internal {
 		if (auctioneerEmissions.emissionsInitialized()) revert AlreadyInitialized();
 
@@ -289,7 +303,11 @@ contract GBScripts is GBScriptUtils {
 
 		console.log(". sync earlyHarvestTax");
 		if (earlyHarvestTax != auctioneerEmissions.earlyHarvestTax()) {
-			console.log("  . earlyHarvestTax updated %s --> %s", auctioneerEmissions.earlyHarvestTax(), earlyHarvestTax);
+			console.log(
+				"  . earlyHarvestTax updated %s --> %s",
+				auctioneerEmissions.earlyHarvestTax(),
+				earlyHarvestTax
+			);
 			auctioneerEmissions.updateEarlyHarvestTax(earlyHarvestTax);
 		} else {
 			console.log("  . skipped");
@@ -309,7 +327,11 @@ contract GBScripts is GBScriptUtils {
 
 		console.log(". sync teamTreasurySplit");
 		if (teamTreasurySplit != auctioneerAuction.teamTreasurySplit()) {
-			console.log("  . teamTreasurySplit updated %s --> %s", auctioneerAuction.teamTreasurySplit(), teamTreasurySplit);
+			console.log(
+				"  . teamTreasurySplit updated %s --> %s",
+				auctioneerAuction.teamTreasurySplit(),
+				teamTreasurySplit
+			);
 			auctioneerAuction.updateTeamTreasurySplit(teamTreasurySplit);
 		} else {
 			console.log("  . skipped");

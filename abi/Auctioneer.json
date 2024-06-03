@@ -3,6 +3,11 @@
     "type": "constructor",
     "inputs": [
       {
+        "name": "_multisig",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
         "name": "_go",
         "type": "address",
         "internalType": "contract IERC20"
@@ -39,6 +44,19 @@
   },
   {
     "type": "function",
+    "name": "DEFAULT_ADMIN_ROLE",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "GO",
     "inputs": [],
     "outputs": [
@@ -46,6 +64,19 @@
         "name": "",
         "type": "address",
         "internalType": "contract IERC20"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "MOD_ROLE",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
       }
     ],
     "stateMutability": "view"
@@ -193,31 +224,24 @@
         "internalType": "uint256"
       },
       {
-        "name": "_options",
-        "type": "tuple",
-        "internalType": "struct BidOptions",
-        "components": [
-          {
-            "name": "paymentType",
-            "type": "uint8",
-            "internalType": "enum PaymentType"
-          },
-          {
-            "name": "multibid",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "message",
-            "type": "string",
-            "internalType": "string"
-          },
-          {
-            "name": "rune",
-            "type": "uint8",
-            "internalType": "uint8"
-          }
-        ]
+        "name": "_rune",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "_message",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "_bidCount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_paymentType",
+        "type": "uint8",
+        "internalType": "enum PaymentType"
       }
     ],
     "outputs": [],
@@ -233,31 +257,24 @@
         "internalType": "uint256"
       },
       {
-        "name": "_options",
-        "type": "tuple",
-        "internalType": "struct BidOptions",
-        "components": [
-          {
-            "name": "paymentType",
-            "type": "uint8",
-            "internalType": "enum PaymentType"
-          },
-          {
-            "name": "multibid",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "message",
-            "type": "string",
-            "internalType": "string"
-          },
-          {
-            "name": "rune",
-            "type": "uint8",
-            "internalType": "uint8"
-          }
-        ]
+        "name": "_rune",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "_message",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "_bidCount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_paymentType",
+        "type": "uint8",
+        "internalType": "enum PaymentType"
       },
       {
         "name": "_permitData",
@@ -308,6 +325,19 @@
         "name": "_lot",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "cancelMigration",
+    "inputs": [
+      {
+        "name": "_dest",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "outputs": [],
@@ -465,6 +495,32 @@
   },
   {
     "type": "function",
+    "name": "deprecated",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "executeMigration",
+    "inputs": [
+      {
+        "name": "_dest",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "finalizeAuction",
     "inputs": [
       {
@@ -557,6 +613,25 @@
             "internalType": "uint256"
           }
         ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getRoleAdmin",
+    "inputs": [
+      {
+        "name": "role",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
       }
     ],
     "stateMutability": "view"
@@ -700,6 +775,24 @@
   },
   {
     "type": "function",
+    "name": "grantRole",
+    "inputs": [
+      {
+        "name": "role",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "harvestAuctionsEmissions",
     "inputs": [
       {
@@ -715,6 +808,30 @@
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "hasRole",
+    "inputs": [
+      {
+        "name": "role",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -761,7 +878,20 @@
   },
   {
     "type": "function",
-    "name": "owner",
+    "name": "migrationDelay",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "migrationDestination",
     "inputs": [],
     "outputs": [
       {
@@ -774,8 +904,113 @@
   },
   {
     "type": "function",
-    "name": "renounceOwnership",
+    "name": "migrationQueueTimestamp",
     "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "multisig",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "muteUser",
+    "inputs": [
+      {
+        "name": "_user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "_muted",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "mutedUsers",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "queueMigration",
+    "inputs": [
+      {
+        "name": "_dest",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "renounceRole",
+    "inputs": [
+      {
+        "name": "role",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "callerConfirmation",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "revokeRole",
+    "inputs": [
+      {
+        "name": "role",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
     "outputs": [],
     "stateMutability": "nonpayable"
   },
@@ -817,16 +1052,35 @@
   },
   {
     "type": "function",
-    "name": "transferOwnership",
+    "name": "supportsInterface",
     "inputs": [
       {
-        "name": "newOwner",
+        "name": "interfaceId",
+        "type": "bytes4",
+        "internalType": "bytes4"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "teamTreasury",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
         "type": "address",
         "internalType": "address"
       }
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -847,6 +1101,19 @@
     "inputs": [
       {
         "name": "_farm",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "updateTeamTreasury",
+    "inputs": [
+      {
+        "name": "_teamTreasury",
         "type": "address",
         "internalType": "address"
       }
@@ -972,7 +1239,7 @@
         "internalType": "uint256"
       },
       {
-        "name": "_multibid",
+        "name": "_bidCount",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
@@ -1124,16 +1391,154 @@
   },
   {
     "type": "event",
-    "name": "OwnershipTransferred",
+    "name": "MigrationCancelled",
     "inputs": [
       {
-        "name": "previousOwner",
+        "name": "_migrator",
         "type": "address",
         "indexed": true,
         "internalType": "address"
       },
       {
-        "name": "newOwner",
+        "name": "_dest",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "MigrationExecuted",
+    "inputs": [
+      {
+        "name": "_migrator",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "_dest",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "_unallocated",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "MigrationQueued",
+    "inputs": [
+      {
+        "name": "_migrator",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "_dest",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "MutedUser",
+    "inputs": [
+      {
+        "name": "_user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "_muted",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "RoleAdminChanged",
+    "inputs": [
+      {
+        "name": "role",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "previousAdminRole",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "newAdminRole",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "RoleGranted",
+    "inputs": [
+      {
+        "name": "role",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "account",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "sender",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "RoleRevoked",
+    "inputs": [
+      {
+        "name": "role",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "account",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "sender",
         "type": "address",
         "indexed": true,
         "internalType": "address"
@@ -1309,10 +1714,10 @@
   },
   {
     "type": "event",
-    "name": "UpdatedTreasury",
+    "name": "UpdatedTeamTreasury",
     "inputs": [
       {
-        "name": "_treasury",
+        "name": "_teamTreasury",
         "type": "address",
         "indexed": true,
         "internalType": "address"
@@ -1322,13 +1727,26 @@
   },
   {
     "type": "event",
-    "name": "UpdatedTreasurySplit",
+    "name": "UpdatedTeamTreasurySplit",
     "inputs": [
       {
         "name": "_split",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "UpdatedTreasury",
+    "inputs": [
+      {
+        "name": "_treasury",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
       }
     ],
     "anonymous": false
@@ -1372,6 +1790,27 @@
   },
   {
     "type": "error",
+    "name": "AccessControlBadConfirmation",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "AccessControlUnauthorizedAccount",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "neededRole",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "AddressEmptyCode",
     "inputs": [
       {
@@ -1404,6 +1843,11 @@
   },
   {
     "type": "error",
+    "name": "Deprecated",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "ETHTransferFailed",
     "inputs": []
   },
@@ -1429,25 +1873,33 @@
   },
   {
     "type": "error",
-    "name": "OwnableInvalidOwner",
-    "inputs": [
-      {
-        "name": "owner",
-        "type": "address",
-        "internalType": "address"
-      }
-    ]
+    "name": "InvalidBidCount",
+    "inputs": []
   },
   {
     "type": "error",
-    "name": "OwnableUnauthorizedAccount",
-    "inputs": [
-      {
-        "name": "account",
-        "type": "address",
-        "internalType": "address"
-      }
-    ]
+    "name": "MigrationAlreadyQueued",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MigrationDestMismatch",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MigrationNotQueued",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "Muted",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotMultisig",
+    "inputs": []
   },
   {
     "type": "error",
@@ -1468,6 +1920,11 @@
   {
     "type": "error",
     "name": "SentETHButNotWalletPayment",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "TeamTreasuryNotSet",
     "inputs": []
   },
   {
