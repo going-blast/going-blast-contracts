@@ -1642,6 +1642,19 @@
   },
   {
     "type": "function",
+    "name": "updateBidIncrement",
+    "inputs": [
+      {
+        "name": "_bidIncrement",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "updatePrivateAuctionRequirement",
     "inputs": [
       {
@@ -2196,6 +2209,19 @@
     "inputs": [
       {
         "name": "_bidCost",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "UpdatedBidIncrement",
+    "inputs": [
+      {
+        "name": "_bidIncrement",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"

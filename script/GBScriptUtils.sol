@@ -16,6 +16,12 @@ import { GoingBlastAirdrop } from "../src/GoingBlastAirdrop.sol";
 contract GBScriptUtils is Script, ChainJsonUtils {
 	using SafeERC20 for IERC20;
 
+	// Errors
+	error AlreadyInitialized();
+	error NotBlastChain();
+	error OnlyAnvil();
+	error ETHTransferFailed();
+
 	// Ecosystem contracts
 	Auctioneer public auctioneer;
 	AuctioneerAuction public auctioneerAuction;
@@ -23,6 +29,7 @@ contract GBScriptUtils is Script, ChainJsonUtils {
 	AuctioneerFarm public auctioneerFarm;
 	GoingBlastAirdrop public airdrop;
 	GoToken public GO;
+	uint256 public GO_SUPPLY = 1000000e18;
 	VoucherToken public VOUCHER;
 	IWETH public WETH;
 
@@ -47,9 +54,8 @@ contract GBScriptUtils is Script, ChainJsonUtils {
 	address public teamTreasury;
 
 	modifier broadcast() {
-		string memory mnemonic = vm.envString("MNEMONIC");
-		(address deployer, ) = deriveRememberKey(mnemonic, 0);
-		vm.startBroadcast(deployer);
+		// `--account` is set in script call
+		vm.startBroadcast();
 		_;
 		vm.stopBroadcast();
 	}
