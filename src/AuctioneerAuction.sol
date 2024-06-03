@@ -233,8 +233,8 @@ contract AuctioneerAuction is
 		if (_bidIncrement == 0) revert Invalid();
 		if (_bidIncrement > 0.1e18) revert Invalid();
 
-		startingBid = _bidIncrement;
-		emit UpdatedStartingBid(_bidIncrement);
+		bidIncrement = _bidIncrement;
+		emit UpdatedBidIncrement(_bidIncrement);
 	}
 
 	function updateBidCost(uint256 _bidCost) external onlyOwner {
