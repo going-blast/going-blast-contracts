@@ -213,6 +213,7 @@ error NotMultisig();
 error MigrationAlreadyQueued();
 error MigrationNotQueued();
 error MigrationDestMismatch();
+error MigrationNotMature();
 error Deprecated();
 
 interface AuctioneerEvents {

@@ -303,12 +303,13 @@ contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYi
 		migrationQueueTimestamp = 0;
 		migrationDestination = address(0);
 
-		emit MigrationQueued(multisig, _dest);
+		emit MigrationCancelled(multisig, _dest);
 	}
 
 	function executeMigration(address _dest) external onlyMultisig notDeprecated {
 		if (migrationQueueTimestamp == 0) revert MigrationNotQueued();
 		if (migrationDestination != _dest) revert MigrationDestMismatch();
+		if ((block.timestamp - migrationQueueTimestamp) < migrationDelay) revert MigrationNotMature();
 
 		deprecated = true;
 		uint256 unallocated = auctioneerEmissions.executeMigration(_dest);
