@@ -1,25 +1,30 @@
 {
-	"contracts": {
-		"WETH": "0x4200000000000000000000000000000000000023",
-		"USD": "0x4200000000000000000000000000000000000022",
-		"GO": "0xD29F6Ad3f0Abe621b082294d7E07e9Ea4FAD93aA",
-		"VOUCHER": "0x6686acA8a3eb3F6686B42eBAdb1C302FeEfe3Ce0",
-		"Auctioneer": "0x8B6EB517151787d4F75B61f705e4b0c0588e2a1A",
-		"AuctioneerEmissions": "0xe0d56F0C493CC0867eedbd3Cf52652Bda66426D1",
-		"AuctioneerFarm": "0xC4103A46066637a9d1d19De7b1e3beee5AeE8f17"
-	},
-	"config": {
-		"isBlast": true,
-		"isAnvil": false
-	},
-	"auctioneerConfig": {
-		"bidCost": 1e18,
-		"startingBid": 1e18,
-		"bidIncrement": 0.01e18,
-		"privateAuctionRequirement": 20e18,
-		"earlyHarvestTax": 5000,
-		"emissionTaxDurationDays": 30,
-		"treasury": "0x2370b8Ff222e12CC95b0c455B904211A58c28d21",
-		"teamTreasurySplit": 2000
-	}
+  "firstBlock": 6368094,
+  "contracts": {
+    "WETH": "0x4200000000000000000000000000000000000023",
+    "USD": "0x4200000000000000000000000000000000000022",
+    "GO": "0x68e1532a9fDA8aA5D1B9a9796aD4Df01a69437Da",
+    "VOUCHER": "0x84d4C85c8dE1cf504db363cF58026623059C2c77",
+    "Auctioneer": "0x3b281c2CA934315d19865A4Eaa2895810CFa682E",
+    "AuctioneerEmissions": "0x3D9c40a803b8C1F0daDd184d86B525aB7821bDab",
+    "AuctioneerFarm": "0xE887a123344DFA8fAe2Aed21fa2f5eFbBb97Bc92",
+    "AuctioneerAuction": "0x333AaD2B02b587405dE21aeFD9ADA8b51874DA48",
+    "GoingBlastAirdrop": "0x16eF43C41aD53d9873Ecd71FE8A2E55882908240"
+  },
+  "config": {
+    "isBlast": false,
+    "isAnvil": false
+  },
+  "auctioneerConfig": {
+    "bidCost": 0.00035e18,
+    "startingBid": 0.00035e18,
+    "bidIncrement": 0.0000035e18,
+    "privateAuctionRequirement": 250e18,
+    "earlyHarvestTax": 5000,
+    "emissionTaxDurationDays": 30,
+    "teamTreasurySplit": 2000,
+    "multisig": "0x9B64c1a4F15Df64A71fa55713DA5b08F16d8FCd4",
+    "treasury": "0xe521eb581af258D800e0E8f510391D82118fC31C",
+    "teamTreasury": "0xCDC2fDC5A9Ca8C4a7565515f7B669897AFf1c733"
+  }
 }

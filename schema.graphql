@@ -1,145 +1,66 @@
-enum AuctionMessageType {
-	BID
-	RUNE
-	MESSAGE
-	CLAIM
-	INFO
+enum AuctionEventType {
+	Messaged
+	Claimed
+	SelectedRune
+	Bid
+	State
 }
 
-type AuctionMessage @entity(immutable: true) {
+type AuctionEvent @entity(immutable: true) {
 	"id will be auction-lot_index"
 	id: ID!
+	type: AuctionEventType!
 	auction: Auction!
-	auctionUser: AuctionUser
-	type: AuctionMessageType!
-	index: Int!
 	user: Bytes
+	index: Int!
+	message: String!
 	alias: String
-	multibid: BigInt
-	prevRuneSymbol: Int
-	runeSymbol: Int
-	message: String
 	bid: BigInt
-	tx: Bytes
-	timestamp: BigInt!
+	bidCount: BigInt
+	prevRune: Int
+	rune: Int
+	timestamp: BigInt
 }
 
-type AuctionRune @entity {
-	"id will be auction-lot_rune-symbol"
-	id: ID!
-	auction: Auction!
-	runeSymbol: Int!
-	bids: BigInt!
-	users: [AuctionUser!]! @derivedFrom(field: "rune")
-	userCount: Int!
-}
-
-enum BidWindowType {
-	OPEN
-	TIMED
-	INFINITE
-}
-
-type AuctionWindow @entity(immutable: true) {
-	"id will be auction-lot_index"
-	id: ID!
-	windowType: BidWindowType!
-	windowOpenTimestamp: BigInt!
-	windowCloseTimestamp: BigInt!
-	timer: BigInt!
-}
-
-type AuctionEmissions @entity(immutable: true) {
-	"id will be auction-lot"
-	id: ID!
-	bp: BigInt!
-	biddersEmission: BigInt!
-	treasuryEmission: BigInt!
-}
-
-type TokenData @entity(immutable: true) {
-	"id will be auction-lot_token-address"
-	id: ID!
-	amount: BigInt!
-	token: Bytes!
-}
-
-type NftData @entity(immutable: true) {
-	"id will be auction-lot_nft-address"
-	id: ID!
-	nftId: BigInt!
-	nft: Bytes!
-}
-
-type AuctionRewards @entity(immutable: true) {
-	"id will be auction-lot"
-	id: ID!
-	estimatedValue: BigInt!
-	tokens: [TokenData!]!
-	nfts: [NftData!]!
-}
-
-type AuctionBidData @entity {
-	"id will be auction-lot"
-	id: ID!
-	revenue: BigInt!
-	bid: BigInt!
-	nextBidBy: BigInt!
-	bidUser: Bytes!
-	bidRune: Int!
-	bids: BigInt!
-	bidCost: BigInt!
-}
-
-type User @entity {
-	"id will be user address"
-	id: ID!
-	alias: String
-	interactedAuctions: [Auction!]!
-	harvestableAuctions: [Auction!]!
-	totalBidsCount: BigInt!
-	totalAuctionsParticipated: BigInt!
-	totalEmissionsHarvested: BigInt!
-	totalEmissionsBurned: BigInt!
-	totalAuctionsWon: BigInt!
-	chatBlacklisted: Boolean!
-}
-
-type AuctionUser @entity {
+type AuctionParticipant @entity {
 	"id will be auction-lot_user-address"
 	id: ID!
 	user: Bytes!
 	auction: Auction!
-	bids: BigInt!
-	lastBidTimestamp: BigInt
-	rune: AuctionRune
-	runeSymbol: Int
-	harvested: Boolean!
-	claimed: Boolean!
+	rune: Int!
+	lastBidTimestamp: BigInt!
+	hasBid: Boolean!
 }
 
 type Auction @entity {
 	"id will be lot"
 	id: ID!
 	lot: BigInt!
-	day: BigInt!
-	name: String!
-	isPrivate: Boolean!
-	unlockTimestamp: BigInt!
-	runes: [AuctionRune!]!
-	windows: [AuctionWindow!]!
-	emissions: AuctionEmissions!
-	rewards: AuctionRewards!
-	bidData: AuctionBidData!
-	finalized: Boolean!
-	users: [AuctionUser!]! @derivedFrom(field: "auction")
-	userCount: Int!
+	hasEmissions: Boolean!
+	eventIndex: Int!
+	users: [AuctionParticipant!]! @derivedFrom(field: "auction")
+	events: [AuctionEvent!]! @derivedFrom(field: "auction")
+}
 
-	"ext"
-	hasRunes: Boolean!
-	activeWindow: BigInt!
-	biddingOpen: Boolean!
-	ended: Boolean!
-	cancelled: Boolean!
-	messagesCount: Int!
+type User @entity {
+	"id will be user address"
+	id: ID!
+	muted: Boolean!
+	alias: String!
+	interactedAuctions: [Auction!]!
+	harvestableAuctions: [Auction!]!
+	totalBidsCount: BigInt!
+	totalAuctionsParticipated: Int!
+	totalEmissionsHarvested: BigInt!
+	totalEmissionsBurned: BigInt!
+	totalAuctionsWon: BigInt!
+}
+
+type Stats @entity {
+	id: ID!
+	totalBidsCount: BigInt!
+	totalRuneSwitches: BigInt!
+	totalMessagesSent: BigInt!
+	totalEmissionsHarvested: BigInt!
+	totalEmissionsBurned: BigInt!
 }

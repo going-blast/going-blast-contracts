@@ -1,5 +1,5 @@
 {
-  "firstBlock": 38,
+  "firstBlock": 173,
   "contracts": {
     "WETH": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
     "USD": "0x7969c5eD335650692Bc04293B07F5BF2e7A673C0",
@@ -12,7 +12,6 @@
     "GoingBlastAirdrop": "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318"
   },
   "config": {
-    "contractsFrozen": true,
     "isBlast": false,
     "isAnvil": true
   },

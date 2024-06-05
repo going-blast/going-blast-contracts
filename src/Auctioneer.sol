@@ -532,6 +532,10 @@ contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYi
 		return auctionUsers[_lot][_user];
 	}
 
+	function getAuctionHasEmissions(uint256 _lot) external view returns (bool) {
+		return auctioneerAuction.getAuction(_lot).emissions.biddersEmission > 0;
+	}
+
 	function getUserLotInfos(uint256[] memory _lots, address _user) external view returns (UserLotInfo[] memory infos) {
 		infos = new UserLotInfo[](_lots.length);
 

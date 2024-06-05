@@ -76,18 +76,18 @@ contract GBScripts is GBScriptUtils {
 		_ANVIL_initArch();
 	}
 
-	function deployTokens() public broadcast loadChain loadConfigValues {
+	function deployTokens() public broadcast loadChain loadContracts loadConfigValues {
 		_deployTokens();
 		_setupWETH();
 	}
 
-	function deployCore() public broadcast loadChain loadConfigValues {
+	function deployCore() public broadcast loadChain loadContracts loadConfigValues {
 		_deployCore();
 		_updateTreasury();
 		_updateTeamTreasury();
 	}
 
-	function initializeCore() public broadcast loadChain loadConfigValues {
+	function initializeCore() public broadcast loadChain loadContracts loadConfigValues {
 		_initializeAuctioneerEmissions();
 		_initializeAuctioneerFarmEmissions();
 	}
