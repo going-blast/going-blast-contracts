@@ -3,13 +3,13 @@
 		"name": "000",
 		"isPrivate": false,
 		"emissionBP": 10000,
-		"unlockTimestamp": 1717502400,
-		"lotValue": 0.25e18,
-		"runeSymbols": [1, 2, 3],
+		"unlockTimestamp": 1717851600,
+		"lotValue": 0.1e18,
+		"runeSymbols": [],
 		"tokens": [
 			{
 				"token": "0x0000000000000000000000000000000000000000",
-				"amount": 0.25e18
+				"amount": 0.1e18
 			}
 		],
 		"nfts": [],
@@ -35,13 +35,13 @@
 		"name": "001",
 		"isPrivate": false,
 		"emissionBP": 10000,
-		"unlockTimestamp": 1717588800,
-		"lotValue": 0.25e18,
-		"runeSymbols": [4, 5],
+		"unlockTimestamp": 1717934400,
+		"lotValue": 0.1e18,
+		"runeSymbols": [3, 4, 5],
 		"tokens": [
 			{
 				"token": "0x0000000000000000000000000000000000000000",
-				"amount": 0.25e18
+				"amount": 0.1e18
 			}
 		],
 		"nfts": [],
@@ -67,7 +67,7 @@
 		"name": "002",
 		"isPrivate": false,
 		"emissionBP": 10000,
-		"unlockTimestamp": 1717675200,
+		"unlockTimestamp": 1718020800,
 		"lotValue": 0.1e18,
 		"runeSymbols": [],
 		"tokens": [
@@ -97,15 +97,15 @@
 	},
 	"3": {
 		"name": "003",
-		"isPrivate": false,
-		"emissionBP": 10000,
-		"unlockTimestamp": 1717502400,
-		"lotValue": 0.1e18,
-		"runeSymbols": [1, 2, 3],
+		"isPrivate": true,
+		"emissionBP": 15000,
+		"unlockTimestamp": 1718107200,
+		"lotValue": 0.25e18,
+		"runeSymbols": [2, 4, 6],
 		"tokens": [
 			{
 				"token": "0x0000000000000000000000000000000000000000",
-				"amount": 0.1e18
+				"amount": 0.25e18
 			}
 		],
 		"nfts": [],
@@ -131,39 +131,7 @@
 		"name": "004",
 		"isPrivate": false,
 		"emissionBP": 10000,
-		"unlockTimestamp": 1717588800,
-		"lotValue": 0.1e18,
-		"runeSymbols": [4, 5],
-		"tokens": [
-			{
-				"token": "0x0000000000000000000000000000000000000000",
-				"amount": 0.1e18
-			}
-		],
-		"nfts": [],
-		"windows": [
-			{
-				"windowType": 0,
-				"duration": 14400,
-				"timer": 0
-			},
-			{
-				"windowType": 1,
-				"duration": 3600,
-				"timer": 120
-			},
-			{
-				"windowType": 2,
-				"duration": 0,
-				"timer": 60
-			}
-		]
-	},
-	"5": {
-		"name": "005",
-		"isPrivate": false,
-		"emissionBP": 10000,
-		"unlockTimestamp": 1717675200,
+		"unlockTimestamp": 1718193600,
 		"lotValue": 0.1e18,
 		"runeSymbols": [],
 		"tokens": [

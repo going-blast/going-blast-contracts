@@ -13,3 +13,6 @@ IFS=
 
 # Update Auctioneer Address and StartBlock
 echo $(cat subgraph.yaml | yq -y '.dataSources[0].source.address = "'$AuctioneerAddress'" | .dataSources[0].source.startBlock = '$FirstBlock) > subgraph.yaml
+
+# Update chain
+echo $(cat subgraph.yaml | yq -y '.dataSources[0].network = "mainnet"') > subgraph.yaml

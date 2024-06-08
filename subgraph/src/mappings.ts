@@ -31,7 +31,7 @@ function getStats(): Stats {
 	return statsEntity
 }
 
-function updateStats(bids: BigInt, switchedRunes: boolean, message: string) {
+function updateStats(bids: BigInt, switchedRunes: boolean, message: string): void {
 	const stats = getStats()
 	stats.totalBidsCount = stats.totalBidsCount.plus(bids)
 	if (switchedRunes) {
@@ -53,7 +53,7 @@ function getUserEntity(user: Address): User {
 		userEntity.interactedAuctions = []
 		userEntity.harvestableAuctions = []
 		userEntity.totalBidsCount = BigInt.zero()
-		userEntity.totalAuctionsParticipated = BigInt.zero()
+		userEntity.totalAuctionsParticipated = 0
 		userEntity.totalEmissionsHarvested = BigInt.zero()
 		userEntity.totalEmissionsBurned = BigInt.zero()
 		userEntity.totalAuctionsWon = BigInt.zero()
@@ -63,17 +63,19 @@ function getUserEntity(user: Address): User {
 }
 
 function getAuctionParticipantEntity(lot: string, user: Address): AuctionParticipant {
-	let auctionUserEntity = AuctionParticipant.load(lot.concat("_").concat(user.toHexString()))
+	let participantEntity = AuctionParticipant.load(lot.concat("_").concat(user.toHexString()))
 
-	if (auctionUserEntity == null) {
-		auctionUserEntity = new AuctionParticipant(lot.concat("_").concat(user.toHexString()))
-		auctionUserEntity.user = user
-		auctionUserEntity.auction = lot
-		auctionUserEntity.lastBidTimestamp = BigInt.zero()
-		auctionUserEntity.hasBid = false
+	if (participantEntity == null) {
+		participantEntity = new AuctionParticipant(lot.concat("_").concat(user.toHexString()))
+		participantEntity.user = user
+		participantEntity.auction = lot
+		participantEntity.rune = 0
+		participantEntity.lastBidTimestamp = BigInt.zero()
+		participantEntity.hasBid = false
+		participantEntity.muted = false
 	}
 
-	return auctionUserEntity
+	return participantEntity
 }
 
 // AUCTIONS
@@ -119,11 +121,13 @@ export function handleAuctionCancelled(event: AuctionCancelledEvent): void {
 
 export function handleUpdatedAlias(event: UpdatedAliasEvent): void {
 	const userEntity = getUserEntity(event.params._user)
+	if (userEntity.muted) return
+
 	userEntity.alias = event.params._alias
 	userEntity.save()
 }
 
-export function handleMuted(event: MutedUserEvent): void {
+export function handleMutedUser(event: MutedUserEvent): void {
 	const userEntity = getUserEntity(event.params._user)
 	userEntity.muted = event.params._muted
 	if (userEntity.muted) {
@@ -142,17 +146,14 @@ export function handleBid(event: BidEvent): void {
 	auctionEntity.eventIndex += 1
 	auctionEntity.save()
 
-	const auctionParticipantEntity = getAuctionParticipantEntity(lot, user)
-	auctionParticipantEntity.rune = event.params
-	const isFirstBid = !auctionParticipantEntity.hasBid
+	const userEntity = getUserEntity(user)
+	const participantEntity = getAuctionParticipantEntity(lot, user)
 
 	// User Stats
-	const userEntity = getUserEntity(user)
+	const isFirstBid = !participantEntity.hasBid
 
 	userEntity.totalBidsCount = userEntity.totalBidsCount.plus(event.params._bidCount)
 	if (isFirstBid) {
-		auctionParticipantEntity.hasBid = true
-
 		if (auctionEntity.hasEmissions) {
 			const harvestableAuctions = userEntity.harvestableAuctions
 			harvestableAuctions.push(lot)
@@ -166,8 +167,14 @@ export function handleBid(event: BidEvent): void {
 		userEntity.totalAuctionsParticipated += 1
 	}
 
-	auctionParticipantEntity.save()
 	userEntity.save()
+
+	participantEntity.hasBid = true
+	participantEntity.lastBidTimestamp = event.params._timestamp
+	participantEntity.rune = event.params._rune
+	participantEntity.muted = userEntity.muted
+	participantEntity.alias = event.params._alias
+	participantEntity.save()
 
 	// Stats
 	const switchedRunes = event.params._prevRune !== 0 && event.params._rune !== event.params._prevRune
@@ -193,10 +200,13 @@ export function handleSelectedRune(event: SelectedRuneEvent): void {
 	const lot = event.params._lot.toString()
 	const user = event.params._user
 
-	const auctionParticipantEntity = getAuctionParticipantEntity(lot, user)
-	auctionParticipantEntity.rune = event.params._rune
-
 	const userEntity = getUserEntity(user)
+
+	const participantEntity = getAuctionParticipantEntity(lot, user)
+	participantEntity.alias = event.params._alias
+	participantEntity.rune = event.params._rune
+	participantEntity.muted = userEntity.muted
+	participantEntity.save()
 
 	// Stats
 	const switchedRunes = event.params._prevRune !== 0 && event.params._rune !== event.params._prevRune
@@ -221,7 +231,7 @@ export function handleSelectedRune(event: SelectedRuneEvent): void {
 	selectedRuneEventEntity.save()
 }
 
-export function handleClaimedLot(event: ClaimedEvent): void {
+export function handleClaim(event: ClaimedEvent): void {
 	const lot = event.params._lot.toString()
 	const user = event.params._user
 
@@ -234,7 +244,10 @@ export function handleClaimedLot(event: ClaimedEvent): void {
 	const message = userEntity.muted ? "" : event.params._message
 	updateStats(BigInt.zero(), false, message)
 
-	const auctionUserEntity = getAuctionParticipantEntity(lot, user)
+	const participantEntity = getAuctionParticipantEntity(lot, user)
+	participantEntity.alias = event.params._alias
+	participantEntity.muted = userEntity.muted
+	participantEntity.save()
 
 	const auctionEntity = Auction.load(lot)!
 	auctionEntity.eventIndex += 1
@@ -247,7 +260,7 @@ export function handleClaimedLot(event: ClaimedEvent): void {
 	claimedEventEntity.auction = auctionEntity.id
 	claimedEventEntity.user = user
 	claimedEventEntity.alias = userEntity.muted ? "" : userEntity.alias
-	claimedEventEntity.rune = auctionUserEntity.rune
+	claimedEventEntity.rune = participantEntity.rune
 	claimedEventEntity.message = userEntity.muted ? "" : event.params._message
 	claimedEventEntity.save()
 }
@@ -263,7 +276,10 @@ export function handleMessaged(event: MessagedEvent): void {
 	auctionEntity.save()
 
 	const userEntity = getUserEntity(user)
-	const auctionUserEntity = getAuctionParticipantEntity(lot, user)
+	const participantEntity = getAuctionParticipantEntity(lot, user)
+	participantEntity.alias = event.params._alias
+	participantEntity.muted = userEntity.muted
+	participantEntity.save()
 
 	// Stats
 	const message = userEntity.muted ? "" : event.params._message
@@ -276,7 +292,7 @@ export function handleMessaged(event: MessagedEvent): void {
 	messageEntity.auction = auctionEntity.id
 	messageEntity.user = user
 	messageEntity.alias = userEntity.muted ? "" : userEntity.alias
-	messageEntity.rune = auctionUserEntity.rune
+	messageEntity.rune = participantEntity.rune
 	messageEntity.message = userEntity.muted ? "" : event.params._message
 	messageEntity.timestamp = event.block.timestamp
 	messageEntity.save()

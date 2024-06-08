@@ -39,3 +39,4 @@ lcov.info
 cache_forge
 cache
 snapshot.json
+blast-testnet-deploy-subgraph.sh

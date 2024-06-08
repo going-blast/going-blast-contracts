@@ -1920,6 +1920,11 @@
   },
   {
     "type": "error",
+    "name": "MigrationNotMature",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "MigrationNotQueued",
     "inputs": []
   },

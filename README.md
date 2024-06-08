@@ -43,23 +43,23 @@ Contracts, tests, coverage, and deployment scripts of the Going Blast ecosystem.
   - [x] Add multisig wallet address
   - [x] Add 7 day timelock
   - [x] GO injected into new contract
-  - [ ] Test
-    - [ ] Only multisig can access functionality
-    - [ ] Cant execute without queue
-    - [ ] Migration can be queued
-    - [ ] Cannot queue if already queued
-    - [ ] Cannot queue with dest 0 address
-    - [ ] Queuing updates queue timestamp and dest, emits event
-    - [ ] Queued Migration can be cancelled
-    - [ ] Cannot cancel if dest mismatch
-    - [ ] Cannot cancel if not queued
-    - [ ] Queue timestamp and dest reset, emits event
-    - [ ] Executing migration transfers GO to dest
-    - [ ] Cannot execute with dest mismatch
-    - [ ] Cannot execute if not queued
-    - [ ] Marks deprecated, emits event
-    - [ ] Cannot queue, cancel, or execute if deprecated
-    - [ ] Only unallocated GO can be migrated
+  - [x] Test
+	  - [x] Only multisig can access functionality
+	  - [x] Migration can be queued
+	  - [x] Cannot queue if already queued
+	  - [x] Cannot queue with dest 0 address
+	  - [x] Queuing updates queue timestamp and dest, emits event
+	  - [x] Queued Migration can be cancelled
+	  - [x] Cannot cancel if dest mismatch
+	  - [x] Cannot cancel if not queued
+	  - [x] Queue timestamp and dest reset, emits event
+	  - [x] Cannot execute if not queued
+	  - [x] Cannot execute with dest mismatch
+	  - [x] Cannot execute if not mature
+	  - [x] Only unallocated GO can be migrated
+	  - [x] Executing migration transfers GO to dest
+	  - [x] Marks deprecated, emits event
+	  - [x] Cannot queue, cancel, or execute if deprecated
 
 - [x] Test update bid increment
 

@@ -35,23 +35,6 @@ contract AuctioneerMigrateTest is AuctioneerHelper {
 		auctioneer.createAuctions(params);
 	}
 
-	// - [x] Only multisig can access functionality
-	// - [x] Migration can be queued
-	// - [x] Cannot queue if already queued
-	// - [x] Cannot queue with dest 0 address
-	// - [x] Queuing updates queue timestamp and dest, emits event
-	// - [x] Queued Migration can be cancelled
-	// - [x] Cannot cancel if dest mismatch
-	// - [x] Cannot cancel if not queued
-	// - [x] Queue timestamp and dest reset, emits event
-	// - [x] Cannot execute if not queued
-	// - [x] Cannot execute with dest mismatch
-	// - [x] Cannot execute if not mature
-	// - [x] Only unallocated GO can be migrated
-	// - [x] Executing migration transfers GO to dest
-	// - [x] Marks deprecated, emits event
-	// - [ ] Cannot queue, cancel, or execute if deprecated
-
 	function test_migration_ExpectRevert_NotMultisig() public {
 		vm.expectRevert(NotMultisig.selector);
 		auctioneer.queueMigration(treasury);

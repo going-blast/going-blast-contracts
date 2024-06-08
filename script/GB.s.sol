@@ -43,6 +43,9 @@ import { GoingBlastAirdrop } from "../src/GoingBlastAirdrop.sol";
 // 		. Initialize Auctioneer Emissions
 // 		. Initialize Auctioneer Farm Emissions
 // 		. Create first auctions
+// 		. ./env-subgraph-yaml.sh
+// 		. Deploy subgraph
+// 		. Update subgraph address in frontend
 
 contract GBScripts is GBScriptUtils {
 	using SafeERC20 for IERC20;
@@ -105,6 +108,10 @@ contract GBScripts is GBScriptUtils {
 
 		auctioneer.claimYieldAll(_recipient, 0);
 		auctioneerFarm.claimYieldAll(_recipient, 0);
+	}
+
+	function muteUser(address _user, bool _muted) public broadcast loadChain loadContracts loadConfigValues {
+		auctioneer.muteUser(_user, _muted);
 	}
 
 	function syncConfigValues() public broadcast loadChain loadContracts loadConfigValues {
