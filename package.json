@@ -51,6 +51,7 @@
 		"blast:create:auctions": "yarn script:blast:broadcast --sig 'createAuctions()'",
 		"blast:testnet:deploy:tokens": "yarn script:blast:testnet:broadcast --sig 'deployTokens()'",
 		"blast:testnet:deploy:core": "yarn script:blast:testnet:broadcast --sig 'deployCore()'",
+		"blast:testnet:deploy:distributeGO": "yarn script:blast:testnet:broadcast --sig 'distributeGO()'",
 		"blast:testnet:deploy:initialize": "yarn script:blast:testnet:broadcast --sig 'initializeCore()'",
 		"blast:testnet:create:auctions": "yarn script:blast:testnet:broadcast --sig 'createAuctions()'",
 		"====== UTILS ======": "",

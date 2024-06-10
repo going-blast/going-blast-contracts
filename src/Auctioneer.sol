@@ -217,7 +217,7 @@ contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYi
 		);
 	}
 
-	function messageAuction(uint256 _lot, string memory _message) external {
+	function messageAuction(uint256 _lot, string memory _message) external nonReentrant {
 		if (mutedUsers[msg.sender]) revert Muted();
 
 		auctioneerAuction.validateAuctionRunning(_lot);

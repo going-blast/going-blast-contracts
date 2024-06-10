@@ -8,11 +8,11 @@ indexerHints:
 dataSources:
   - kind: ethereum/contract
     name: Auctioneer
-    network: mainnet
+    network: blast-testnet
     source:
-      address: '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9'
+      address: '0x7D8fCb012e2E9470A5f009fC0B5800bDEdB68700'
       abi: Auctioneer
-      startBlock: 53
+      startBlock: 6580577
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.6

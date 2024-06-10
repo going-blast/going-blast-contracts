@@ -69,7 +69,7 @@ contract GBScripts is GBScriptUtils {
 		_updateTeamTreasury();
 
 		// -- To be done manually on mainnet
-		_ANVIL_distributeGO();
+		_distributeGO();
 
 		// initialize
 		_initializeAuctioneerEmissions();
@@ -82,6 +82,11 @@ contract GBScripts is GBScriptUtils {
 	function deployTokens() public broadcast loadChain loadContracts loadConfigValues {
 		_deployTokens();
 		_setupWETH();
+	}
+
+	function distributeGO() public broadcast loadChain loadContracts loadConfigValues {
+		// ONLY ANVIL & TESTNET
+		_distributeGO();
 	}
 
 	function deployCore() public broadcast loadChain loadContracts loadConfigValues {
@@ -375,9 +380,7 @@ contract GBScripts is GBScriptUtils {
 		if (!sent) revert ETHTransferFailed();
 	}
 
-	function _ANVIL_distributeGO() internal {
-		if (!isAnvil) return;
-
+	function _distributeGO() internal {
 		uint256 proofOfBidEmissions = GO_SUPPLY.scaleByBP(6000);
 		IERC20(GO).safeTransfer(address(auctioneerEmissions), proofOfBidEmissions);
 
