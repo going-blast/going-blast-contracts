@@ -243,15 +243,15 @@ contract GBScripts is GBScriptUtils {
 
 		auctioneer.updateFarm(address(auctioneerFarm));
 
-		airdrop = new GoingBlastAirdrop(address(VOUCHER), treasury, 0);
-		writeContractAddress("GoingBlastAirdrop", address(airdrop));
+		// airdrop = new GoingBlastAirdrop(address(VOUCHER), treasury, 0);
+		// writeContractAddress("GoingBlastAirdrop", address(airdrop));
 
 		// INITIALIZE BLAST STUFF
-		if (isBlast) {
-			auctioneer.initializeBlast();
-			auctioneerFarm.initializeBlast();
-			auctioneerAuction.initializeBlast();
-		}
+		// if (isBlast) {
+		// 	auctioneer.initializeBlast();
+		// 	auctioneerFarm.initializeBlast();
+		// 	auctioneerAuction.initializeBlast();
+		// }
 	}
 
 	function _updateTreasury() internal {
