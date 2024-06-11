@@ -145,6 +145,7 @@ contract ClaimableAirdropIndividual is Ownable, ReentrancyGuard {
 	}
 
 	function claim(address user, uint256 amount) external nonReentrant {
+		if (msg.sender != user) revert Invalid();
 		if (closed) revert Closed();
 		if (userAmount[user] == 0) revert NothingToClaim();
 
@@ -162,5 +163,9 @@ contract ClaimableAirdropIndividual is Ownable, ReentrancyGuard {
 
 	function _transfer(address to, uint256 amount) internal {
 		token.safeTransferFrom(tokenOwner, to, amount);
+	}
+
+	function getClaimable(address user) public view returns (uint256 claimable) {
+		claimable = userAmount[user] - userClaimed[user];
 	}
 }
