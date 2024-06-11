@@ -13,6 +13,27 @@ import { GoToken } from "../src/GoToken.sol";
 import { VoucherToken } from "../src/VoucherToken.sol";
 import { GoingBlastAirdrop } from "../src/GoingBlastAirdrop.sol";
 
+contract YieldMock {
+	address private constant blastContract = 0x4300000000000000000000000000000000000002;
+
+	mapping(address => uint8) public getConfiguration;
+
+	function configure(address contractAddress, uint8 flags) external returns (uint256) {
+		require(msg.sender == blastContract);
+
+		getConfiguration[contractAddress] = flags;
+		return 0;
+	}
+
+	function claim(address, address, uint256) external pure returns (uint256) {
+		return 0;
+	}
+
+	function getClaimableAmount(address) external pure returns (uint256) {
+		return 0;
+	}
+}
+
 contract GBScriptUtils is Script, ChainJsonUtils {
 	using SafeERC20 for IERC20;
 
@@ -97,6 +118,12 @@ contract GBScriptUtils is Script, ChainJsonUtils {
 		multisig = readAddress(auctioneerConfigPath("multisig"));
 		treasury = readAddress(auctioneerConfigPath("treasury"));
 		teamTreasury = readAddress(auctioneerConfigPath("teamTreasury"));
+		_;
+	}
+
+	modifier mockBlastYield() {
+		YieldMock yieldMock = new YieldMock();
+		vm.etch(0x0000000000000000000000000000000000000100, address(yieldMock).code);
 		_;
 	}
 }

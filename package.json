@@ -47,6 +47,7 @@
 		"====== DEPLOY ======": "",
 		"blast:deploy:tokens": "yarn script:blast:broadcast --verify --sig 'deployTokens()'",
 		"blast:deploy:core": "yarn script:blast:broadcast --verify --sig 'deployCore()'",
+		"blast:deploy:initializeBlast": "yarn script:blast:broadcast --skip-simulation --sig 'initializeBlast()'",
 		"blast:deploy:initialize": "yarn script:blast:broadcast --sig 'initializeCore()'",
 		"blast:create:auctions": "yarn script:blast:broadcast --sig 'createAuctions()'",
 		"blast:testnet:deploy:tokens": "yarn script:blast:testnet:broadcast --sig 'deployTokens()'",

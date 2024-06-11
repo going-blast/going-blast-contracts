@@ -95,6 +95,12 @@ contract GBScripts is GBScriptUtils {
 		_updateTeamTreasury();
 	}
 
+	function initializeBlast() public broadcast loadChain loadContracts loadConfigValues mockBlastYield {
+		auctioneer.initializeBlast();
+		auctioneerFarm.initializeBlast();
+		auctioneerAuction.initializeBlast();
+	}
+
 	function initializeCore() public broadcast loadChain loadContracts loadConfigValues {
 		_initializeAuctioneerEmissions();
 		_initializeAuctioneerFarmEmissions();
