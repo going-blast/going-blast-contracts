@@ -9,4 +9,4 @@ solc = '0.8.20'
 optimizer = true
 optimizer-runs = 200
 fs_permissions = [{ access = "read-write", path = "./data" }]
-gas_reports = ["Auctioneer", "AuctioneerHarness", "AuctioneerFarm"]
+gas_reports = ["Auctioneer", "AuctioneerHarness"]

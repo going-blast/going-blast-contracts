@@ -53,15 +53,11 @@ contract GBScriptUtils is Script, ChainJsonUtils {
 	uint256 public bidCost = 0.00035e18;
 	uint256 public startingBid = 0.00035e18;
 	uint256 public bidIncrement = 0.0000035e18;
-
-	// Config values
-	uint256 public privateAuctionRequirement = 250e18;
-	uint256 public earlyHarvestTax = 5000;
-	uint256 public teamTreasurySplit = 2000;
+	bool public createAuctionRequiresRole = true;
+	uint256 public treasuryCut = 500;
 
 	// Addresses
 	address public treasury;
-	address public teamTreasury;
 
 	modifier broadcast() {
 		// `--account` is set in script call
@@ -95,12 +91,12 @@ contract GBScriptUtils is Script, ChainJsonUtils {
 
 		bidCost = readUint(auctioneerConfigPath("bidCost"));
 		startingBid = readUint(auctioneerConfigPath("startingBid"));
-		privateAuctionRequirement = readUint(auctioneerConfigPath("privateAuctionRequirement"));
-		earlyHarvestTax = readUint(auctioneerConfigPath("earlyHarvestTax"));
-		teamTreasurySplit = readUint(auctioneerConfigPath("teamTreasurySplit"));
+		bidIncrement = readUint(auctioneerConfigPath("bidIncrement"));
+		createAuctionRequiresRole = readBool(auctioneerConfigPath("createAuctionRequiresRole"));
+		treasuryCut = readUint(auctioneerConfigPath("treasuryCut"));
 
 		treasury = readAddress(auctioneerConfigPath("treasury"));
-		teamTreasury = readAddress(auctioneerConfigPath("teamTreasury"));
+
 		_;
 	}
 

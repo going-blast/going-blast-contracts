@@ -38,6 +38,16 @@ contract AuctioneerCancelTest is AuctioneerHelper {
 		_cancelAuction(1);
 	}
 
+	function test_cancelAuction_ExpectEmit_AdminCancelAuction() public {
+		AuctionParams memory params = _getBaseAuctionParams();
+		uint256 lot = _createAuction(params);
+
+		vm.expectEmit(true, true, true, true);
+		emit AuctionCancelled(sender, lot);
+
+		auctioneer.cancelAuction(lot);
+	}
+
 	function test_cancelAuction_RevertWhen_NotCancellable() public {
 		AuctionParams memory params = _getBaseAuctionParams();
 		_createAuction(params);
@@ -68,6 +78,21 @@ contract AuctioneerCancelTest is AuctioneerHelper {
 		uint256 creatorETH = creator.balance;
 
 		_cancelAuction(0);
+
+		assertEq(
+			creator.balance,
+			creatorETH + params.tokens[0].amount,
+			"Creator balance should increase by auction amount"
+		);
+	}
+
+	function test_cancelAuction_Should_AdminCancel_ReturnLotToCreator() public {
+		AuctionParams memory params = _getBaseAuctionParams();
+		_createAuction(params);
+
+		uint256 creatorETH = creator.balance;
+
+		auctioneer.cancelAuction(0);
 
 		assertEq(
 			creator.balance,

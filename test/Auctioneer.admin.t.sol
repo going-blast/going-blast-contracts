@@ -51,4 +51,20 @@ contract AuctioneerAdminTest is AuctioneerHelper {
 		vm.expectRevert(Invalid.selector);
 		auctioneer.updateTreasuryCut(2001);
 	}
+
+	// Update createAuctionRequiresRole
+	function test_setCreateAuctionRequiresRole() public {
+		auctioneer.setCreateAuctionRequiresRole(false);
+		assertEq(auctioneer.createAuctionRequiresRole(), false);
+	}
+	function test_setCreateAuctionRequiresRole_ExpectEmit_UpdatedCreateAuctionRequiresRole() public {
+		vm.expectEmit(true, true, true, true);
+		emit UpdatedCreateAuctionRequiresRole(false);
+		auctioneer.setCreateAuctionRequiresRole(false);
+	}
+	function test_setCreateAuctionRequiresRole_RevertWhen_CallerIsNotOwner() public {
+		_expectRevertNotAdmin(address(0));
+		vm.prank(address(0));
+		auctioneer.setCreateAuctionRequiresRole(false);
+	}
 }

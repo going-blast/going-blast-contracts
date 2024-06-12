@@ -72,6 +72,7 @@ contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYi
 
 	bytes32 public constant CREATOR_ROLE = keccak256("CREATOR_ROLE");
 	bool public createAuctionRequiresRole = true;
+	EnumerableSet.UintSet activeLots;
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -147,7 +148,7 @@ contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYi
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	function createAuction(AuctionParams memory _param) external nonReentrant {
+	function createAuction(AuctionParams memory _param) external nonReentrant returns (uint256 lot) {
 		if (treasury == address(0)) revert TreasuryNotSet();
 		if (createAuctionRequiresRole) {
 			_checkRole(CREATOR_ROLE);
@@ -165,13 +166,16 @@ contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYi
 			WETH.withdraw(wethAmount);
 		}
 
-		uint256 lot = auctioneerAuction.createAuction{ value: wethAmount }(msg.sender, _param, treasuryCut);
+		lot = auctioneerAuction.createAuction{ value: wethAmount }(msg.sender, _param, treasuryCut);
+
+		activeLots.add(lot);
 
 		emit AuctionCreated(msg.sender, lot);
 	}
 
 	function cancelAuction(uint256 _lot) external {
 		_cancelAuction(msg.sender, _lot);
+		activeLots.remove(_lot);
 	}
 
 	function bid(
@@ -267,7 +271,7 @@ contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYi
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	function _cancelAuction(address _canceller, uint256 _lot) internal {
-		auctioneerAuction.cancelAuction(_canceller, _lot);
+		auctioneerAuction.cancelAuction(_canceller, _lot, hasRole(DEFAULT_ADMIN_ROLE, _canceller));
 		emit AuctionCancelled(_canceller, _lot);
 	}
 
@@ -322,6 +326,8 @@ contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYi
 		}
 
 		_transferRevenue(revenue, creator, _treasuryCut);
+
+		activeLots.remove(_lot);
 	}
 
 	function _selfPermit(PermitData memory _permitData) internal {
@@ -375,6 +381,22 @@ contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYi
 		return auctionUsers[_lot][_user];
 	}
 
+	function getUserParticipatedAuctions(address _user) public view returns (uint256[] memory lots) {
+		uint256 count = userParticipatedAuctions[_user].length();
+		lots = new uint256[](count);
+		for (uint256 i = 0; i < count; i++) {
+			lots[i] = userParticipatedAuctions[_user].at(i);
+		}
+	}
+
+	function getActiveLots() external view returns (uint256[] memory lots) {
+		uint256 count = activeLots.length();
+		lots = new uint256[](count);
+		for (uint256 i = 0; i < count; i++) {
+			lots[i] = activeLots.at(i);
+		}
+	}
+
 	function getUserLotInfos(uint256[] memory _lots, address _user) external view returns (UserLotInfo[] memory infos) {
 		infos = new UserLotInfo[](_lots.length);
 
@@ -418,14 +440,6 @@ contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYi
 			}
 
 			infos[i].price = (auction.bidData.bid * infos[i].shareOfLot) / 1e18;
-		}
-	}
-
-	function getUserParticipatedAuctions(address _user) public view returns (uint256[] memory lots) {
-		uint256 count = userParticipatedAuctions[_user].length();
-		lots = new uint256[](count);
-		for (uint256 i = 0; i < count; i++) {
-			lots[i] = userParticipatedAuctions[_user].at(i);
 		}
 	}
 }

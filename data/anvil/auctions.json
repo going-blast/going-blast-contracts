@@ -1,10 +1,10 @@
 {
 	"0": {
+		"bidCost": 0.00035e18,
+		"bidIncrement": 0.0000035e18,
 		"name": "000",
-		"isPrivate": false,
-		"emissionBP": 10000,
-		"unlockTimestamp": 1717759800,
-		"lotValue": 181e18,
+		"unlockTimestamp": 1718209239,
+		"startingBid": 0.00035e18,
 		"runeSymbols": [],
 		"tokens": [
 			{
@@ -32,11 +32,11 @@
 		]
 	},
 	"1": {
+		"bidCost": 0.00035e18,
+		"bidIncrement": 0.0000035e18,
 		"name": "001",
-		"isPrivate": false,
-		"emissionBP": 10000,
-		"unlockTimestamp": 1717759800,
-		"lotValue": 181e18,
+		"unlockTimestamp": 1718209239,
+		"startingBid": 0.00035e18,
 		"runeSymbols": [1, 2, 3],
 		"tokens": [
 			{
@@ -64,11 +64,11 @@
 		]
 	},
 	"2": {
+		"bidCost": 0.00035e18,
+		"bidIncrement": 0.0000035e18,
 		"name": "002",
-		"isPrivate": false,
-		"emissionBP": 10000,
-		"unlockTimestamp": 1717846200,
-		"lotValue": 181e18,
+		"unlockTimestamp": 1718291139,
+		"startingBid": 0.00035e18,
 		"runeSymbols": [],
 		"tokens": [
 			{
@@ -96,11 +96,11 @@
 		]
 	},
 	"3": {
+		"bidCost": 0.00035e18,
+		"bidIncrement": 0.0000035e18,
 		"name": "003",
-		"isPrivate": true,
-		"emissionBP": 10000,
-		"unlockTimestamp": 1717846200,
-		"lotValue": 181e18,
+		"unlockTimestamp": 1718291139,
+		"startingBid": 0.00035e18,
 		"runeSymbols": [4, 5, 6],
 		"tokens": [
 			{

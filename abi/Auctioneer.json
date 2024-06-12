@@ -3,16 +3,6 @@
     "type": "constructor",
     "inputs": [
       {
-        "name": "_multisig",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "_go",
-        "type": "address",
-        "internalType": "contract IERC20"
-      },
-      {
         "name": "_voucher",
         "type": "address",
         "internalType": "contract IERC20"
@@ -44,7 +34,7 @@
   },
   {
     "type": "function",
-    "name": "DEFAULT_ADMIN_ROLE",
+    "name": "CREATOR_ROLE",
     "inputs": [],
     "outputs": [
       {
@@ -57,13 +47,13 @@
   },
   {
     "type": "function",
-    "name": "GO",
+    "name": "DEFAULT_ADMIN_ROLE",
     "inputs": [],
     "outputs": [
       {
         "name": "",
-        "type": "address",
-        "internalType": "contract IERC20"
+        "type": "bytes32",
+        "internalType": "bytes32"
       }
     ],
     "stateMutability": "view"
@@ -156,21 +146,6 @@
         "name": "lotClaimed",
         "type": "bool",
         "internalType": "bool"
-      },
-      {
-        "name": "emissionsHarvested",
-        "type": "bool",
-        "internalType": "bool"
-      },
-      {
-        "name": "harvestedEmissions",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "burnedEmissions",
-        "type": "uint256",
-        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -184,32 +159,6 @@
         "name": "",
         "type": "address",
         "internalType": "contract IAuctioneerAuction"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "auctioneerEmissions",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract IAuctioneerEmissions"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "auctioneerFarm",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract IAuctioneerFarm"
       }
     ],
     "stateMutability": "view"
@@ -332,19 +281,6 @@
   },
   {
     "type": "function",
-    "name": "cancelMigration",
-    "inputs": [
-      {
-        "name": "_dest",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
     "name": "claimLot",
     "inputs": [
       {
@@ -381,25 +317,20 @@
   },
   {
     "type": "function",
-    "name": "createAuctions",
+    "name": "createAuction",
     "inputs": [
       {
-        "name": "_params",
-        "type": "tuple[]",
-        "internalType": "struct AuctionParams[]",
+        "name": "_param",
+        "type": "tuple",
+        "internalType": "struct AuctionParams",
         "components": [
           {
-            "name": "emissionBP",
+            "name": "bidCost",
             "type": "uint256",
             "internalType": "uint256"
           },
           {
-            "name": "isPrivate",
-            "type": "bool",
-            "internalType": "bool"
-          },
-          {
-            "name": "lotValue",
+            "name": "bidIncrement",
             "type": "uint256",
             "internalType": "uint256"
           },
@@ -429,6 +360,11 @@
             "name": "runeSymbols",
             "type": "uint8[]",
             "internalType": "uint8[]"
+          },
+          {
+            "name": "startingBid",
+            "type": "uint256",
+            "internalType": "uint256"
           },
           {
             "name": "tokens",
@@ -477,8 +413,27 @@
         ]
       }
     ],
-    "outputs": [],
+    "outputs": [
+      {
+        "name": "lot",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "createAuctionRequiresRole",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -495,32 +450,6 @@
   },
   {
     "type": "function",
-    "name": "deprecated",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool",
-        "internalType": "bool"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "executeMigration",
-    "inputs": [
-      {
-        "name": "_dest",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
     "name": "finalizeAuction",
     "inputs": [
       {
@@ -531,6 +460,19 @@
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "getActiveLots",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "lots",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -557,25 +499,6 @@
         "name": "_alias",
         "type": "string",
         "internalType": "string"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "getAuctionHasEmissions",
-    "inputs": [
-      {
-        "name": "_lot",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool",
-        "internalType": "bool"
       }
     ],
     "stateMutability": "view"
@@ -615,21 +538,6 @@
             "name": "lotClaimed",
             "type": "bool",
             "internalType": "bool"
-          },
-          {
-            "name": "emissionsHarvested",
-            "type": "bool",
-            "internalType": "bool"
-          },
-          {
-            "name": "harvestedEmissions",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "burnedEmissions",
-            "type": "uint256",
-            "internalType": "uint256"
           }
         ]
       }
@@ -709,36 +617,6 @@
             ]
           },
           {
-            "name": "matureTimestamp",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "timeUntilMature",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "emissionsEarned",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "emissionsHarvested",
-            "type": "bool",
-            "internalType": "bool"
-          },
-          {
-            "name": "harvestedEmissions",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "burnedEmissions",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
             "name": "isWinner",
             "type": "bool",
             "internalType": "bool"
@@ -765,7 +643,7 @@
   },
   {
     "type": "function",
-    "name": "getUserPrivateAuctionData",
+    "name": "getUserParticipatedAuctions",
     "inputs": [
       {
         "name": "_user",
@@ -775,19 +653,9 @@
     ],
     "outputs": [
       {
-        "name": "userGO",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "requirement",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "permitted",
-        "type": "bool",
-        "internalType": "bool"
+        "name": "lots",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
       }
     ],
     "stateMutability": "view"
@@ -805,24 +673,6 @@
         "name": "account",
         "type": "address",
         "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "harvestAuctionsEmissions",
-    "inputs": [
-      {
-        "name": "_lots",
-        "type": "uint256[]",
-        "internalType": "uint256[]"
-      },
-      {
-        "name": "_harvestToFarm",
-        "type": "bool",
-        "internalType": "bool"
       }
     ],
     "outputs": [],
@@ -864,11 +714,6 @@
     "name": "link",
     "inputs": [
       {
-        "name": "_auctioneerEmissions",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
         "name": "_auctioneerAuction",
         "type": "address",
         "internalType": "address"
@@ -894,58 +739,6 @@
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "migrationDelay",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "migrationDestination",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "migrationQueueTimestamp",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "multisig",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -983,19 +776,6 @@
       }
     ],
     "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "queueMigration",
-    "inputs": [
-      {
-        "name": "_dest",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -1071,6 +851,19 @@
   },
   {
     "type": "function",
+    "name": "setCreateAuctionRequiresRole",
+    "inputs": [
+      {
+        "name": "_required",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "supportsInterface",
     "inputs": [
       {
@@ -1090,19 +883,6 @@
   },
   {
     "type": "function",
-    "name": "teamTreasury",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "treasury",
     "inputs": [],
     "outputs": [
@@ -1116,29 +896,16 @@
   },
   {
     "type": "function",
-    "name": "updateFarm",
-    "inputs": [
+    "name": "treasuryCut",
+    "inputs": [],
+    "outputs": [
       {
-        "name": "_farm",
-        "type": "address",
-        "internalType": "address"
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "updateTeamTreasury",
-    "inputs": [
-      {
-        "name": "_teamTreasury",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -1148,6 +915,19 @@
         "name": "_treasury",
         "type": "address",
         "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "updateTreasuryCut",
+    "inputs": [
+      {
+        "name": "_treasuryCut",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "outputs": [],
@@ -1177,6 +957,12 @@
     "name": "AuctionCancelled",
     "inputs": [
       {
+        "name": "_canceller",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
         "name": "_lot",
         "type": "uint256",
         "indexed": true,
@@ -1189,6 +975,12 @@
     "type": "event",
     "name": "AuctionCreated",
     "inputs": [
+      {
+        "name": "_creator",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
       {
         "name": "_lot",
         "type": "uint256",
@@ -1342,22 +1134,10 @@
   },
   {
     "type": "event",
-    "name": "InitializedEmissions",
-    "inputs": [],
-    "anonymous": false
-  },
-  {
-    "type": "event",
     "name": "Linked",
     "inputs": [
       {
         "name": "_auctioneer",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "_auctioneerEmissions",
         "type": "address",
         "indexed": true,
         "internalType": "address"
@@ -1404,69 +1184,6 @@
         "type": "uint8",
         "indexed": false,
         "internalType": "uint8"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "MigrationCancelled",
-    "inputs": [
-      {
-        "name": "_migrator",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "_dest",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "MigrationExecuted",
-    "inputs": [
-      {
-        "name": "_migrator",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "_dest",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "_unallocated",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "MigrationQueued",
-    "inputs": [
-      {
-        "name": "_migrator",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "_dest",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
       }
     ],
     "anonymous": false
@@ -1629,78 +1346,13 @@
   },
   {
     "type": "event",
-    "name": "UpdatedBidCost",
+    "name": "UpdatedCreateAuctionRequiresRole",
     "inputs": [
       {
-        "name": "_bidCost",
-        "type": "uint256",
+        "name": "_required",
+        "type": "bool",
         "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "UpdatedBidIncrement",
-    "inputs": [
-      {
-        "name": "_bidIncrement",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "UpdatedEarlyHarvestTax",
-    "inputs": [
-      {
-        "name": "_earlyHarvestTax",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "UpdatedEmissionTaxDuration",
-    "inputs": [
-      {
-        "name": "_emissionTax",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "UpdatedFarm",
-    "inputs": [
-      {
-        "name": "_farm",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "UpdatedPrivateAuctionRequirement",
-    "inputs": [
-      {
-        "name": "_requirement",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
+        "internalType": "bool"
       }
     ],
     "anonymous": false
@@ -1733,45 +1385,6 @@
   },
   {
     "type": "event",
-    "name": "UpdatedStartingBid",
-    "inputs": [
-      {
-        "name": "_startingBid",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "UpdatedTeamTreasury",
-    "inputs": [
-      {
-        "name": "_teamTreasury",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "UpdatedTeamTreasurySplit",
-    "inputs": [
-      {
-        "name": "_split",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
     "name": "UpdatedTreasury",
     "inputs": [
       {
@@ -1785,37 +1398,13 @@
   },
   {
     "type": "event",
-    "name": "UserHarvestedLotEmissions",
+    "name": "UpdatedTreasuryCut",
     "inputs": [
       {
-        "name": "_lot",
-        "type": "uint256",
-        "indexed": true,
-        "internalType": "uint256"
-      },
-      {
-        "name": "_user",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "_userEmissions",
+        "name": "_treasuryCut",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
-      },
-      {
-        "name": "_burnEmissions",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "_harvestToFarm",
-        "type": "bool",
-        "indexed": false,
-        "internalType": "bool"
       }
     ],
     "anonymous": false
@@ -1875,17 +1464,7 @@
   },
   {
     "type": "error",
-    "name": "Deprecated",
-    "inputs": []
-  },
-  {
-    "type": "error",
     "name": "ETHTransferFailed",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "EmissionsNotInitialized",
     "inputs": []
   },
   {
@@ -1900,6 +1479,11 @@
   },
   {
     "type": "error",
+    "name": "Invalid",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InvalidAlias",
     "inputs": []
   },
@@ -1910,32 +1494,7 @@
   },
   {
     "type": "error",
-    "name": "MigrationAlreadyQueued",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "MigrationDestMismatch",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "MigrationNotMature",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "MigrationNotQueued",
-    "inputs": []
-  },
-  {
-    "type": "error",
     "name": "Muted",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "NotMultisig",
     "inputs": []
   },
   {
@@ -1957,11 +1516,6 @@
   {
     "type": "error",
     "name": "SentETHButNotWalletPayment",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "TeamTreasuryNotSet",
     "inputs": []
   },
   {

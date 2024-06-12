@@ -35,8 +35,6 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 
 	address public treasury = address(50);
 	address public treasury2 = address(51);
-	address public teamTreasury = address(52);
-	address public teamTreasury2 = address(53);
 
 	address payable public user1;
 	uint256 public user1PK;
@@ -68,8 +66,6 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		vm.label(liquidity, "liquidity");
 		vm.label(treasury, "treasury");
 		vm.label(treasury2, "treasury2");
-		vm.label(teamTreasury, "teamTreasury");
-		vm.label(teamTreasury2, "teamTreasury2");
 		vm.label(user1, "user1");
 		vm.label(user2, "user2");
 		vm.label(user3, "user3");
@@ -322,9 +318,9 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		});
 	}
 
-	function _createAuction(AuctionParams memory params) public {
+	function _createAuction(AuctionParams memory params) public returns (uint256 lot) {
 		vm.prank(creator);
-		auctioneer.createAuction(params);
+		return auctioneer.createAuction(params);
 	}
 
 	function _cancelAuction(uint256 _lot) public {

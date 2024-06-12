@@ -14,26 +14,6 @@ import { GBMath, AuctionParamsUtils } from "../src/AuctionUtils.sol";
 import { AuctionParams, PaymentType } from "../src/IAuctioneer.sol";
 import { GoingBlastAirdrop } from "../src/GoingBlastAirdrop.sol";
 
-// ANVIL deployment flow
-// 	. Deploy tokens
-//  . Distribute GO
-// 	. Deploy core
-
-// MAINNET deployment flow
-//  . Deploy tokens
-//  . Initial GO distribution
-// 		. 20% to Presale
-// 		. 5% to Presale
-// 		. Rest to treasury, waiting for deployment
-//  . Deploy core
-// 	. Treasury approve VOUCH to airdrop
-// 	. After Presale ends
-// 		. Treasury approve WETH to auctioneer
-// 		. Create first auctions
-// 		. ./env-subgraph-yaml.sh
-// 		. Deploy subgraph
-// 		. Update subgraph address in frontend
-
 contract GBScripts is GBScriptUtils {
 	using SafeERC20 for IERC20;
 	using GBMath for uint256;
@@ -47,7 +27,7 @@ contract GBScripts is GBScriptUtils {
 		if (!isAnvil) return;
 
 		// tokens
-		_deployTokens();
+		_deployVouchToken();
 		_setupWETH();
 
 		// core
@@ -59,7 +39,7 @@ contract GBScripts is GBScriptUtils {
 	}
 
 	function deployTokens() public broadcast loadChain loadContracts loadConfigValues {
-		_deployTokens();
+		_deployVouchToken();
 		_setupWETH();
 	}
 
@@ -106,7 +86,7 @@ contract GBScripts is GBScriptUtils {
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// DEPLOY - PHASE 1 - TOKENS
 
-	function _deployTokens() internal {
+	function _deployVouchToken() internal {
 		VOUCHER = new VoucherToken();
 		writeContractAddress("VOUCHER", address(VOUCHER));
 	}
@@ -150,8 +130,8 @@ contract GBScripts is GBScriptUtils {
 		uint256 jsonAuctionCount = readAuctionCount();
 
 		console.log("Auction readiness checks:");
-		console.log("    Auctioneer treasury:", auctioneer.treasury(), treasury);
-		console.log("    Treasury ETH balance:", treasury.balance);
+		console.log("    Auctioneer treasury set?:", auctioneer.treasury());
+		console.log("    Creator ETH balance:", msg.sender.balance);
 
 		AuctionParams memory params;
 		console.log("Number of auctions to add: %s", jsonAuctionCount - lotCount);
@@ -166,7 +146,7 @@ contract GBScripts is GBScriptUtils {
 				block.timestamp,
 				params.unlockTimestamp
 			);
-			console.log("        ETH less than treasury balance", params.tokens[0].amount < treasury.balance);
+			console.log("        ETH less than creator balance", params.tokens[0].amount < msg.sender.balance);
 
 			params.validate();
 
@@ -190,7 +170,7 @@ contract GBScripts is GBScriptUtils {
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// ANVIL UTILS
 
-	function ANVIL_treasuryApproveAuctioneer() public broadcastTreasury loadChain loadContracts loadConfigValues {
+	function ANVIL_creatorApproveAuctioneer() public broadcast loadChain loadContracts loadConfigValues {
 		if (!isAnvil) return;
 		WETH.deposit{ value: 5e18 }();
 		WETH.approve(address(auctioneer), UINT256_MAX);

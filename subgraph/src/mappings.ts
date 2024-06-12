@@ -2,12 +2,10 @@
 import { Address, BigInt } from "@graphprotocol/graph-ts"
 import { AuctionEvent, AuctionParticipant, Auction, User, Stats } from "../generated/schema"
 import {
-	Auctioneer,
 	Bid as BidEvent,
 	SelectedRune as SelectedRuneEvent,
 	AuctionCreated as AuctionCreatedEvent,
 	AuctionCancelled as AuctionCancelledEvent,
-	UserHarvestedLotEmissions as UserHarvestedLotEmissionsEvent,
 	Messaged as MessagedEvent,
 	Claimed as ClaimedEvent,
 	MutedUser as MutedUserEvent,
@@ -24,8 +22,6 @@ function getStats(): Stats {
 		statsEntity.totalBidsCount = BigInt.zero()
 		statsEntity.totalRuneSwitches = BigInt.zero()
 		statsEntity.totalMessagesSent = BigInt.zero()
-		statsEntity.totalEmissionsHarvested = BigInt.zero()
-		statsEntity.totalEmissionsBurned = BigInt.zero()
 	}
 
 	return statsEntity
@@ -51,11 +47,8 @@ function getUserEntity(user: Address): User {
 		userEntity.muted = false
 		userEntity.alias = ""
 		userEntity.interactedAuctions = []
-		userEntity.harvestableAuctions = []
 		userEntity.totalBidsCount = BigInt.zero()
 		userEntity.totalAuctionsParticipated = 0
-		userEntity.totalEmissionsHarvested = BigInt.zero()
-		userEntity.totalEmissionsBurned = BigInt.zero()
 		userEntity.totalAuctionsWon = BigInt.zero()
 	}
 
@@ -83,13 +76,10 @@ function getAuctionParticipantEntity(lot: string, user: Address): AuctionPartici
 export function handleAuctionCreated(event: AuctionCreatedEvent): void {
 	const lot = event.params._lot.toString()
 
-	const auctioneerAuction = Auctioneer.bind(event.address)
-
 	// Entity
 	const auctionEntity = new Auction(lot)
 	auctionEntity.lot = event.params._lot
 	auctionEntity.eventIndex = 0
-	auctionEntity.hasEmissions = auctioneerAuction.getAuctionHasEmissions(event.params._lot)
 	auctionEntity.save()
 
 	// Create info message
@@ -154,12 +144,6 @@ export function handleBid(event: BidEvent): void {
 
 	userEntity.totalBidsCount = userEntity.totalBidsCount.plus(event.params._bidCount)
 	if (isFirstBid) {
-		if (auctionEntity.hasEmissions) {
-			const harvestableAuctions = userEntity.harvestableAuctions
-			harvestableAuctions.push(lot)
-			userEntity.harvestableAuctions = harvestableAuctions
-		}
-
 		const interactedAuctions = userEntity.interactedAuctions
 		interactedAuctions.push(lot)
 		userEntity.interactedAuctions = interactedAuctions
@@ -296,28 +280,4 @@ export function handleMessaged(event: MessagedEvent): void {
 	messageEntity.message = userEntity.muted ? "" : event.params._message
 	messageEntity.timestamp = event.block.timestamp
 	messageEntity.save()
-}
-
-// STATS
-
-export function handleUserHarvestedLotEmissions(event: UserHarvestedLotEmissionsEvent): void {
-	const lot = event.params._lot.toString()
-	const user = event.params._user
-
-	const userEntity = getUserEntity(user)
-
-	const harvestableAuctionsCount = userEntity.harvestableAuctions.length
-	const remainingHarvestableAuctionIds = new Array<string>()
-	for (let i = 0; i < harvestableAuctionsCount; i++) {
-		const harvestableLot = userEntity.harvestableAuctions[i]
-		if (harvestableLot !== lot) {
-			remainingHarvestableAuctionIds.push(harvestableLot)
-		}
-	}
-	userEntity.harvestableAuctions = remainingHarvestableAuctionIds
-
-	userEntity.totalEmissionsHarvested = userEntity.totalEmissionsHarvested.plus(event.params._userEmissions)
-	userEntity.totalEmissionsBurned = userEntity.totalEmissionsBurned.plus(event.params._userEmissions)
-
-	userEntity.save()
 }

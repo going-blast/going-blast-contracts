@@ -54,7 +54,7 @@ interface IAuctioneerAuction {
 		AuctionParams memory _params,
 		uint256 _treasuryCut
 	) external payable returns (uint256 lot);
-	function cancelAuction(address _creator, uint256 _lot) external;
+	function cancelAuction(address _creator, uint256 _lot, bool _isAdmin) external;
 	struct BidData {
 		address user;
 		uint8 prevRune;
@@ -218,13 +218,17 @@ contract AuctioneerAuction is
 		lotCount++;
 	}
 
-	function cancelAuction(address _creator, uint256 _lot) external onlyAuctioneer validAuctionLot(_lot) {
+	function cancelAuction(
+		address _canceller,
+		uint256 _lot,
+		bool _isAdmin
+	) external onlyAuctioneer validAuctionLot(_lot) {
 		Auction storage auction = auctions[_lot];
 
-		if (auction.creator != _creator) revert Unauthorized();
+		if (!_isAdmin && auction.creator != _canceller) revert Unauthorized();
 		if (auction.bidData.bids > 0 || auction.finalized) revert NotCancellable();
 
-		auction.transferLotTo(_creator, 1e18);
+		auction.transferLotTo(auction.creator, 1e18);
 
 		auction.finalized = true;
 	}

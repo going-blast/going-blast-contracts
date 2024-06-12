@@ -18,16 +18,27 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 	}
 
 	// CREATE
-	function test_createAuctions_RevertWhen_NotCreatorRole() public {
+	function test_createAuction_RevertWhen_NotCreatorRole() public {
+		_giveWETH(user1, 100e18);
+		_approveWeth(user1, address(auctioneer), UINT256_MAX);
+
 		_expectRevertNotCreator(user1);
 
 		AuctionParams memory params = _getBaseAuctionParams();
 
 		vm.prank(user1);
 		auctioneer.createAuction(params);
+
+		auctioneer.setCreateAuctionRequiresRole(false);
+
+		vm.expectEmit(true, true, true, true);
+		emit AuctionCreated(user1, 0);
+
+		vm.prank(user1);
+		auctioneer.createAuction(params);
 	}
 
-	function test_createAuctions_RevertWhen_TreasuryNotSet() public {
+	function test_createAuction_RevertWhen_TreasuryNotSet() public {
 		// SETUP
 		_createAndLinkAuctioneers();
 
@@ -37,7 +48,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		_createAuction(_getBaseAuctionParams());
 	}
 
-	function test_createAuctions_createSingleAuction_RevertWhen_TokenNotApproved() public {
+	function test_createAuction_createSingleAuction_RevertWhen_TokenNotApproved() public {
 		// SETUP
 		vm.prank(creator);
 		WETH.approve(address(auctioneer), 0);
@@ -49,7 +60,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		_createAuction(_getBaseAuctionParams());
 	}
 
-	function test_createAuctions_createSingleAuction_RevertWhen_BalanceInsufficient() public {
+	function test_createAuction_createSingleAuction_RevertWhen_BalanceInsufficient() public {
 		// SETUP
 		uint256 creatorWethBal = WETH.balanceOf(creator);
 		vm.prank(creator);
@@ -61,7 +72,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		_createAuction(_getBaseAuctionParams());
 	}
 
-	function test_createAuctions_validateUnlock_RevertWhen_UnlockAlreadyPassed() public {
+	function test_createAuction_validateUnlock_RevertWhen_UnlockAlreadyPassed() public {
 		vm.expectRevert(UnlockAlreadyPassed.selector);
 
 		AuctionParams memory params = _getBaseAuctionParams();
@@ -71,7 +82,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		_createAuction(params);
 	}
 
-	function test_createAuctions_validateTokens_RevertWhen_TooManyTokens() public {
+	function test_createAuction_validateTokens_RevertWhen_TooManyTokens() public {
 		vm.expectRevert(TooManyTokens.selector);
 
 		AuctionParams memory params = _getBaseAuctionParams();
@@ -88,7 +99,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		_createAuction(params);
 	}
 
-	function test_createAuctions_validateTokens_RevertWhen_NoRewards() public {
+	function test_createAuction_validateTokens_RevertWhen_NoRewards() public {
 		vm.expectRevert(NoRewards.selector);
 
 		AuctionParams memory params = _getBaseAuctionParams();
@@ -99,7 +110,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		_createAuction(params);
 	}
 
-	function test_createAuctions_validateBidWindows_RevertWhen_InvalidBidWindowCount_0() public {
+	function test_createAuction_validateBidWindows_RevertWhen_InvalidBidWindowCount_0() public {
 		vm.expectRevert(InvalidBidWindowCount.selector);
 
 		AuctionParams memory params = _getBaseAuctionParams();
@@ -110,7 +121,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		_createAuction(params);
 	}
 
-	function test_createAuctions_validateBidWindows_RevertWhen_InvalidBidWindowCount_5() public {
+	function test_createAuction_validateBidWindows_RevertWhen_InvalidBidWindowCount_5() public {
 		vm.expectRevert(InvalidBidWindowCount.selector);
 
 		AuctionParams memory params = _getBaseAuctionParams();
@@ -128,7 +139,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		_createAuction(params);
 	}
 
-	function test_createAuctions_validateBidWindows_RevertWhen_InvalidWindowOrder() public {
+	function test_createAuction_validateBidWindows_RevertWhen_InvalidWindowOrder() public {
 		// OPEN AFTER TIMED
 		vm.expectRevert(InvalidWindowOrder.selector);
 
@@ -159,7 +170,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		_createAuction(params);
 	}
 
-	function test_createAuctions_validateBidWindows_RevertWhen_LastWindowNotInfinite() public {
+	function test_createAuction_validateBidWindows_RevertWhen_LastWindowNotInfinite() public {
 		vm.expectRevert(LastWindowNotInfinite.selector);
 
 		AuctionParams memory params = _getBaseAuctionParams();
@@ -169,7 +180,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		_createAuction(params);
 	}
 
-	function test_createAuctions_validateBidWindows_RevertWhen_MultipleInfiniteWindows() public {
+	function test_createAuction_validateBidWindows_RevertWhen_MultipleInfiniteWindows() public {
 		vm.expectRevert(MultipleInfiniteWindows.selector);
 
 		AuctionParams memory params = _getBaseAuctionParams();
@@ -180,7 +191,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		_createAuction(params);
 	}
 
-	function test_createAuctions_validateBidWindows_RevertWhen_OpenWindowTooShort() public {
+	function test_createAuction_validateBidWindows_RevertWhen_OpenWindowTooShort() public {
 		vm.expectRevert(WindowTooShort.selector);
 
 		AuctionParams memory params = _getBaseAuctionParams();
@@ -190,7 +201,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		_createAuction(params);
 	}
 
-	function test_createAuctions_validateBidWindows_RevertWhen_InvalidBidWindowTimer() public {
+	function test_createAuction_validateBidWindows_RevertWhen_InvalidBidWindowTimer() public {
 		vm.expectRevert(InvalidBidWindowTimer.selector);
 
 		AuctionParams memory params = _getBaseAuctionParams();
@@ -202,7 +213,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 
 	// SUCCESSES
 
-	function test_createAuctions_createSingleAuction_ExpectEmit_AuctionCreated() public {
+	function test_createAuction_createSingleAuction_ExpectEmit_AuctionCreated() public {
 		vm.expectEmit(true, false, false, false);
 		emit AuctionCreated(creator, 0);
 
@@ -211,7 +222,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		_createAuction(params);
 	}
 
-	function test_createAuctions_expectLotAndLotCountIncrement() public {
+	function test_createAuction_expectLotAndLotCountIncrement() public {
 		// Lot 0
 		vm.expectEmit(true, false, false, false);
 		emit AuctionCreated(creator, 0);
@@ -240,7 +251,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		assertEq(auctioneerAuction.lotCount(), 3, "Lot count is 3");
 	}
 
-	function test_createAuctions_createSingleAuction_SuccessfulUpdateOfContractState() public {
+	function test_createAuction_createSingleAuction_SuccessfulUpdateOfContractState() public {
 		AuctionParams memory params = _getBaseAuctionParams();
 
 		uint256 lotCount = auctioneerAuction.lotCount();
@@ -255,7 +266,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		_expectETHBalChange(0, address(auctioneerAuction), 1e18);
 	}
 
-	function test_createAuctions_createSingleAuction_SuccessfulCreationOfAuctionData() public {
+	function test_createAuction_createSingleAuction_SuccessfulCreationOfAuctionData() public {
 		AuctionParams memory params = _getBaseAuctionParams();
 
 		_createAuction(params);
@@ -316,5 +327,74 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 			startTimestamp += trueWindowDuration;
 			assertEq(auction.windows[i].windowCloseTimestamp, startTimestamp, "Auction window end should be correct");
 		}
+	}
+
+	// ACTIVE LOTS
+
+	function test_activeLots_lotAddedOnCreate() public {
+		AuctionParams memory params = _getBaseAuctionParams();
+
+		assertEq(auctioneer.getActiveLots().length, 0, "No active lots");
+
+		uint256 lot0 = _createAuction(params);
+
+		assertEq(auctioneer.getActiveLots().length, 1, "Auction 1 added to active lots");
+		assertEq(auctioneer.getActiveLots()[0], lot0, "Auction lot number added");
+
+		uint256 lot1 = _createAuction(params);
+
+		assertEq(auctioneer.getActiveLots().length, 2, "Auction 2 added to active lots");
+		assertEq(auctioneer.getActiveLots()[0], lot0, "Auction 1 lot in list");
+		assertEq(auctioneer.getActiveLots()[1], lot1, "Auction 2 lot in list");
+	}
+
+	function test_activeLots_lotRemovedOnCancel() public {
+		AuctionParams memory params = _getBaseAuctionParams();
+
+		uint256 lot = _createAuction(params);
+
+		assertEq(auctioneer.getActiveLots().length, 1, "Auction added to active lots");
+		assertEq(auctioneer.getActiveLots()[0], lot, "Auction lot number added");
+
+		_cancelAuction(lot);
+
+		assertEq(auctioneer.getActiveLots().length, 0, "Auction removed from active lots");
+	}
+
+	function test_activeLots_lotRemovedOnFinalize() public {
+		AuctionParams memory params = _getBaseAuctionParams();
+
+		uint256 lot = _createAuction(params);
+
+		assertEq(auctioneer.getActiveLots().length, 1, "Auction added to active lots");
+		assertEq(auctioneer.getActiveLots()[0], lot, "Auction lot number added");
+
+		_warpToAuctionEndTimestamp(lot);
+
+		auctioneer.finalizeAuction(lot);
+
+		assertEq(auctioneer.getActiveLots().length, 0, "Auction removed from active lots");
+	}
+
+	function test_activeLots_lotRemovedOnClaim() public {
+		AuctionParams memory params = _getBaseAuctionParams();
+
+		uint256 lot = _createAuction(params);
+
+		assertEq(auctioneer.getActiveLots().length, 1, "Auction added to active lots");
+		assertEq(auctioneer.getActiveLots()[0], lot, "Auction lot number added");
+
+		_warpToUnlockTimestamp(lot);
+
+		_bidOnLot(user1, lot);
+
+		_warpToAuctionEndTimestamp(lot);
+
+		uint256 lotPrice = auctioneerAuction.getAuction(lot).bidData.bid;
+		vm.deal(user1, lotPrice);
+		vm.prank(user1);
+		auctioneer.claimLot{ value: lotPrice }(lot, "Claimed");
+
+		assertEq(auctioneer.getActiveLots().length, 0, "Auction removed from active lots");
 	}
 }

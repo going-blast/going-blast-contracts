@@ -48,15 +48,15 @@ struct NftData {
 
 // Alphabetical field ordering for json parsing
 struct AuctionParams {
+	uint256 bidCost;
+	uint256 bidIncrement;
 	string name;
 	NftData[] nfts;
 	uint8[] runeSymbols;
+	uint256 startingBid;
 	TokenData[] tokens;
 	uint256 unlockTimestamp;
 	BidWindowParams[] windows;
-	uint256 bidCost;
-	uint256 bidIncrement;
-	uint256 startingBid;
 }
 
 // Storage
@@ -140,8 +140,6 @@ error NotAuctioneer();
 error NotAuctioneerAuction();
 error AlreadyInitialized();
 error TreasuryNotSet();
-error TeamTreasuryNotSet();
-error TooManyAuctionsPerDay();
 error Invalid();
 error InvalidAuctionLot();
 error InvalidWindowOrder();
@@ -191,21 +189,16 @@ interface AuctioneerEvents {
 	event MutedUser(address indexed _user, bool _muted);
 
 	// CONSTS
-	event UpdatedStartingBid(uint256 _startingBid);
-	event UpdatedBidCost(uint256 _bidCost);
-	event UpdatedBidIncrement(uint256 _bidIncrement);
 	event UpdatedTreasuryCut(uint256 _treasuryCut);
 	event UpdatedRuneSwitchPenalty(uint256 _penalty);
 	event UpdatedTreasury(address indexed _treasury);
-	event UpdatedTeamTreasury(address indexed _teamTreasury);
-	event UpdatedTeamTreasurySplit(uint256 _split);
 	event UpdatedAlias(address indexed _user, string _alias);
 	event UpdatedRunicLastBidderBonus(uint256 _bonus);
 	event UpdatedCreateAuctionRequiresRole(bool _required);
 
 	// AUCTION STATE
 	event AuctionCreated(address indexed _creator, uint256 indexed _lot);
-	event AuctionCancelled(address indexed _creator, uint256 indexed _lot);
+	event AuctionCancelled(address indexed _canceller, uint256 indexed _lot);
 	event AuctionFinalized(uint256 indexed _lot);
 
 	// USER INTERACTIONS
@@ -230,9 +223,4 @@ interface AuctioneerEvents {
 	);
 	event Messaged(uint256 indexed _lot, address indexed _user, string _message, string _alias, uint8 _rune);
 	event Claimed(uint256 indexed _lot, address indexed _user, string _message, string _alias, uint8 _rune);
-
-	// MIGRATION
-	event MigrationQueued(address indexed _migrator, address indexed _dest);
-	event MigrationCancelled(address indexed _migrator, address indexed _dest);
-	event MigrationExecuted(address indexed _migrator, address indexed _dest, uint256 _unallocated);
 }
