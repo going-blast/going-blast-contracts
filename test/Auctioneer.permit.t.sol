@@ -50,6 +50,7 @@ contract AuctioneerPermitTest is AuctioneerHelper {
 		sigUtils = new SigUtils();
 
 		_setupAuctioneerTreasury();
+		_setupAuctioneerCreator();
 		_giveUsersTokensAndApprove();
 		_createDefaultDay1Auction();
 	}

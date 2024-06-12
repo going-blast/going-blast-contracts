@@ -13,30 +13,34 @@ contract AuctioneerCancelTest is AuctioneerHelper {
 		super.setUp();
 
 		_setupAuctioneerTreasury();
+		_setupAuctioneerCreator();
 		_giveUsersTokensAndApprove();
 	}
 
-	function test_cancelAuction_RevertWhen_CallerIsNotOwner() public {
-		AuctionParams memory params = _getBaseAuctionParams();
-		auctioneer.createAuction(params);
+	function _expectRevertUnauthorized() public {
+		vm.expectRevert(Unauthorized.selector);
+	}
 
-		_expectRevertNotAdmin(address(0));
+	function test_cancelAuction_RevertWhen_CallerIsNotOwner() public {
+		_createAuction(_getBaseAuctionParams());
+
+		_expectRevertUnauthorized();
 
 		vm.prank(address(0));
 		auctioneer.cancelAuction(0);
 	}
 
 	function test_cancelAuction_RevertWhen_InvalidAuctionLot() public {
-		AuctionParams memory params = _getBaseAuctionParams();
-		auctioneer.createAuction(params);
+		_createAuction(_getBaseAuctionParams());
 
 		vm.expectRevert(InvalidAuctionLot.selector);
-		auctioneer.cancelAuction(1);
+
+		_cancelAuction(1);
 	}
 
 	function test_cancelAuction_RevertWhen_NotCancellable() public {
 		AuctionParams memory params = _getBaseAuctionParams();
-		auctioneer.createAuction(params);
+		_createAuction(params);
 
 		// User bids
 		vm.warp(params.unlockTimestamp);
@@ -44,49 +48,46 @@ contract AuctioneerCancelTest is AuctioneerHelper {
 
 		// Revert on cancel
 		vm.expectRevert(NotCancellable.selector);
-		auctioneer.cancelAuction(0);
+		_cancelAuction(0);
 	}
 
 	function test_cancelAuction_ExpectEmit_AuctionCancelled() public {
-		AuctionParams memory params = _getBaseAuctionParams();
-		auctioneer.createAuction(params);
+		_createAuction(_getBaseAuctionParams());
 
 		// Event
 		vm.expectEmit(true, true, true, true);
-		emit AuctionCancelled(sender, 0);
+		emit AuctionCancelled(creator, 0);
 
-		auctioneer.cancelAuction(0);
+		_cancelAuction(0);
 	}
 
-	function test_cancelAuction_Should_ReturnLotToTreasury() public {
+	function test_cancelAuction_Should_ReturnLotToCreator() public {
 		AuctionParams memory params = _getBaseAuctionParams();
-		auctioneer.createAuction(params);
+		_createAuction(params);
 
-		uint256 treasuryETH = treasury.balance;
+		uint256 creatorETH = creator.balance;
 
-		auctioneer.cancelAuction(0);
+		_cancelAuction(0);
 
 		assertEq(
-			treasury.balance,
-			treasuryETH + params.tokens[0].amount,
-			"Treasury balance should increase by auction amount"
+			creator.balance,
+			creatorETH + params.tokens[0].amount,
+			"Creator balance should increase by auction amount"
 		);
 	}
 
 	function test_cancelAuction_Should_MarkAsFinalized() public {
-		AuctionParams memory params = _getBaseAuctionParams();
-		auctioneer.createAuction(params);
+		_createAuction(_getBaseAuctionParams());
 
-		auctioneer.cancelAuction(0);
+		_cancelAuction(0);
 
 		assertEq(auctioneerAuction.getAuction(0).finalized, true, "Auction should be marked as finalized");
 	}
 
 	function test_cancelAuction_RevertWhen_BiddingOnCancelledAuction() public {
-		AuctionParams memory params = _getBaseAuctionParams();
-		auctioneer.createAuction(params);
+		_createAuction(_getBaseAuctionParams());
 
-		auctioneer.cancelAuction(0);
+		_cancelAuction(0);
 
 		// User bids and should revert
 		vm.expectRevert(AuctionNotYetOpen.selector);
@@ -94,12 +95,11 @@ contract AuctioneerCancelTest is AuctioneerHelper {
 	}
 
 	function test_cancelAuction_RevertWhen_AlreadyCancelledNotCancellable() public {
-		AuctionParams memory params = _getBaseAuctionParams();
-		auctioneer.createAuction(params);
+		_createAuction(_getBaseAuctionParams());
 
-		auctioneer.cancelAuction(0);
+		_cancelAuction(0);
 
 		vm.expectRevert(NotCancellable.selector);
-		auctioneer.cancelAuction(0);
+		_cancelAuction(0);
 	}
 }

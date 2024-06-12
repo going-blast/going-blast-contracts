@@ -15,6 +15,7 @@ contract AuctioneerRunesTest is AuctioneerHelper {
 		super.setUp();
 
 		_setupAuctioneerTreasury();
+		_setupAuctioneerCreator();
 		_giveUsersTokensAndApprove();
 		_createDefaultDay1Auction();
 	}
@@ -53,12 +54,12 @@ contract AuctioneerRunesTest is AuctioneerHelper {
 		// RevertWhen 1 rune
 		AuctionParams memory params = _getRunesAuctionParams(1);
 		vm.expectRevert(InvalidRunesCount.selector);
-		auctioneer.createAuction(params);
+		_createAuction(params);
 
 		// RevertWhen 8 rune
 		params = _getRunesAuctionParams(6);
 		vm.expectRevert(InvalidRunesCount.selector);
-		auctioneer.createAuction(params);
+		_createAuction(params);
 	}
 
 	function test_runes_create_RevertWhen_DuplicateRuneSymbols() public {
@@ -67,7 +68,7 @@ contract AuctioneerRunesTest is AuctioneerHelper {
 		params.runeSymbols[1] = 2;
 
 		vm.expectRevert(DuplicateRuneSymbols.selector);
-		auctioneer.createAuction(params);
+		_createAuction(params);
 	}
 
 	function test_runes_create_RevertWhen_RuneSymbol0Used() public {
@@ -75,7 +76,7 @@ contract AuctioneerRunesTest is AuctioneerHelper {
 		params.runeSymbols[0] = 0;
 
 		vm.expectRevert(InvalidRuneSymbol.selector);
-		auctioneer.createAuction(params);
+		_createAuction(params);
 	}
 
 	function test_runes_create_RevertWhen_NFTsWithRunes() public {
@@ -94,12 +95,12 @@ contract AuctioneerRunesTest is AuctioneerHelper {
 		}
 
 		vm.expectRevert(CannotHaveNFTsWithRunes.selector);
-		auctioneer.createAuction(params);
+		_createAuction(params);
 	}
 
 	function test_runes_create_0RunesParams_NoRunesAddedToAuction() public {
 		AuctionParams memory params = _getBaseAuctionParams();
-		auctioneer.createAuction(params);
+		_createAuction(params);
 
 		uint256 lot = auctioneerAuction.lotCount() - 1;
 
@@ -113,7 +114,7 @@ contract AuctioneerRunesTest is AuctioneerHelper {
 
 	function test_runes_create_3RunesParams_4RunesInAuction() public {
 		AuctionParams memory params = _getRunesAuctionParams(3);
-		auctioneer.createAuction(params);
+		_createAuction(params);
 
 		uint256 lot = auctioneerAuction.lotCount() - 1;
 
@@ -122,8 +123,8 @@ contract AuctioneerRunesTest is AuctioneerHelper {
 	}
 
 	function test_runes_create_5RunesParams_6RunesInAuction() public {
-		AuctionParams memory params = _getRunesAuctionParams(3);
-		auctioneer.createAuction(params);
+		AuctionParams memory params = _getRunesAuctionParams(5);
+		_createAuction(params);
 
 		uint256 lot = auctioneerAuction.lotCount() - 1;
 
@@ -139,7 +140,7 @@ contract AuctioneerRunesTest is AuctioneerHelper {
 		params.runeSymbols[2] = 3;
 		params.runeSymbols[3] = 10;
 		params.runeSymbols[4] = 7;
-		auctioneer.createAuction(params);
+		_createAuction(params);
 
 		uint256 lot = auctioneerAuction.lotCount() - 1;
 
@@ -286,7 +287,6 @@ contract AuctioneerRunesTest is AuctioneerHelper {
 
 		uint256 auctionETH = 1e18;
 		// Revenue less than auction value, 100% goes to treasury
-		uint256 treasuryRevenueCut = auctioneerAuction.getAuction(lot).bidData.revenue;
 		uint256 lotPrice = auctioneerAuction.getAuction(lot).bidData.bid;
 		vm.deal(user2, lotPrice);
 

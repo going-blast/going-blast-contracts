@@ -138,7 +138,7 @@ contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYi
 	}
 
 	function updateTreasuryCut(uint256 _treasuryCut) external onlyAdmin {
-		if (treasuryCut > 2000) revert Invalid();
+		if (_treasuryCut > 2000) revert Invalid();
 		treasuryCut = _treasuryCut;
 
 		emit UpdatedTreasuryCut(_treasuryCut);
@@ -223,7 +223,7 @@ contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYi
 	}
 
 	function finalizeAuction(uint256 _lot) external nonReentrant {
-		_finalizeAuction(msg.sender, _lot);
+		_finalizeAuction(_lot);
 	}
 
 	function claimLot(uint256 _lot, string calldata _message) external payable nonReentrant {
@@ -243,7 +243,7 @@ contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYi
 		_transferRevenue(userShareOfPayment, creator, _treasuryCut);
 		userParticipatedAuctions[msg.sender].remove(_lot);
 
-		if (triggerFinalization) _finalizeAuction(creator, _lot);
+		if (triggerFinalization) _finalizeAuction(_lot);
 
 		emit Claimed(_lot, msg.sender, mutedUsers[msg.sender] ? "" : _message, userAlias[msg.sender], user.rune);
 	}
@@ -313,7 +313,7 @@ contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYi
 		);
 	}
 
-	function _finalizeAuction(address _creator, uint256 _lot) internal {
+	function _finalizeAuction(uint256 _lot) internal {
 		(bool triggerCancellation, uint256 revenue, address creator, uint256 _treasuryCut) = auctioneerAuction
 			.finalizeAuction(_lot);
 

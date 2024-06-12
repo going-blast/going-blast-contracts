@@ -14,15 +14,16 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		super.setUp();
 
 		_setupAuctioneerTreasury();
+		_setupAuctioneerCreator();
 	}
 
 	// CREATE
-	function test_createAuctions_RevertWhen_CallerIsNotOwner() public {
-		_expectRevertNotAdmin(address(0));
+	function test_createAuctions_RevertWhen_NotCreatorRole() public {
+		_expectRevertNotCreator(user1);
 
 		AuctionParams memory params = _getBaseAuctionParams();
 
-		vm.prank(address(0));
+		vm.prank(user1);
 		auctioneer.createAuction(params);
 	}
 
@@ -33,50 +34,31 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		// EXECUTE
 		vm.expectRevert(TreasuryNotSet.selector);
 
-		AuctionParams memory params = _getBaseAuctionParams();
-
-		auctioneer.createAuction(params);
-	}
-
-	function test_createAuctions_RevertWhen_TeamTreasuryNotSet() public {
-		// SETUP
-		_createAndLinkAuctioneers();
-		_setupAuctioneerTreasury();
-
-		// EXECUTE
-		vm.expectRevert(TeamTreasuryNotSet.selector);
-
-		AuctionParams memory params = _getBaseAuctionParams();
-
-		auctioneer.createAuction(params);
+		_createAuction(_getBaseAuctionParams());
 	}
 
 	function test_createAuctions_createSingleAuction_RevertWhen_TokenNotApproved() public {
 		// SETUP
-		vm.prank(treasury);
+		vm.prank(creator);
 		WETH.approve(address(auctioneer), 0);
 
 		// EXECUTE
 		vm.expectRevert(abi.encodeWithSelector(ERC20InsufficientAllowance.selector, address(auctioneer), 0, 1e18));
 
 		// Auction with GO ERC20 reward
-		AuctionParams memory params = _getBaseAuctionParams();
-
-		auctioneer.createAuction(params);
+		_createAuction(_getBaseAuctionParams());
 	}
 
 	function test_createAuctions_createSingleAuction_RevertWhen_BalanceInsufficient() public {
 		// SETUP
-		uint256 treasuryWethBal = WETH.balanceOf(treasury);
-		vm.prank(treasury);
-		WETH.transfer(address(1), treasuryWethBal);
+		uint256 creatorWethBal = WETH.balanceOf(creator);
+		vm.prank(creator);
+		WETH.transfer(address(1), creatorWethBal);
 
 		// EXECUTE
-		vm.expectRevert(abi.encodeWithSelector(ERC20InsufficientBalance.selector, treasury, 0, 1e18));
+		vm.expectRevert(abi.encodeWithSelector(ERC20InsufficientBalance.selector, creator, 0, 1e18));
 
-		AuctionParams memory params = _getBaseAuctionParams();
-
-		auctioneer.createAuction(params);
+		_createAuction(_getBaseAuctionParams());
 	}
 
 	function test_createAuctions_validateUnlock_RevertWhen_UnlockAlreadyPassed() public {
@@ -86,7 +68,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 
 		vm.warp(params.unlockTimestamp + 1);
 
-		auctioneer.createAuction(params);
+		_createAuction(params);
 	}
 
 	function test_createAuctions_validateTokens_RevertWhen_TooManyTokens() public {
@@ -103,7 +85,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 
 		params.tokens = tokens;
 
-		auctioneer.createAuction(params);
+		_createAuction(params);
 	}
 
 	function test_createAuctions_validateTokens_RevertWhen_NoRewards() public {
@@ -114,7 +96,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		TokenData[] memory tokens = new TokenData[](0);
 		params.tokens = tokens;
 
-		auctioneer.createAuction(params);
+		_createAuction(params);
 	}
 
 	function test_createAuctions_validateBidWindows_RevertWhen_InvalidBidWindowCount_0() public {
@@ -125,7 +107,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		BidWindowParams[] memory windows = new BidWindowParams[](0);
 		params.windows = windows;
 
-		auctioneer.createAuction(params);
+		_createAuction(params);
 	}
 
 	function test_createAuctions_validateBidWindows_RevertWhen_InvalidBidWindowCount_5() public {
@@ -143,7 +125,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 
 		params.windows = windows;
 
-		auctioneer.createAuction(params);
+		_createAuction(params);
 	}
 
 	function test_createAuctions_validateBidWindows_RevertWhen_InvalidWindowOrder() public {
@@ -156,7 +138,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		params.windows[1].windowType = BidWindowType.OPEN;
 		params.windows[2].windowType = BidWindowType.TIMED;
 
-		auctioneer.createAuction(params);
+		_createAuction(params);
 
 		// OPEN AFTER INFINITE
 		vm.expectRevert(InvalidWindowOrder.selector);
@@ -165,7 +147,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		params.windows[1].windowType = BidWindowType.OPEN;
 		params.windows[2].windowType = BidWindowType.TIMED;
 
-		auctioneer.createAuction(params);
+		_createAuction(params);
 
 		// TIMED AFTER INFINITE
 		vm.expectRevert(InvalidWindowOrder.selector);
@@ -174,7 +156,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		params.windows[1].windowType = BidWindowType.INFINITE;
 		params.windows[2].windowType = BidWindowType.OPEN;
 
-		auctioneer.createAuction(params);
+		_createAuction(params);
 	}
 
 	function test_createAuctions_validateBidWindows_RevertWhen_LastWindowNotInfinite() public {
@@ -184,7 +166,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 
 		params.windows[2].windowType = BidWindowType.TIMED;
 
-		auctioneer.createAuction(params);
+		_createAuction(params);
 	}
 
 	function test_createAuctions_validateBidWindows_RevertWhen_MultipleInfiniteWindows() public {
@@ -195,7 +177,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 		params.windows[1].windowType = BidWindowType.INFINITE;
 		params.windows[2].windowType = BidWindowType.INFINITE;
 
-		auctioneer.createAuction(params);
+		_createAuction(params);
 	}
 
 	function test_createAuctions_validateBidWindows_RevertWhen_OpenWindowTooShort() public {
@@ -205,7 +187,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 
 		params.windows[1].duration = (1 hours - 1 seconds);
 
-		auctioneer.createAuction(params);
+		_createAuction(params);
 	}
 
 	function test_createAuctions_validateBidWindows_RevertWhen_InvalidBidWindowTimer() public {
@@ -215,46 +197,46 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 
 		params.windows[2].timer = 29 seconds;
 
-		auctioneer.createAuction(params);
+		_createAuction(params);
 	}
 
 	// SUCCESSES
 
 	function test_createAuctions_createSingleAuction_ExpectEmit_AuctionCreated() public {
 		vm.expectEmit(true, false, false, false);
-		emit AuctionCreated(sender, 0);
+		emit AuctionCreated(creator, 0);
 
 		AuctionParams memory params = _getBaseAuctionParams();
 
-		auctioneer.createAuction(params);
+		_createAuction(params);
 	}
 
 	function test_createAuctions_expectLotAndLotCountIncrement() public {
 		// Lot 0
 		vm.expectEmit(true, false, false, false);
-		emit AuctionCreated(sender, 0);
+		emit AuctionCreated(creator, 0);
 
 		AuctionParams memory params = _getBaseAuctionParams();
 
-		auctioneer.createAuction(params);
+		_createAuction(params);
 		assertEq(auctioneerAuction.lotCount(), 1, "Lot count is 1");
 
 		// Lot 1
 		vm.expectEmit(true, false, false, false);
-		emit AuctionCreated(sender, 1);
+		emit AuctionCreated(creator, 1);
 
 		params = _getBaseAuctionParams();
 
-		auctioneer.createAuction(params);
+		_createAuction(params);
 		assertEq(auctioneerAuction.lotCount(), 2, "Lot count is 2");
 
 		// Lot 2
 		vm.expectEmit(true, false, false, false);
-		emit AuctionCreated(sender, 2);
+		emit AuctionCreated(creator, 2);
 
 		params = _getBaseAuctionParams();
 
-		auctioneer.createAuction(params);
+		_createAuction(params);
 		assertEq(auctioneerAuction.lotCount(), 3, "Lot count is 3");
 	}
 
@@ -263,10 +245,10 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 
 		uint256 lotCount = auctioneerAuction.lotCount();
 
-		_prepExpectETHTransfer(0, treasury, address(auctioneerAuction));
-		_expectTokenTransfer(WETH, treasury, address(auctioneer), 1e18);
+		_prepExpectETHTransfer(0, creator, address(auctioneerAuction));
+		_expectTokenTransfer(WETH, creator, address(auctioneer), 1e18);
 
-		auctioneer.createAuction(params);
+		_createAuction(params);
 
 		assertEq(auctioneerAuction.lotCount(), lotCount + 1, "Lot count matches");
 
@@ -276,7 +258,7 @@ contract AuctioneerCreateTest is AuctioneerHelper {
 	function test_createAuctions_createSingleAuction_SuccessfulCreationOfAuctionData() public {
 		AuctionParams memory params = _getBaseAuctionParams();
 
-		auctioneer.createAuction(params);
+		_createAuction(params);
 
 		Auction memory auction = auctioneerAuction.getAuction(0);
 

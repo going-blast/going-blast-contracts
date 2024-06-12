@@ -12,6 +12,7 @@ contract AuctioneerAliasTest is AuctioneerHelper {
 	function setUp() public override {
 		super.setUp();
 		_setupAuctioneerTreasury();
+		_setupAuctioneerCreator();
 	}
 
 	function test_setAlias_RevertWhen_InvalidAlias() public {

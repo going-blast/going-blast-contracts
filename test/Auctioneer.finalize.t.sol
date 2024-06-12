@@ -16,8 +16,9 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 		super.setUp();
 
 		_setupAuctioneerTreasury();
+		_setupAuctioneerCreator();
 		_giveUsersTokensAndApprove();
-		_giveTreasuryXXandYYandApprove();
+		_giveCreatorXXandYYandApprove();
 
 		// Create single token auction
 		AuctionParams memory singleTokenParams = _getBaseAuctionParams();
@@ -25,8 +26,8 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 		AuctionParams memory multiTokenParams = _getMultiTokenSingleAuctionParams();
 
 		// Create single token + nfts auction
-		auctioneer.createAuction(singleTokenParams);
-		auctioneer.createAuction(multiTokenParams);
+		_createAuction(singleTokenParams);
+		_createAuction(multiTokenParams);
 	}
 
 	function test_winning_finalizeAuction_RevertWhen_AuctionStillRunning() public {
@@ -137,18 +138,18 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 
 		Auction memory auction = auctioneerAuction.getAuction(0);
 
-		uint256 treasuryETH = treasury.balance;
+		uint256 creatorETH = creator.balance;
 
 		vm.expectEmit(true, true, true, true);
-		emit AuctionCancelled(sender, 0);
+		emit AuctionCancelled(creator, 0);
 
 		auctioneer.finalizeAuction(0);
 
-		assertEq(treasury.balance, treasuryETH + auction.rewards.tokens[0].amount, "Lot ETH returned to treasury");
+		assertEq(creator.balance, creatorETH + auction.rewards.tokens[0].amount, "Lot ETH returned to creator");
 		assertEq(auctioneerAuction.getAuction(0).finalized, true, "Auction should be marked as finalized");
 	}
 
-	function test_finalizeAuction_Should_DistributeLotRevenue_RevenueLessThanLotValue() public {
+	function test_finalizeAuction_Should_DistributeLotRevenue() public {
 		vm.warp(auctioneerAuction.getAuction(0).unlockTimestamp);
 		_multibid(user2, 58);
 		_multibid(user3, 152);
@@ -159,81 +160,23 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 		vm.warp(auctioneerAuction.getAuction(0).bidData.nextBidBy + 1);
 
 		uint256 revenue = auctioneerAuction.getAuction(0).bidData.revenue;
-		uint256 lotValue = auctioneerAuction.getAuction(0).rewards.estimatedValue;
-		assertLt(revenue, lotValue, "Validate revenue < lotValue");
+		uint256 treasuryCut = revenue.scaleByBP(auctioneer.treasuryCut());
+		uint256 creatorCut = revenue - treasuryCut;
 
+		_prepExpectETHBalChange(0, creator);
 		_prepExpectETHBalChange(0, treasury);
-		_prepExpectETHBalChange(0, teamTreasury);
 		_prepExpectETHBalChange(0, address(auctioneer));
 
 		// Finalize
 		auctioneer.finalizeAuction(0);
 
-		// Treasury should receive full lot value
-		_expectETHBalChange(0, treasury, int256(revenue), "Treasury");
-		_expectETHBalChange(0, address(auctioneer), -1 * int256(revenue), "Auctioneer");
+		// Creator should receive cut
+		_expectETHBalChange(0, address(creator), int256(creatorCut), "Creator");
 
-		// TeamTreasury should receive nothing
-		_expectETHBalChange(0, address(teamTreasury), 0, "TeamTreasury");
-	}
+		// Treasury should receive cut
+		_expectETHBalChange(0, address(treasury), int256(treasuryCut), "Treasury");
 
-	function test_finalizeAuction_Should_DistributeLotRevenue_RevenueLessThan110PercLotValue() public {
-		vm.warp(auctioneerAuction.getAuction(0).unlockTimestamp);
-		// 2857 bids to hit 1 ETH
-		_multibid(user2, 480);
-		_multibid(user3, 1520);
-		_multibid(user4, 960);
-		_multibid(user1, 100);
-
-		// Claimable after next bid by
-		Auction memory auction = auctioneerAuction.getAuction(0);
-		vm.warp(auction.bidData.nextBidBy + 1);
-
-		uint256 revenue = auction.bidData.revenue;
-		uint256 lotValue = auction.rewards.estimatedValue;
-		assertGt(revenue, lotValue, "Validate revenue > lotValue");
-		assertLt(revenue, (lotValue * 110) / 100, "Validate revenue < 110% lotValue");
-
-		_prepExpectETHBalChange(0, treasury);
-		_prepExpectETHBalChange(0, teamTreasury);
-		_prepExpectETHBalChange(0, address(auctioneer));
-
-		// Claim
-		auctioneer.finalizeAuction(0);
-
-		// Treasury should receive full lot value
-		_expectETHBalChange(0, treasury, int256(revenue), "Treasury");
-		_expectETHBalChange(0, address(auctioneer), -1 * int256(revenue), "Auctioneer");
-
-		// Team treasury should receive nothing
-		_expectETHBalChange(0, teamTreasury, 0, "TeamTreasury");
-	}
-
-	function test_finalizeAuction_Should_DistributeLotRevenue_RevenueGreaterThanLotValue() public {
-		vm.warp(auctioneerAuction.getAuction(0).unlockTimestamp);
-		_multibid(user2, 1580);
-		_multibid(user3, 1520);
-		_multibid(user4, 1960);
-		_multibid(user1, 1100);
-
-		// Claimable after next bid by
-		vm.warp(auctioneerAuction.getAuction(0).bidData.nextBidBy + 1);
-
-		uint256 revenue = auctioneerAuction.getAuction(0).bidData.revenue;
-		uint256 lotValue = auctioneerAuction.getAuction(0).rewards.estimatedValue;
-		uint256 lotValue110Perc = lotValue.scaleByBP(11000);
-		assertGt(revenue, lotValue110Perc, "Validate revenue > 110% lotValue");
-
-		uint256 profit = revenue - lotValue110Perc;
-		uint256 treasuryExpectedDisbursement = lotValue110Perc;
-
-		_prepExpectETHBalChange(0, treasury);
-		_prepExpectETHBalChange(0, address(auctioneer));
-
-		// Claim
-		auctioneer.finalizeAuction(0);
-
-		_expectETHBalChange(0, treasury, int256(treasuryExpectedDisbursement), "Treasury");
+		// Should be removed from auctioneer
 		_expectETHBalChange(0, address(auctioneer), -1 * int256(revenue), "Auctioneer");
 	}
 }

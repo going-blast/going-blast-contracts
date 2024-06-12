@@ -16,8 +16,9 @@ contract AuctioneerMutingTest is AuctioneerHelper {
 		super.setUp();
 
 		_setupAuctioneerTreasury();
+		_setupAuctioneerCreator();
 		_giveUsersTokensAndApprove();
-		_giveTreasuryXXandYYandApprove();
+		_giveCreatorXXandYYandApprove();
 		_createDefaultDay1Auction();
 	}
 

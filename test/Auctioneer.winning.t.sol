@@ -16,8 +16,9 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 		super.setUp();
 
 		_setupAuctioneerTreasury();
+		_setupAuctioneerCreator();
 		_giveUsersTokensAndApprove();
-		_giveTreasuryXXandYYandApprove();
+		_giveCreatorXXandYYandApprove();
 
 		// Create single token auction
 		AuctionParams memory singleTokenParams = _getBaseAuctionParams();
@@ -25,8 +26,8 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 		AuctionParams memory multiTokenParams = _getMultiTokenSingleAuctionParams();
 
 		// Create single token + nfts auction
-		auctioneer.createAuction(singleTokenParams);
-		auctioneer.createAuction(multiTokenParams);
+		_createAuction(singleTokenParams);
+		_createAuction(multiTokenParams);
 	}
 
 	function test_winning_claimLot_RevertWhen_AuctionStillRunning() public {

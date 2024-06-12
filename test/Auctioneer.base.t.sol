@@ -31,6 +31,8 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 
 	address public liquidity = address(40);
 
+	address public creator = address(45);
+
 	address public treasury = address(50);
 	address public treasury2 = address(51);
 	address public teamTreasury = address(52);
@@ -61,6 +63,7 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	function setLabels() public {
 		vm.label(deployer, "deployer");
 		vm.label(sender, "sender");
+		vm.label(creator, "creator");
 		vm.label(dead, "dead");
 		vm.label(liquidity, "liquidity");
 		vm.label(treasury, "treasury");
@@ -97,11 +100,11 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		XXToken = new BasicERC20("XX", "XX");
 		YYToken = new BasicERC20("YY", "YY");
 
-		setLabels();
-
 		_createAndLinkAuctioneers();
 
 		_createAndMintNFTs();
+
+		setLabels();
 	}
 
 	// SETUP UTILS
@@ -118,21 +121,26 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		_giveETH(treasury, 5e18);
 		_giveWETH(treasury, 5e18);
 		_approveWeth(treasury, address(auctioneer), UINT256_MAX);
-		_treasuryApproveNFTs();
+	}
+
+	function _setupAuctioneerCreator() public {
+		auctioneer.grantRole(CREATOR_ROLE, creator);
+
+		_giveETH(creator, 5e18);
+		_giveWETH(creator, 5e18);
+		_approveWeth(creator, address(auctioneer), UINT256_MAX);
+		_creatorApproveNFTs();
 	}
 
 	function _giveUsersTokensAndApprove() public {
 		for (uint8 i = 0; i < 4; i++) {
-			// Give tokens
-			vm.prank(treasury);
 			XXToken.mint(users[i], 50e18);
 			YYToken.mint(users[i], 50e18);
 		}
 	}
 
 	function _createDefaultDay1Auction() public {
-		AuctionParams memory params = _getBaseAuctionParams();
-		auctioneer.createAuction(params);
+		_createAuction(_getBaseAuctionParams());
 	}
 
 	// TOKEN UTILS
@@ -167,38 +175,34 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		mockNFT2 = new BasicERC721("MOCK_NFT_2", "MOCK_NFT_2", "https://tokenBaseURI", "https://contractURI");
 
 		// Mint nft1
-		mockNFT1.safeMint(treasury);
-		mockNFT1.safeMint(treasury);
-		mockNFT1.safeMint(treasury);
-		mockNFT1.safeMint(treasury);
+		mockNFT1.safeMint(creator);
+		mockNFT1.safeMint(creator);
+		mockNFT1.safeMint(creator);
+		mockNFT1.safeMint(creator);
 
 		// Mint nft2
-		mockNFT2.safeMint(treasury);
-		mockNFT2.safeMint(treasury);
-		mockNFT2.safeMint(treasury);
-		mockNFT2.safeMint(treasury);
+		mockNFT2.safeMint(creator);
+		mockNFT2.safeMint(creator);
+		mockNFT2.safeMint(creator);
+		mockNFT2.safeMint(creator);
 	}
 
-	function _treasuryApproveNFTs() public {
+	function _creatorApproveNFTs() public {
+		vm.startPrank(creator);
+
 		// Approve nft1
-		vm.prank(treasury);
 		mockNFT1.approve(address(auctioneerAuction), 1);
-		vm.prank(treasury);
 		mockNFT1.approve(address(auctioneerAuction), 2);
-		vm.prank(treasury);
 		mockNFT1.approve(address(auctioneerAuction), 3);
-		vm.prank(treasury);
 		mockNFT1.approve(address(auctioneerAuction), 4);
 
 		// Approve nft2
-		vm.prank(treasury);
 		mockNFT2.approve(address(auctioneerAuction), 1);
-		vm.prank(treasury);
 		mockNFT2.approve(address(auctioneerAuction), 2);
-		vm.prank(treasury);
 		mockNFT2.approve(address(auctioneerAuction), 3);
-		vm.prank(treasury);
 		mockNFT2.approve(address(auctioneerAuction), 4);
+
+		vm.stopPrank();
 	}
 
 	// UTILS
@@ -284,10 +288,11 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		}
 	}
 
-	function _giveTreasuryXXandYYandApprove() public {
-		XXToken.mint(treasury, 1000e18);
-		YYToken.mint(treasury, 1000e18);
-		vm.startPrank(treasury);
+	function _giveCreatorXXandYYandApprove() public {
+		XXToken.mint(creator, 1000e18);
+		YYToken.mint(creator, 1000e18);
+
+		vm.startPrank(creator);
 		XXToken.approve(address(auctioneerAuction), 1000e18);
 		YYToken.approve(address(auctioneerAuction), 1000e18);
 		vm.stopPrank();
@@ -317,18 +322,28 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 		});
 	}
 
+	function _createAuction(AuctionParams memory params) public {
+		vm.prank(creator);
+		auctioneer.createAuction(params);
+	}
+
+	function _cancelAuction(uint256 _lot) public {
+		vm.prank(creator);
+		auctioneer.cancelAuction(_lot);
+	}
+
 	function _createBaseAuctionOnDay(uint256 daysInFuture) internal {
 		uint256 unlockTimestamp = _getDayInFuture2PMTimestamp(daysInFuture);
 
 		AuctionParams memory params = _getBaseAuctionParams();
 		params.unlockTimestamp = unlockTimestamp;
 
-		auctioneer.createAuction(params);
+		_createAuction(params);
 	}
 
 	function _createDailyAuctionWithRunes(uint8 numRunes, bool warp) internal returns (uint256 lot) {
 		AuctionParams memory params = _getRunesAuctionParams(numRunes);
-		auctioneer.createAuction(params);
+		_createAuction(params);
 		lot = auctioneerAuction.lotCount() - 1;
 
 		if (warp) {
@@ -348,12 +363,16 @@ abstract contract AuctioneerHelper is AuctioneerEvents, Test {
 	error AccessControlUnauthorizedAccount(address account, bytes32 role);
 	bytes32 public DEFAULT_ADMIN_ROLE = 0x00;
 	bytes32 public MOD_ROLE = keccak256("MOD_ROLE");
+	bytes32 public CREATOR_ROLE = keccak256("CREATOR_ROLE");
 
 	function _expectRevertNotAdmin(address account) public {
 		vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, account, DEFAULT_ADMIN_ROLE));
 	}
 	function _expectRevertNotModerator(address account) public {
 		vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, account, MOD_ROLE));
+	}
+	function _expectRevertNotCreator(address account) public {
+		vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, account, CREATOR_ROLE));
 	}
 
 	// TOKEN / ETH MOVEMENT HELPERS

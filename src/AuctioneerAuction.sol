@@ -331,6 +331,8 @@ contract AuctioneerAuction is
 
 		auction.finalized = true;
 
+		revenue = auction.bidData.revenue;
+		creator = auction.creator;
 		treasuryCut = auction.treasuryCut;
 		triggerCancellation = false;
 

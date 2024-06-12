@@ -34,21 +34,21 @@ contract AuctioneerAdminTest is AuctioneerHelper {
 	// Update treasury cut
 
 	function test_updateTreasuryCut() public {
-		auctioneer.updateTreasuryCut(5000);
-		assertEq(auctioneer.treasuryCut(), 5000);
+		auctioneer.updateTreasuryCut(1500);
+		assertEq(auctioneer.treasuryCut(), 1500);
 	}
 	function test_updateTreasuryCut_ExpectEmit_UpdatedTreasuryCut() public {
 		vm.expectEmit(true, true, true, true);
-		emit UpdatedTreasuryCut(4000);
-		auctioneer.updateTreasuryCut(4000);
+		emit UpdatedTreasuryCut(2000);
+		auctioneer.updateTreasuryCut(2000);
 	}
 	function test_updateTreasuryCut_RevertWhen_CallerIsNotOwner() public {
-		vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, address(0)));
+		_expectRevertNotAdmin(address(0));
 		vm.prank(address(0));
-		auctioneer.updateTreasuryCut(4000);
+		auctioneer.updateTreasuryCut(2000);
 	}
 	function test_updateTreasuryCut_RevertWhen_CutIsTooSteep() public {
-		vm.expectRevert(TooSteep.selector);
-		auctioneer.updateTreasuryCut(5001);
+		vm.expectRevert(Invalid.selector);
+		auctioneer.updateTreasuryCut(2001);
 	}
 }
