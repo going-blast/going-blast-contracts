@@ -5,34 +5,18 @@ import "forge-std/Test.sol";
 import "../src/IAuctioneer.sol";
 import { AuctioneerHelper } from "./Auctioneer.base.t.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "../src/AuctioneerFarm.sol";
 import { GBMath } from "../src/AuctionUtils.sol";
 
-contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
+contract AuctioneerRunesTest is AuctioneerHelper {
 	using SafeERC20 for IERC20;
 	using GBMath for uint256;
 
 	function setUp() public override {
 		super.setUp();
 
-		_distributeGO();
-		_initializeAuctioneerEmissions();
 		_setupAuctioneerTreasury();
-		_setupAuctioneerTeamTreasury();
 		_giveUsersTokensAndApprove();
-		_auctioneerUpdateFarm();
-		_initializeFarmEmissions();
-		_initializeFarmVoucherEmissions();
 		_createDefaultDay1Auction();
-	}
-
-	function _farmDeposit(address payable user, uint256 pid, uint256 amount) public {
-		vm.prank(user);
-		farm.deposit(pid, amount, user);
-	}
-	function _farmWithdraw(address payable user, uint256 pid, uint256 amount) public {
-		vm.prank(user);
-		farm.withdraw(pid, amount, user);
 	}
 
 	uint256 public user1Deposited = 5e18;
@@ -66,62 +50,56 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 	// CREATE
 
 	function test_runes_create_RevertWhen_InvalidNumberOfRuneSymbols() public {
-		AuctionParams[] memory params = new AuctionParams[](1);
-
 		// RevertWhen 1 rune
-		params[0] = _getRunesAuctionParams(1);
+		AuctionParams memory params = _getRunesAuctionParams(1);
 		vm.expectRevert(InvalidRunesCount.selector);
-		auctioneer.createAuctions(params);
+		auctioneer.createAuction(params);
 
 		// RevertWhen 8 rune
-		params[0] = _getRunesAuctionParams(6);
+		params = _getRunesAuctionParams(6);
 		vm.expectRevert(InvalidRunesCount.selector);
-		auctioneer.createAuctions(params);
+		auctioneer.createAuction(params);
 	}
 
 	function test_runes_create_RevertWhen_DuplicateRuneSymbols() public {
-		AuctionParams[] memory params = new AuctionParams[](1);
-		params[0] = _getRunesAuctionParams(2);
-		params[0].runeSymbols[0] = 2;
-		params[0].runeSymbols[1] = 2;
+		AuctionParams memory params = _getRunesAuctionParams(2);
+		params.runeSymbols[0] = 2;
+		params.runeSymbols[1] = 2;
 
 		vm.expectRevert(DuplicateRuneSymbols.selector);
-		auctioneer.createAuctions(params);
+		auctioneer.createAuction(params);
 	}
 
 	function test_runes_create_RevertWhen_RuneSymbol0Used() public {
-		AuctionParams[] memory params = new AuctionParams[](1);
-		params[0] = _getRunesAuctionParams(2);
-		params[0].runeSymbols[0] = 0;
+		AuctionParams memory params = _getRunesAuctionParams(2);
+		params.runeSymbols[0] = 0;
 
 		vm.expectRevert(InvalidRuneSymbol.selector);
-		auctioneer.createAuctions(params);
+		auctioneer.createAuction(params);
 	}
 
 	function test_runes_create_RevertWhen_NFTsWithRunes() public {
-		AuctionParams[] memory params = new AuctionParams[](1);
-		params[0] = _getBaseSingleAuctionParams();
+		AuctionParams memory params = _getBaseAuctionParams();
 
 		// Add NFTs to auction
-		params[0].nfts = new NftData[](2);
-		params[0].nfts[0] = NftData({ nft: address(mockNFT1), id: 3 });
-		params[0].nfts[1] = NftData({ nft: address(mockNFT2), id: 1 });
+		params.nfts = new NftData[](2);
+		params.nfts[0] = NftData({ nft: address(mockNFT1), id: 3 });
+		params.nfts[1] = NftData({ nft: address(mockNFT2), id: 1 });
 
 		// Add RUNEs to auction
 		uint8 numberOfRunes = 3;
-		params[0].runeSymbols = new uint8[](numberOfRunes);
+		params.runeSymbols = new uint8[](numberOfRunes);
 		for (uint8 i = 0; i < numberOfRunes; i++) {
-			params[0].runeSymbols[i] = i;
+			params.runeSymbols[i] = i;
 		}
 
 		vm.expectRevert(CannotHaveNFTsWithRunes.selector);
-		auctioneer.createAuctions(params);
+		auctioneer.createAuction(params);
 	}
 
 	function test_runes_create_0RunesParams_NoRunesAddedToAuction() public {
-		AuctionParams[] memory params = new AuctionParams[](1);
-		params[0] = _getBaseSingleAuctionParams();
-		auctioneer.createAuctions(params);
+		AuctionParams memory params = _getBaseAuctionParams();
+		auctioneer.createAuction(params);
 
 		uint256 lot = auctioneerAuction.lotCount() - 1;
 
@@ -134,9 +112,8 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 	}
 
 	function test_runes_create_3RunesParams_4RunesInAuction() public {
-		AuctionParams[] memory params = new AuctionParams[](1);
-		params[0] = _getRunesAuctionParams(3);
-		auctioneer.createAuctions(params);
+		AuctionParams memory params = _getRunesAuctionParams(3);
+		auctioneer.createAuction(params);
 
 		uint256 lot = auctioneerAuction.lotCount() - 1;
 
@@ -145,9 +122,8 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 	}
 
 	function test_runes_create_5RunesParams_6RunesInAuction() public {
-		AuctionParams[] memory params = new AuctionParams[](1);
-		params[0] = _getRunesAuctionParams(5);
-		auctioneer.createAuctions(params);
+		AuctionParams memory params = _getRunesAuctionParams(3);
+		auctioneer.createAuction(params);
 
 		uint256 lot = auctioneerAuction.lotCount() - 1;
 
@@ -156,16 +132,14 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 	}
 
 	function test_runes_create_RuneSymbolsAddedCorrectly() public {
-		AuctionParams[] memory params = new AuctionParams[](1);
-
 		uint8 numberOfRunes = 5;
-		params[0] = _getRunesAuctionParams(numberOfRunes);
-		params[0].runeSymbols[0] = 4;
-		params[0].runeSymbols[1] = 1;
-		params[0].runeSymbols[2] = 3;
-		params[0].runeSymbols[3] = 10;
-		params[0].runeSymbols[4] = 7;
-		auctioneer.createAuctions(params);
+		AuctionParams memory params = _getRunesAuctionParams(numberOfRunes);
+		params.runeSymbols[0] = 4;
+		params.runeSymbols[1] = 1;
+		params.runeSymbols[2] = 3;
+		params.runeSymbols[3] = 10;
+		params.runeSymbols[4] = 7;
+		auctioneer.createAuction(params);
 
 		uint256 lot = auctioneerAuction.lotCount() - 1;
 
@@ -174,7 +148,7 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		for (uint8 i = 0; i <= numberOfRunes; i++) {
 			assertEq(auctionRunes[i].bids, 0, "Initialized with 0 bids");
 			if (i == 0) assertEq(auctionRunes[i].runeSymbol, 0, "First rune should have empty rune symbol");
-			else assertEq(auctionRunes[i].runeSymbol, params[0].runeSymbols[i - 1], "Rune symbol should match");
+			else assertEq(auctionRunes[i].runeSymbol, params.runeSymbols[i - 1], "Rune symbol should match");
 		}
 	}
 
@@ -314,16 +288,12 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		// Revenue less than auction value, 100% goes to treasury
 		uint256 treasuryRevenueCut = auctioneerAuction.getAuction(lot).bidData.revenue;
 		uint256 lotPrice = auctioneerAuction.getAuction(lot).bidData.bid;
-		uint256 teamTreasuryProfitCut = lotPrice.scaleByBP(auctioneerAuction.teamTreasurySplit());
-		uint256 farmProfitCut = lotPrice - teamTreasuryProfitCut;
 		vm.deal(user2, lotPrice);
 
 		_prepExpectETHBalChange(0, user2);
 		_prepExpectETHBalChange(0, address(auctioneerAuction));
 
 		_prepExpectETHBalChange(0, treasury);
-		_prepExpectETHBalChange(0, teamTreasury);
-		_prepExpectETHBalChange(0, address(farm));
 
 		vm.prank(user2);
 		auctioneer.claimLot{ value: lotPrice }(lot, "");
@@ -340,20 +310,6 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 			int256(auctionETH) * -1,
 			"AuctioneerAuction. Decrease by prize amount"
 		);
-
-		_expectETHBalChange(
-			0,
-			treasury,
-			int256(treasuryRevenueCut + farmProfitCut),
-			"Treasury receives farmCut (claim) and revenue (finalize)"
-		);
-		_expectETHBalChange(
-			0,
-			teamTreasury,
-			int256(teamTreasuryProfitCut),
-			"Team Treasury receives teamTreasuryCut (claim)"
-		);
-		_expectETHBalChange(0, address(farm), 0, "Farm not receivable, no cut");
 	}
 
 	function test_runes_win_Expect_2RunesUserShareSplit() public {
@@ -379,16 +335,12 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		{
 			// USER 3
 			UserLotInfo memory user3LotInfo = getUserLotInfo(lot, user3);
-			uint256 user3TeamTreasuryCut = user3LotInfo.price.scaleByBP(auctioneerAuction.teamTreasurySplit());
-			uint256 user3FarmCut = user3LotInfo.price - user3TeamTreasuryCut;
 			vm.deal(user3, user3LotInfo.price);
 			uint256 user3Prize = (auctionETH * user3LotInfo.shareOfLot) / 1e18;
 
 			_prepExpectETHBalChange(0, user3);
 			_prepExpectETHBalChange(0, address(auctioneer));
 			_prepExpectETHBalChange(0, treasury);
-			_prepExpectETHBalChange(0, teamTreasury);
-			_prepExpectETHBalChange(0, address(farm));
 
 			vm.prank(user3);
 			auctioneer.claimLot{ value: user3LotInfo.price }(lot, "");
@@ -401,9 +353,6 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 				"User 3. Increase by prize, decrease by price"
 			);
 			_expectETHBalChange(0, address(auctioneer), int256(0), "Auctioneer");
-			_expectETHBalChange(0, treasury, int256(user3FarmCut), "Project Treasury receives farms cut");
-			_expectETHBalChange(0, teamTreasury, int256(user3TeamTreasuryCut), "Team Treasury receives cut");
-			_expectETHBalChange(0, address(farm), int256(0), "Farm not receivable, receives nothing");
 		}
 
 		{
@@ -411,14 +360,10 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 			UserLotInfo memory user4LotInfo = getUserLotInfo(lot, user4);
 			vm.deal(user4, user4LotInfo.price);
 			uint256 user4Prize = (auctionETH * user4LotInfo.shareOfLot) / 1e18;
-			uint256 user4TeamTreasuryCut = user4LotInfo.price.scaleByBP(auctioneerAuction.teamTreasurySplit());
-			uint256 user4FarmCut = user4LotInfo.price - user4TeamTreasuryCut;
 
 			_prepExpectETHBalChange(1, user4);
 			_prepExpectETHBalChange(1, address(auctioneer));
 			_prepExpectETHBalChange(1, treasury);
-			_prepExpectETHBalChange(1, teamTreasury);
-			_prepExpectETHBalChange(1, address(farm));
 
 			vm.prank(user4);
 			auctioneer.claimLot{ value: user4LotInfo.price }(lot, "");
@@ -431,9 +376,6 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 				"User 4. Increase by prize, decrease by price"
 			);
 			_expectETHBalChange(1, address(auctioneer), int256(0), "Auctioneer");
-			_expectETHBalChange(1, treasury, int256(user4FarmCut), "Treasury receives farm cut");
-			_expectETHBalChange(1, teamTreasury, int256(user4TeamTreasuryCut), "Team Treasury receives cut");
-			_expectETHBalChange(1, address(farm), 0, "Farm not receivable, no cut");
 		}
 	}
 
@@ -607,22 +549,6 @@ contract AuctioneerRunesTest is AuctioneerHelper, AuctioneerFarmEvents {
 		_warpToAuctionEndTimestamp(lot);
 
 		vm.expectRevert(AuctionEnded.selector);
-
-		vm.prank(user1);
-		auctioneer.selectRune(lot, 1, "TEST TEST TEST");
-	}
-
-	function test_runes_selectRune_ExpectRevert_PrivateAuction() public {
-		uint256 lot = _createDailyPrivateAuctionWithRunes(2, true);
-
-		vm.expectRevert(PrivateAuction.selector);
-
-		vm.prank(user1);
-		auctioneer.selectRune(lot, 1, "TEST TEST TEST");
-
-		_giveGO(user1, 300e18);
-
-		_expectEmitAuctionEvent_SwitchRune(lot, user1, "TEST TEST TEST", 1);
 
 		vm.prank(user1);
 		auctioneer.selectRune(lot, 1, "TEST TEST TEST");

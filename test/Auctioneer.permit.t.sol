@@ -6,7 +6,6 @@ import "../src/IAuctioneer.sol";
 import { AuctioneerHelper } from "./Auctioneer.base.t.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
-import "../src/AuctioneerFarm.sol";
 
 contract SigUtils {
 	// keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
@@ -41,7 +40,7 @@ contract SigUtils {
 	}
 }
 
-contract AuctioneerPermitTest is AuctioneerHelper, AuctioneerFarmEvents {
+contract AuctioneerPermitTest is AuctioneerHelper {
 	using SafeERC20 for IERC20;
 
 	SigUtils public sigUtils;
@@ -50,14 +49,8 @@ contract AuctioneerPermitTest is AuctioneerHelper, AuctioneerFarmEvents {
 		super.setUp();
 		sigUtils = new SigUtils();
 
-		_distributeGO();
-		_initializeAuctioneerEmissions();
 		_setupAuctioneerTreasury();
-		_setupAuctioneerTeamTreasury();
 		_giveUsersTokensAndApprove();
-		_auctioneerUpdateFarm();
-		_initializeFarmEmissions();
-		_initializeFarmVoucherEmissions();
 		_createDefaultDay1Auction();
 	}
 
@@ -104,45 +97,5 @@ contract AuctioneerPermitTest is AuctioneerHelper, AuctioneerFarmEvents {
 
 		assertEq(auctioneer.getAuctionUser(0, user1).bids, 1, "User has bid");
 		assertEq(VOUCHER.allowance(user1, address(auctioneer)), 9e18, "User1 approved VOUCHER for auctioneer");
-	}
-
-	// AuctioneerFarm
-
-	function test_auctioneerFarm_depositWithPermit_GO() public {
-		vm.prank(user1);
-		IERC20(GO).approve(address(farm), 0);
-
-		vm.expectRevert(abi.encodeWithSelector(ERC20InsufficientAllowance.selector, address(farm), 0, 5e18));
-
-		vm.prank(user1);
-		farm.deposit(goPid, 5e18, user1);
-
-		PermitData memory permitData = getPermitData(user1, user1PK, address(farm), address(GO), 5e18);
-
-		vm.expectEmit(true, true, true, true);
-		emit Deposit(user1, goPid, 5e18, user1);
-
-		vm.prank(user1);
-		farm.depositWithPermit(goPid, 5e18, user1, permitData);
-	}
-
-	function test_auctioneerFarm_depositWithPermit_GO_LP() public {
-		farm.add(20000, GO_LP);
-
-		vm.prank(user1);
-		IERC20(GO_LP).approve(address(farm), 0);
-
-		vm.expectRevert(abi.encodeWithSelector(ERC20InsufficientAllowance.selector, address(farm), 0, 5e18));
-
-		vm.prank(user1);
-		farm.deposit(goLpPid, 5e18, user1);
-
-		PermitData memory permitData = getPermitData(user1, user1PK, address(farm), address(GO_LP), 5e18);
-
-		vm.expectEmit(true, true, true, true);
-		emit Deposit(user1, goLpPid, 5e18, user1);
-
-		vm.prank(user1);
-		farm.depositWithPermit(goLpPid, 5e18, user1, permitData);
 	}
 }

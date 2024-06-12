@@ -4,7 +4,6 @@ pragma solidity ^0.8.20;
 import "forge-std/Test.sol";
 import "../src/IAuctioneer.sol";
 import { AuctioneerHelper } from "./Auctioneer.base.t.sol";
-import { AuctioneerFarm } from "../src/AuctioneerFarm.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { AuctionViewUtils } from "../src/AuctionUtils.sol";
 
@@ -15,10 +14,7 @@ contract AuctioneerWindowsTest is AuctioneerHelper {
 	function setUp() public override {
 		super.setUp();
 
-		_distributeGO();
-		_initializeAuctioneerEmissions();
 		_setupAuctioneerTreasury();
-		_setupAuctioneerTeamTreasury();
 		_giveUsersTokensAndApprove();
 		_createDefaultDay1Auction();
 	}
@@ -50,7 +46,11 @@ contract AuctioneerWindowsTest is AuctioneerHelper {
 		uint256 expectedNextBidBy = auctioneerAuction.getAuction(0).windows[0].windowCloseTimestamp +
 			auctioneerAuction.getAuction(0).windows[1].timer;
 
-		assertEq(nextBidBy, expectedNextBidBy, "OPEN window, nextBidBy: windowOpenTimestamp of first timed window + timer");
+		assertEq(
+			nextBidBy,
+			expectedNextBidBy,
+			"OPEN window, nextBidBy: windowOpenTimestamp of first timed window + timer"
+		);
 
 		// Bidding should not change nextBidBy
 		_bidShouldEmit(user1);

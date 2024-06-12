@@ -4,31 +4,19 @@ pragma solidity >=0.8.4;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IWETH } from "../src/WETH9.sol";
 import { AuctionViewUtils, AuctionMutateUtils } from "../src/AuctionUtils.sol";
-import { AuctioneerFarm } from "../src/AuctioneerFarm.sol";
 import { Auctioneer } from "../src/Auctioneer.sol";
 import "../src/IAuctioneer.sol";
 import { AuctioneerAuction } from "../src/AuctioneerAuction.sol";
 
 contract AuctioneerHarness is Auctioneer {
-	constructor(
-		address _multisig,
-		IERC20 _go,
-		IERC20 _voucher,
-		IWETH _weth
-	) Auctioneer(_multisig, _go, _voucher, _weth) {}
+	constructor(IERC20 _voucher, IWETH _weth) Auctioneer(_voucher, _weth) {}
 }
 
 contract AuctioneerAuctionHarness is AuctioneerAuction {
 	using AuctionViewUtils for Auction;
 	using AuctionMutateUtils for Auction;
 
-	constructor(
-		address _auctioneer,
-		uint256 _bidCost,
-		uint256 _bidIncrement,
-		uint256 _startingBid,
-		uint256 _privateAuctionRequirement
-	) AuctioneerAuction(_auctioneer, _bidCost, _bidIncrement, _startingBid, _privateAuctionRequirement) {}
+	constructor(address _auctioneer) AuctioneerAuction(_auctioneer) {}
 
 	// AuctionUtils
 	function exposed_auction_activeWindow(uint256 _lot) public view returns (uint256) {

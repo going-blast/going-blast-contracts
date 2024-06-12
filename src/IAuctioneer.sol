@@ -48,15 +48,15 @@ struct NftData {
 
 // Alphabetical field ordering for json parsing
 struct AuctionParams {
-	uint256 emissionBP; // Emission of this auction of the day's emission (usually 100%)
-	bool isPrivate;
-	uint256 lotValue;
 	string name;
 	NftData[] nfts;
 	uint8[] runeSymbols;
 	TokenData[] tokens;
 	uint256 unlockTimestamp;
 	BidWindowParams[] windows;
+	uint256 bidCost;
+	uint256 bidIncrement;
+	uint256 startingBid;
 }
 
 // Storage
@@ -73,11 +73,6 @@ struct AuctionLot {
 	TokenData[] tokens;
 	NftData[] nfts;
 }
-struct AuctionEmissions {
-	uint256 bp; // Scaler of emissions this auction, needed to reduce bp if auction cancelled
-	uint256 biddersEmission; // token to be distributed through auction to bidders
-	uint256 treasuryEmission; // token to be distributed to treasury at end of auction (10% of total emission)
-}
 struct AuctionBidData {
 	uint256 revenue;
 	uint256 bid;
@@ -87,19 +82,20 @@ struct AuctionBidData {
 	uint8 bidRune;
 	uint256 bids; // number of bids during auction
 	uint256 bidCost; // Frozen value to prevent updating bidCost from messing with revenue calculations
+	uint256 bidIncrement;
 }
 
 struct Auction {
+	address creator;
 	uint256 lot;
 	uint256 day;
 	string name;
-	bool isPrivate; // whether the auction requires wallet / staked Gavel
 	uint256 unlockTimestamp;
 	BidRune[] runes;
 	BidWindow[] windows;
-	AuctionEmissions emissions;
 	AuctionLot rewards;
 	AuctionBidData bidData;
+	uint256 treasuryCut;
 	bool finalized;
 	uint256 initialBlock;
 }
@@ -108,20 +104,9 @@ struct AuctionUser {
 	uint256 bids;
 	uint8 rune; // indexed starting at 1 to check if rune has been set (defaults to 0)
 	bool lotClaimed;
-	bool emissionsHarvested;
-	uint256 harvestedEmissions;
-	uint256 burnedEmissions;
 }
 
 // Returns
-struct EpochData {
-	uint256 epoch;
-	uint256 start;
-	uint256 end;
-	uint256 daysRemaining;
-	uint256 emissionsRemaining;
-	uint256 dailyEmission;
-}
 struct BidCounts {
 	uint256 user;
 	uint256 rune;
@@ -132,13 +117,6 @@ struct UserLotInfo {
 	uint8 rune;
 	// Bids
 	BidCounts bidCounts;
-	// Emissions
-	uint256 matureTimestamp;
-	uint256 timeUntilMature;
-	uint256 emissionsEarned;
-	bool emissionsHarvested;
-	uint256 harvestedEmissions;
-	uint256 burnedEmissions;
 	// Winning bid
 	bool isWinner;
 	bool lotClaimed;
@@ -160,13 +138,10 @@ struct DailyAuctions {
 
 error NotAuctioneer();
 error NotAuctioneerAuction();
-error EmissionsNotReceived();
-error EmissionsNotInitialized();
 error AlreadyInitialized();
 error TreasuryNotSet();
 error TeamTreasuryNotSet();
 error TooManyAuctionsPerDay();
-error InvalidDailyEmissionBP();
 error Invalid();
 error InvalidAuctionLot();
 error InvalidWindowOrder();
@@ -187,7 +162,6 @@ error NotCancellable();
 error TooSteep();
 error ZeroAddress();
 error AlreadyLinked();
-error PrivateAuction();
 error UnlockAlreadyPassed();
 error BadDeposit();
 error BadWithdrawal();
@@ -208,39 +182,30 @@ error IncorrectETHPaymentAmount();
 error SentETHButNotWalletPayment();
 error Muted();
 
-// Migration & Multisig
-error NotMultisig();
-error MigrationAlreadyQueued();
-error MigrationNotQueued();
-error MigrationDestMismatch();
-error MigrationNotMature();
-error Deprecated();
+error Unauthorized();
 
 interface AuctioneerEvents {
 	// ADMIN
-	event Linked(address indexed _auctioneer, address indexed _auctioneerEmissions, address _auctioneerAuction);
+	event Linked(address indexed _auctioneer, address _auctioneerAuction);
 	event Initialized();
-	event InitializedEmissions();
 	event MutedUser(address indexed _user, bool _muted);
 
 	// CONSTS
 	event UpdatedStartingBid(uint256 _startingBid);
 	event UpdatedBidCost(uint256 _bidCost);
 	event UpdatedBidIncrement(uint256 _bidIncrement);
-	event UpdatedEarlyHarvestTax(uint256 _earlyHarvestTax);
-	event UpdatedEmissionTaxDuration(uint256 _emissionTax);
+	event UpdatedTreasuryCut(uint256 _treasuryCut);
 	event UpdatedRuneSwitchPenalty(uint256 _penalty);
 	event UpdatedTreasury(address indexed _treasury);
 	event UpdatedTeamTreasury(address indexed _teamTreasury);
-	event UpdatedFarm(address indexed _farm);
 	event UpdatedTeamTreasurySplit(uint256 _split);
-	event UpdatedPrivateAuctionRequirement(uint256 _requirement);
 	event UpdatedAlias(address indexed _user, string _alias);
 	event UpdatedRunicLastBidderBonus(uint256 _bonus);
+	event UpdatedCreateAuctionRequiresRole(bool _required);
 
 	// AUCTION STATE
-	event AuctionCreated(uint256 indexed _lot);
-	event AuctionCancelled(uint256 indexed _lot);
+	event AuctionCreated(address indexed _creator, uint256 indexed _lot);
+	event AuctionCancelled(address indexed _creator, uint256 indexed _lot);
 	event AuctionFinalized(uint256 indexed _lot);
 
 	// USER INTERACTIONS
@@ -265,13 +230,6 @@ interface AuctioneerEvents {
 	);
 	event Messaged(uint256 indexed _lot, address indexed _user, string _message, string _alias, uint8 _rune);
 	event Claimed(uint256 indexed _lot, address indexed _user, string _message, string _alias, uint8 _rune);
-	event UserHarvestedLotEmissions(
-		uint256 indexed _lot,
-		address indexed _user,
-		uint256 _userEmissions,
-		uint256 _burnEmissions,
-		bool _harvestToFarm
-	);
 
 	// MIGRATION
 	event MigrationQueued(address indexed _migrator, address indexed _dest);

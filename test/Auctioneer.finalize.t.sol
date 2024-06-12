@@ -4,7 +4,6 @@ pragma solidity ^0.8.20;
 import "forge-std/Test.sol";
 import "../src/IAuctioneer.sol";
 import { AuctioneerHelper } from "./Auctioneer.base.t.sol";
-import { AuctioneerFarm } from "../src/AuctioneerFarm.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { AuctionViewUtils, GBMath } from "../src/AuctionUtils.sol";
 
@@ -16,23 +15,18 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 	function setUp() public override {
 		super.setUp();
 
-		_distributeGO();
-		_initializeAuctioneerEmissions();
 		_setupAuctioneerTreasury();
-		_setupAuctioneerTeamTreasury();
 		_giveUsersTokensAndApprove();
-		_auctioneerUpdateFarm();
-		_initializeFarmEmissions();
 		_giveTreasuryXXandYYandApprove();
 
-		AuctionParams[] memory params = new AuctionParams[](2);
 		// Create single token auction
-		params[0] = _getBaseSingleAuctionParams();
+		AuctionParams memory singleTokenParams = _getBaseAuctionParams();
 		// Create multi token auction
-		params[1] = _getMultiTokenSingleAuctionParams();
+		AuctionParams memory multiTokenParams = _getMultiTokenSingleAuctionParams();
 
 		// Create single token + nfts auction
-		auctioneer.createAuctions(params);
+		auctioneer.createAuction(singleTokenParams);
+		auctioneer.createAuction(multiTokenParams);
 	}
 
 	function test_winning_finalizeAuction_RevertWhen_AuctionStillRunning() public {
@@ -138,49 +132,19 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 		auctioneer.claimLot(0, "");
 	}
 
-	function test_finalizeAuction_TransferEmissionsToTreasury() public {
-		_warpToUnlockTimestamp(0);
-		_bid(user1);
-		_warpToAuctionEndTimestamp(0);
-
-		Auction memory auction = auctioneerAuction.getAuction(0);
-
-		_expectTokenTransfer(GO, address(auctioneerEmissions), treasury, auction.emissions.treasuryEmission);
-
-		auctioneer.finalizeAuction(0);
-	}
-
 	function test_finalizeAuction_NoBids_CancelFallback() public {
 		_warpToAuctionEndTimestamp(0);
 
 		Auction memory auction = auctioneerAuction.getAuction(0);
 
-		uint256 treasuryGOInit = GO.balanceOf(treasury);
 		uint256 treasuryETH = treasury.balance;
-		uint256 auctionTotalEmission = auction.emissions.biddersEmission + auction.emissions.treasuryEmission;
-		uint256 epoch0EmissionsRemaining = auctioneerEmissions.epochEmissionsRemaining(0);
-
-		uint256 auctionsOnDay = auctioneerAuction.getAuctionsPerDay(auction.day);
-		uint256 bpOnDay = auctioneerAuction.dailyCumulativeEmissionBP(auction.day);
 
 		vm.expectEmit(true, true, true, true);
-		emit AuctionCancelled(0);
+		emit AuctionCancelled(sender, 0);
 
 		auctioneer.finalizeAuction(0);
 
-		assertEq(GO.balanceOf(treasury), treasuryGOInit, "Treasury receives GO emissions from auction");
 		assertEq(treasury.balance, treasuryETH + auction.rewards.tokens[0].amount, "Lot ETH returned to treasury");
-		assertEq(
-			auctioneerEmissions.epochEmissionsRemaining(0),
-			epoch0EmissionsRemaining + auctionTotalEmission,
-			"Emissions returned to epoch"
-		);
-		assertEq(auctioneerAuction.getAuctionsPerDay(auction.day), auctionsOnDay - 1, "Auctions per day decremented");
-		assertEq(
-			auctioneerAuction.dailyCumulativeEmissionBP(auction.day),
-			bpOnDay - auction.emissions.bp,
-			"BP per day reduced by auction bp"
-		);
 		assertEq(auctioneerAuction.getAuction(0).finalized, true, "Auction should be marked as finalized");
 	}
 
@@ -200,7 +164,6 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 
 		_prepExpectETHBalChange(0, treasury);
 		_prepExpectETHBalChange(0, teamTreasury);
-		_prepExpectETHBalChange(0, address(farm));
 		_prepExpectETHBalChange(0, address(auctioneer));
 
 		// Finalize
@@ -212,9 +175,6 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 
 		// TeamTreasury should receive nothing
 		_expectETHBalChange(0, address(teamTreasury), 0, "TeamTreasury");
-
-		// Farm should receive nothing
-		_expectETHBalChange(0, address(farm), 0, "Farm");
 	}
 
 	function test_finalizeAuction_Should_DistributeLotRevenue_RevenueLessThan110PercLotValue() public {
@@ -236,7 +196,6 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 
 		_prepExpectETHBalChange(0, treasury);
 		_prepExpectETHBalChange(0, teamTreasury);
-		_prepExpectETHBalChange(0, address(farm));
 		_prepExpectETHBalChange(0, address(auctioneer));
 
 		// Claim
@@ -248,24 +207,9 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 
 		// Team treasury should receive nothing
 		_expectETHBalChange(0, teamTreasury, 0, "TeamTreasury");
-
-		// Farm should receive nothing
-		_expectETHBalChange(0, address(farm), 0, "Farm");
-	}
-
-	function _farmDeposit() public {
-		vm.prank(treasury);
-		GO.transfer(user1, 10e18);
-		vm.prank(user1);
-		GO.approve(address(farm), 10e18);
-		vm.prank(user1);
-		farm.deposit(goPid, 10e18, user1);
 	}
 
 	function test_finalizeAuction_Should_DistributeLotRevenue_RevenueGreaterThanLotValue() public {
-		// Deposit some non zero value into farm to prevent distribution fallback
-		_farmDeposit();
-
 		vm.warp(auctioneerAuction.getAuction(0).unlockTimestamp);
 		_multibid(user2, 1580);
 		_multibid(user3, 1520);
@@ -280,23 +224,16 @@ contract AuctioneerFinalizeTest is AuctioneerHelper {
 		uint256 lotValue110Perc = lotValue.scaleByBP(11000);
 		assertGt(revenue, lotValue110Perc, "Validate revenue > 110% lotValue");
 
-		uint256 teamTreasurySplit = auctioneerAuction.teamTreasurySplit();
 		uint256 profit = revenue - lotValue110Perc;
 		uint256 treasuryExpectedDisbursement = lotValue110Perc;
-		uint256 teamTreasuryExpectedDisbursement = profit.scaleByBP(teamTreasurySplit);
-		uint256 farmExpectedDisbursement = profit.scaleByBP(10000 - teamTreasurySplit);
 
 		_prepExpectETHBalChange(0, treasury);
-		_prepExpectETHBalChange(0, teamTreasury);
-		_prepExpectETHBalChange(0, address(farm));
 		_prepExpectETHBalChange(0, address(auctioneer));
 
 		// Claim
 		auctioneer.finalizeAuction(0);
 
 		_expectETHBalChange(0, treasury, int256(treasuryExpectedDisbursement), "Treasury");
-		_expectETHBalChange(0, teamTreasury, int256(teamTreasuryExpectedDisbursement), "TeamTreasury");
-		_expectETHBalChange(0, address(farm), int256(farmExpectedDisbursement), "Farm");
 		_expectETHBalChange(0, address(auctioneer), -1 * int256(revenue), "Auctioneer");
 	}
 }
