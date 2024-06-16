@@ -4,7 +4,6 @@ pragma solidity ^0.8.20;
 import "forge-std/Test.sol";
 import "../src/IAuctioneer.sol";
 import { AuctioneerHelper } from "./Auctioneer.base.t.sol";
-import { AuctioneerFarm } from "../src/AuctioneerFarm.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ClaimableAirdropIndividual } from "../src/ClaimableAirdrop.sol";
 
@@ -15,7 +14,6 @@ contract AirdropIndividualTest is AuctioneerHelper {
 
 	function setUp() public override {
 		super.setUp();
-		_distributeGO();
 
 		indiv1 = new ClaimableAirdropIndividual(VOUCHER, treasury, "INDIV_1");
 	}
@@ -97,6 +95,8 @@ contract AirdropIndividualTest is AuctioneerHelper {
 	}
 
 	function test_claim_Reversions() public {
+		_giveVoucher(treasury, 10000e18);
+
 		vm.prank(treasury);
 		VOUCHER.approve(address(indiv1), UINT256_MAX);
 
@@ -136,8 +136,11 @@ contract AirdropIndividualTest is AuctioneerHelper {
 	}
 
 	function test_claim_ExpectEmit_Claimed() public {
+		_giveVoucher(treasury, 10000e18);
+
 		vm.prank(treasury);
 		VOUCHER.approve(address(indiv1), UINT256_MAX);
+
 		_addClaimables();
 
 		assertEq(indiv1.getClaimable(user1), 100e18, "User1 can claim 100e18");

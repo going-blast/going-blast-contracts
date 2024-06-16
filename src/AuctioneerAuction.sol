@@ -7,7 +7,7 @@ import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableS
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { Auction, AuctionParams, PaymentType, AuctioneerEvents, DailyAuctions, AuctionExt, NotAuctioneer, InvalidAuctionLot, InvalidRune, AuctionEnded, TooSteep, Invalid, PrivateAuction, TooManyAuctionsPerDay, InvalidDailyEmissionBP, NotCancellable } from "./IAuctioneer.sol";
+import { Auction, AuctionParams, PaymentType, AuctioneerEvents, AuctionExt, NotAuctioneer, InvalidAuctionLot, InvalidRune, AuctionEnded, Invalid, NotCancellable, Unauthorized } from "./IAuctioneer.sol";
 import { BlastYield } from "./BlastYield.sol";
 import { GBMath, AuctionViewUtils, AuctionMutateUtils, AuctionParamsUtils } from "./AuctionUtils.sol";
 
@@ -49,10 +49,12 @@ interface IAuctioneerAuction {
 	function runeSwitchPenalty() external view returns (uint256);
 	function runicLastBidderBonus() external view returns (uint256);
 	function updateTreasury(address _treasury) external;
-	function updateTeamTreasury(address _teamTreasury) external;
-	function privateAuctionRequirement() external view returns (uint256);
-	function createAuction(AuctionParams memory _params, uint256 _emissions) external payable returns (uint256 lot);
-	function cancelAuction(uint256 _lot) external returns (uint256 unlockTimestamp, uint256 cancelledEmissions);
+	function createAuction(
+		address _creator,
+		AuctionParams memory _params,
+		uint256 _treasuryCut
+	) external payable returns (uint256 lot);
+	function cancelAuction(address _creator, uint256 _lot, bool _isAdmin) external;
 	struct BidData {
 		address user;
 		uint8 prevRune;
@@ -60,45 +62,22 @@ interface IAuctioneerAuction {
 		uint256 existingBidCount;
 		uint256 arrivingBidCount;
 		PaymentType paymentType;
-		uint256 userGoBalance;
 	}
 	function bid(
 		uint256 _lot,
 		BidData memory _data
 	) external returns (uint256 userBidsAfterPenalty, uint256 bid, uint256 bidCost);
-	function selectRune(
-		uint256 _lot,
-		uint256 _userBids,
-		uint8 _prevRune,
-		uint8 _rune,
-		uint256
-	) external returns (uint256);
+	function selectRune(uint256 _lot, uint256 _userBids, uint8 _prevRune, uint8 _rune) external returns (uint256);
 	function claimLot(
 		uint256 _lot,
 		address _user,
 		uint256 _userBids,
 		uint8 _userRune
-	) external returns (uint256 userShareOfPayment, bool triggerFinalization);
+	) external returns (uint256 userShareOfPayment, address creator, uint256 treasuryCut, bool triggerFinalization);
 	function finalizeAuction(
 		uint256 _lot
-	)
-		external
-		returns (
-			bool triggerCancellation,
-			uint256 treasuryEmissions,
-			uint256 treasuryETHDistribution,
-			uint256 farmETHDistribution,
-			uint256 teamTreasuryDistribution
-		);
-	function getProfitDistributions(
-		uint256 _lot,
-		uint256 _amount
-	) external view returns (uint256 farmDistribution, uint256 teamTreasuryDistribution);
-	function validateAndGetHarvestData(
-		uint256 _lot
-	) external view returns (uint256 unlockTimestamp, uint256 bids, uint256 biddersEmissions);
+	) external returns (bool triggerCancellation, uint256 revenue, address creator, uint256 treasuryCut);
 	function validateAuctionRunning(uint256 _lot) external view;
-	function validatePrivateAuctionEligibility(uint256 _lot, uint256 _goBalance) external view;
 	function getAuction(uint256 _lot) external view returns (Auction memory auction);
 }
 
@@ -119,38 +98,20 @@ contract AuctioneerAuction is
 
 	address public auctioneer;
 	address public treasury;
-	address public teamTreasury;
-	uint256 public teamTreasurySplit = 2000;
 	address public deadAddress = 0x000000000000000000000000000000000000dEaD;
 
 	uint256 public lotCount;
 	mapping(uint256 => Auction) public auctions;
-	mapping(uint256 => EnumerableSet.UintSet) private auctionsOnDay;
-	mapping(uint256 => uint256) public dailyCumulativeEmissionBP;
 
-	uint256 public bidIncrement;
-	uint256 public startingBid;
-	uint256 public bidCost;
 	uint256 public runeSwitchPenalty = 2000;
 	uint256 public onceTwiceBlastBonusTime = 9;
-	uint256 public privateAuctionRequirement;
 	uint256 public runicLastBidderBonus = 2000;
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	constructor(
-		address _auctioneer,
-		uint256 _bidCost,
-		uint256 _bidIncrement,
-		uint256 _startingBid,
-		uint256 _privateAuctionRequirement
-	) Ownable(msg.sender) {
+	constructor(address _auctioneer) Ownable(msg.sender) {
 		auctioneer = _auctioneer;
-		bidCost = _bidCost;
-		bidIncrement = _bidIncrement;
-		startingBid = _startingBid;
-		privateAuctionRequirement = _privateAuctionRequirement;
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -182,18 +143,9 @@ contract AuctioneerAuction is
 		_;
 	}
 
-	modifier privateAuctionEligible(uint256 _lot, uint256 _goBalance) {
-		if (auctions[_lot].isPrivate && _goBalance < privateAuctionRequirement) revert PrivateAuction();
-		_;
-	}
 	function validateAuctionRunning(uint256 _lot) external view validAuctionLot(_lot) {
 		if (auctions[_lot].isEnded()) revert AuctionEnded();
 	}
-
-	function validatePrivateAuctionEligibility(
-		uint256 _lot,
-		uint256 _goBalance
-	) external view validAuctionLot(_lot) privateAuctionEligible(_lot, _goBalance) {}
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -208,46 +160,6 @@ contract AuctioneerAuction is
 
 	function updateTreasury(address _treasury) external onlyAuctioneer {
 		treasury = _treasury;
-	}
-
-	function updateTeamTreasury(address _teamTreasury) external onlyAuctioneer {
-		teamTreasury = _teamTreasury;
-	}
-
-	function updateTeamTreasurySplit(uint256 _teamTreasurySplit) external onlyOwner {
-		if (_teamTreasurySplit > 5000) revert TooSteep();
-
-		teamTreasurySplit = _teamTreasurySplit;
-		emit UpdatedTeamTreasurySplit(_teamTreasurySplit);
-	}
-
-	function updateStartingBid(uint256 _startingBid) external onlyOwner {
-		if (_startingBid == 0) revert Invalid();
-		if (_startingBid > 0.1e18) revert Invalid();
-
-		startingBid = _startingBid;
-		emit UpdatedStartingBid(_startingBid);
-	}
-
-	function updateBidIncrement(uint256 _bidIncrement) external onlyOwner {
-		if (_bidIncrement == 0) revert Invalid();
-		if (_bidIncrement > 0.1e18) revert Invalid();
-
-		bidIncrement = _bidIncrement;
-		emit UpdatedBidIncrement(_bidIncrement);
-	}
-
-	function updateBidCost(uint256 _bidCost) external onlyOwner {
-		if (_bidCost == 0) revert Invalid();
-		if (_bidCost > 0.1e18) revert Invalid();
-
-		bidCost = _bidCost;
-		emit UpdatedBidCost(_bidCost);
-	}
-
-	function updatePrivateAuctionRequirement(uint256 _requirement) external onlyOwner {
-		privateAuctionRequirement = _requirement;
-		emit UpdatedPrivateAuctionRequirement(_requirement);
 	}
 
 	function updateRuneSwitchPenalty(uint256 _penalty) external onlyOwner {
@@ -268,26 +180,22 @@ contract AuctioneerAuction is
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	function createAuction(
+		address _creator,
 		AuctionParams memory _params,
-		uint256 _allocatedEmissions
+		uint256 _treasuryCut
 	) external payable onlyAuctioneer returns (uint256 lot) {
 		_params.validate();
 
 		lot = lotCount;
 		uint256 day = _params.unlockTimestamp / 1 days;
 
-		auctionsOnDay[day].add(lot);
-		if (auctionsOnDay[day].length() > 4) revert TooManyAuctionsPerDay();
-
-		dailyCumulativeEmissionBP[day] += _params.emissionBP;
-		if (dailyCumulativeEmissionBP[day] > 40000) revert InvalidDailyEmissionBP();
-
 		Auction storage auction = auctions[lotCount];
 
+		auction.creator = _creator;
 		auction.lot = lotCount;
 		auction.day = day;
 		auction.name = _params.name;
-		auction.isPrivate = _params.isPrivate;
+		auction.treasuryCut = _treasuryCut;
 		auction.finalized = false;
 		auction.initialBlock = block.number;
 
@@ -297,39 +205,31 @@ contract AuctioneerAuction is
 		auction.addBidWindows(_params, onceTwiceBlastBonusTime);
 
 		auction.addRewards(_params);
-		auction.transferLotFrom(treasury);
-
-		auction.emissions.bp = _params.emissionBP;
-		auction.emissions.biddersEmission = _allocatedEmissions.scaleByBP(9000);
-		auction.emissions.treasuryEmission = _allocatedEmissions.scaleByBP(1000);
+		auction.transferLotFrom(_creator);
 
 		auction.bidData.revenue = 0;
 		auction.bidData.bids = 0;
-		auction.bidData.bid = startingBid;
+		auction.bidData.bid = _params.startingBid;
 		auction.bidData.bidTimestamp = _params.unlockTimestamp;
 		auction.bidData.nextBidBy = auction.getNextBidBy();
-		auction.bidData.bidCost = bidCost;
+		auction.bidData.bidCost = _params.bidCost;
+		auction.bidData.bidIncrement = _params.bidIncrement;
 
 		lotCount++;
 	}
 
 	function cancelAuction(
-		uint256 _lot
-	) external onlyAuctioneer validAuctionLot(_lot) returns (uint256 unlockTimestamp, uint256 cancelledEmissions) {
+		address _canceller,
+		uint256 _lot,
+		bool _isAdmin
+	) external onlyAuctioneer validAuctionLot(_lot) {
 		Auction storage auction = auctions[_lot];
 
+		if (!_isAdmin && auction.creator != _canceller) revert Unauthorized();
 		if (auction.bidData.bids > 0 || auction.finalized) revert NotCancellable();
 
-		auction.transferLotTo(treasury, 1e18);
-		auctionsOnDay[auction.day].remove(_lot);
-		dailyCumulativeEmissionBP[auction.day] -= auction.emissions.bp;
+		auction.transferLotTo(auction.creator, 1e18);
 
-		unlockTimestamp = auction.unlockTimestamp;
-		cancelledEmissions = auction.emissions.biddersEmission + auction.emissions.treasuryEmission;
-
-		auction.emissions.bp = 0;
-		auction.emissions.biddersEmission = 0;
-		auction.emissions.treasuryEmission = 0;
 		auction.finalized = true;
 	}
 
@@ -341,14 +241,13 @@ contract AuctioneerAuction is
 		onlyAuctioneer
 		validAuctionLot(_lot)
 		validRune(_lot, _data.newRune)
-		privateAuctionEligible(_lot, _data.userGoBalance)
 		returns (uint256 userBidsAfterPenalty, uint256 auctionBid, uint256 auctionBidCost)
 	{
 		Auction storage auction = auctions[_lot];
 
 		auction.validateBiddingOpen();
 
-		auction.bidData.bid += bidIncrement * _data.arrivingBidCount;
+		auction.bidData.bid += auction.bidData.bidIncrement * _data.arrivingBidCount;
 		auction.bidData.bids += _data.arrivingBidCount;
 		auction.bidData.bidUser = _data.user;
 		auction.bidData.bidTimestamp = block.timestamp;
@@ -372,16 +271,8 @@ contract AuctioneerAuction is
 		uint256 _lot,
 		uint256 _userBids,
 		uint8 _prevRune,
-		uint8 _newRune,
-		uint256 _userGoBalance
-	)
-		external
-		onlyAuctioneer
-		validAuctionLot(_lot)
-		validRune(_lot, _newRune)
-		privateAuctionEligible(_lot, _userGoBalance)
-		returns (uint256 userBidsAfterPenalty)
-	{
+		uint8 _newRune
+	) external onlyAuctioneer validAuctionLot(_lot) validRune(_lot, _newRune) returns (uint256 userBidsAfterPenalty) {
 		if (auctions[_lot].isEnded()) revert AuctionEnded();
 		if (auctions[_lot].runes.length == 0) revert InvalidRune();
 
@@ -393,7 +284,12 @@ contract AuctioneerAuction is
 		address _user,
 		uint256 _userBids,
 		uint8 _userRune
-	) external onlyAuctioneer validAuctionLot(_lot) returns (uint256 userShareOfPayment, bool triggerFinalization) {
+	)
+		external
+		onlyAuctioneer
+		validAuctionLot(_lot)
+		returns (uint256 userShareOfPayment, address creator, uint256 treasuryCut, bool triggerFinalization)
+	{
 		Auction storage auction = auctions[_lot];
 
 		auction.validateEnded();
@@ -416,6 +312,8 @@ contract AuctioneerAuction is
 		auction.transferLotTo(_user, userShareOfLot);
 
 		userShareOfPayment = (auction.bidData.bid * userShareOfLot) / 1e18;
+		creator = auction.creator;
+		treasuryCut = auction.treasuryCut;
 		triggerFinalization = !auction.finalized;
 	}
 
@@ -425,53 +323,24 @@ contract AuctioneerAuction is
 		external
 		onlyAuctioneer
 		validAuctionLot(_lot)
-		returns (
-			bool triggerCancellation,
-			uint256 treasuryEmissions,
-			uint256 treasuryETHDistribution,
-			uint256 farmETHDistribution,
-			uint256 teamTreasuryETHDistribution
-		)
+		returns (bool triggerCancellation, uint256 revenue, address creator, uint256 treasuryCut)
 	{
-		if (auctions[_lot].finalized) return (false, 0, 0, 0, 0);
+		if (auctions[_lot].finalized) return (false, 0, auctions[_lot].creator, 0);
 
 		Auction storage auction = auctions[_lot];
 		auction.validateEnded();
 
 		// If auction ends with 0 bids, cancel it to recover the lot
-		if (auction.bidData.bids == 0) return (true, 0, 0, 0, 0);
+		if (auction.bidData.bids == 0) return (true, 0, auctions[_lot].creator, 0);
 
 		auction.finalized = true;
 
+		revenue = auction.bidData.revenue;
+		creator = auction.creator;
+		treasuryCut = auction.treasuryCut;
 		triggerCancellation = false;
-		treasuryEmissions = auction.emissions.treasuryEmission;
-		(treasuryETHDistribution, farmETHDistribution, teamTreasuryETHDistribution) = auction.getRevenueDistributions(
-			teamTreasurySplit
-		);
 
 		emit AuctionFinalized(auction.lot);
-	}
-
-	function validateAndGetHarvestData(
-		uint256 _lot
-	) external view validAuctionLot(_lot) returns (uint256 unlockTimestamp, uint256 bids, uint256 biddersEmissions) {
-		auctions[_lot].validateEnded();
-		unlockTimestamp = auctions[_lot].day * 1 days;
-		bids = auctions[_lot].bidData.bids;
-		biddersEmissions = auctions[_lot].emissions.biddersEmission;
-	}
-
-	function getProfitDistributions(
-		uint256 _lot,
-		uint256 _amount
-	)
-		external
-		view
-		onlyAuctioneer
-		validAuctionLot(_lot)
-		returns (uint256 farmDistribution, uint256 teamTreasuryDistribution)
-	{
-		return auctions[_lot].getProfitDistributions(_amount, teamTreasurySplit);
 	}
 
 	function _switchRuneUpdateData(
@@ -499,33 +368,27 @@ contract AuctioneerAuction is
 		return auctions[_lot];
 	}
 
-	function getAuctionsPerDay(uint256 _day) external view returns (uint256) {
-		return auctionsOnDay[_day].values().length;
-	}
+	// TODO: Get live auctions
 
-	function getAuctionsOnDay(uint256 _day) external view returns (uint256[] memory) {
-		return auctionsOnDay[_day].values();
-	}
+	// function getDailyAuctions(
+	// 	uint256 lookBackDays,
+	// 	uint256 lookForwardDays
+	// ) external view returns (DailyAuctions[] memory data) {
+	// 	uint256 currentDay = block.timestamp / 1 days;
+	// 	uint256[] memory dayLots;
+	// 	uint256 day = currentDay - lookBackDays;
+	// 	data = new DailyAuctions[](lookBackDays + 1 + lookForwardDays);
+	// 	for (uint256 dayIndex = 0; dayIndex < (lookBackDays + 1 + lookForwardDays); dayIndex++) {
+	// 		dayLots = auctionsOnDay[day].values();
+	// 		data[dayIndex].day = day;
+	// 		data[dayIndex].lots = new uint256[](dayLots.length);
 
-	function getDailyAuctions(
-		uint256 lookBackDays,
-		uint256 lookForwardDays
-	) external view returns (DailyAuctions[] memory data) {
-		uint256 currentDay = block.timestamp / 1 days;
-		uint256[] memory dayLots;
-		uint256 day = currentDay - lookBackDays;
-		data = new DailyAuctions[](lookBackDays + 1 + lookForwardDays);
-		for (uint256 dayIndex = 0; dayIndex < (lookBackDays + 1 + lookForwardDays); dayIndex++) {
-			dayLots = auctionsOnDay[day].values();
-			data[dayIndex].day = day;
-			data[dayIndex].lots = new uint256[](dayLots.length);
-
-			for (uint256 dayLotIndex = 0; dayLotIndex < dayLots.length; dayLotIndex++) {
-				data[dayIndex].lots[dayLotIndex] = dayLots[dayLotIndex];
-			}
-			day++;
-		}
-	}
+	// 		for (uint256 dayLotIndex = 0; dayLotIndex < dayLots.length; dayLotIndex++) {
+	// 			data[dayIndex].lots[dayLotIndex] = dayLots[dayLotIndex];
+	// 		}
+	// 		day++;
+	// 	}
+	// }
 
 	function getAuctionExt(
 		uint256 _lot

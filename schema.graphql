@@ -38,7 +38,6 @@ type Auction @entity {
 	"id will be lot"
 	id: ID!
 	lot: BigInt!
-	hasEmissions: Boolean!
 	eventIndex: Int!
 	participants: [AuctionParticipant!]! @derivedFrom(field: "auction")
 	events: [AuctionEvent!]! @derivedFrom(field: "auction")
@@ -50,11 +49,8 @@ type User @entity {
 	muted: Boolean!
 	alias: String!
 	interactedAuctions: [Auction!]!
-	harvestableAuctions: [Auction!]!
 	totalBidsCount: BigInt!
 	totalAuctionsParticipated: Int!
-	totalEmissionsHarvested: BigInt!
-	totalEmissionsBurned: BigInt!
 	totalAuctionsWon: BigInt!
 }
 
@@ -63,6 +59,4 @@ type Stats @entity {
 	totalBidsCount: BigInt!
 	totalRuneSwitches: BigInt!
 	totalMessagesSent: BigInt!
-	totalEmissionsHarvested: BigInt!
-	totalEmissionsBurned: BigInt!
 }

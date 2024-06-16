@@ -7,11 +7,7 @@ import { ChainJsonUtils } from "./ChainJsonUtils.sol";
 import { IWETH } from "../src/WETH9.sol";
 import { Auctioneer } from "../src/Auctioneer.sol";
 import { AuctioneerAuction } from "../src/AuctioneerAuction.sol";
-import { AuctioneerFarm } from "../src/AuctioneerFarm.sol";
-import { AuctioneerEmissions } from "../src/AuctioneerEmissions.sol";
-import { GoToken } from "../src/GoToken.sol";
 import { VoucherToken } from "../src/VoucherToken.sol";
-import { GoingBlastAirdrop } from "../src/GoingBlastAirdrop.sol";
 
 contract YieldMock {
 	address private constant blastContract = 0x4300000000000000000000000000000000000002;
@@ -46,11 +42,6 @@ contract GBScriptUtils is Script, ChainJsonUtils {
 	// Ecosystem contracts
 	Auctioneer public auctioneer;
 	AuctioneerAuction public auctioneerAuction;
-	AuctioneerEmissions public auctioneerEmissions;
-	AuctioneerFarm public auctioneerFarm;
-	GoingBlastAirdrop public airdrop;
-	GoToken public GO;
-	uint256 public GO_SUPPLY = 1000000e18;
 	VoucherToken public VOUCHER;
 	IWETH public WETH;
 
@@ -62,17 +53,11 @@ contract GBScriptUtils is Script, ChainJsonUtils {
 	uint256 public bidCost = 0.00035e18;
 	uint256 public startingBid = 0.00035e18;
 	uint256 public bidIncrement = 0.0000035e18;
-
-	// Config values
-	uint256 public privateAuctionRequirement = 250e18;
-	uint256 public earlyHarvestTax = 5000;
-	uint256 public emissionTaxDuration = 30 days;
-	uint256 public teamTreasurySplit = 2000;
+	bool public createAuctionRequiresRole = true;
+	uint256 public treasuryCut = 500;
 
 	// Addresses
-	address public multisig;
 	address public treasury;
-	address public teamTreasury;
 
 	modifier broadcast() {
 		// `--account` is set in script call
@@ -93,10 +78,6 @@ contract GBScriptUtils is Script, ChainJsonUtils {
 
 		auctioneer = Auctioneer(payable(readAddress(contractPath("Auctioneer"))));
 		auctioneerAuction = AuctioneerAuction(payable(readAddress(contractPath("AuctioneerAuction"))));
-		auctioneerEmissions = AuctioneerEmissions(readAddress(contractPath("AuctioneerEmissions")));
-		auctioneerFarm = AuctioneerFarm(readAddress(contractPath("AuctioneerFarm")));
-		airdrop = GoingBlastAirdrop(readAddress(contractPath("GoingBlastAirdrop")));
-		GO = GoToken(readAddress(contractPath("GO")));
 		VOUCHER = VoucherToken(readAddress(contractPath("VOUCHER")));
 		WETH = IWETH(readAddress(contractPath("WETH")));
 		_;
@@ -110,14 +91,12 @@ contract GBScriptUtils is Script, ChainJsonUtils {
 
 		bidCost = readUint(auctioneerConfigPath("bidCost"));
 		startingBid = readUint(auctioneerConfigPath("startingBid"));
-		privateAuctionRequirement = readUint(auctioneerConfigPath("privateAuctionRequirement"));
-		earlyHarvestTax = readUint(auctioneerConfigPath("earlyHarvestTax"));
-		emissionTaxDuration = readUint(auctioneerConfigPath("emissionTaxDurationDays")) * 1 days;
-		teamTreasurySplit = readUint(auctioneerConfigPath("teamTreasurySplit"));
+		bidIncrement = readUint(auctioneerConfigPath("bidIncrement"));
+		createAuctionRequiresRole = readBool(auctioneerConfigPath("createAuctionRequiresRole"));
+		treasuryCut = readUint(auctioneerConfigPath("treasuryCut"));
 
-		multisig = readAddress(auctioneerConfigPath("multisig"));
 		treasury = readAddress(auctioneerConfigPath("treasury"));
-		teamTreasury = readAddress(auctioneerConfigPath("teamTreasury"));
+
 		_;
 	}
 

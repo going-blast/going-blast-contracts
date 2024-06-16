@@ -9,43 +9,10 @@ import { GBScriptUtils } from "./GBScriptUtils.sol";
 import { IWETH, WETH9 } from "../src/WETH9.sol";
 import { Auctioneer } from "../src/Auctioneer.sol";
 import { AuctioneerAuction } from "../src/AuctioneerAuction.sol";
-import { AuctioneerEmissions } from "../src/AuctioneerEmissions.sol";
-import { AuctioneerFarm } from "../src/AuctioneerFarm.sol";
-import { GoToken } from "../src/GoToken.sol";
 import { VoucherToken } from "../src/VoucherToken.sol";
 import { GBMath, AuctionParamsUtils } from "../src/AuctionUtils.sol";
-import { AuctionParams, EpochData, PaymentType } from "../src/IAuctioneer.sol";
+import { AuctionParams, PaymentType } from "../src/IAuctioneer.sol";
 import { GoingBlastAirdrop } from "../src/GoingBlastAirdrop.sol";
-
-// ANVIL deployment flow
-// 	. Deploy tokens
-//  . Distribute GO
-// 	. Deploy core
-//  . Initialize Auctioneer Emissions (GO)
-//  . Initialize Auctioneer Farm Emissions (GO + VOUCHER)
-
-// MAINNET deployment flow
-//  . Deploy tokens
-//  . Initial GO distribution
-// 		. 20% to Presale
-// 		. 5% to Presale
-// 		. Rest to treasury, waiting for deployment
-//  . Deploy core
-// 	. Treasury approve VOUCH to airdrop
-//  . Manually distribute GO
-// 		. 60% to Auctioneer Emissions
-// 		. 20% to Presale (Treasury)
-// 		. 10% to Auctioneer Farm
-// 		. 5% to Initial Liquidity (Treasury)
-// 		. 5% to Team Treasury
-// 	. After Presale ends
-// 		. Treasury approve WETH to auctioneer
-// 		. Initialize Auctioneer Emissions
-// 		. Initialize Auctioneer Farm Emissions
-// 		. Create first auctions
-// 		. ./env-subgraph-yaml.sh
-// 		. Deploy subgraph
-// 		. Update subgraph address in frontend
 
 contract GBScripts is GBScriptUtils {
 	using SafeERC20 for IERC20;
@@ -60,50 +27,30 @@ contract GBScripts is GBScriptUtils {
 		if (!isAnvil) return;
 
 		// tokens
-		_deployTokens();
+		_deployVouchToken();
 		_setupWETH();
 
 		// core
 		_deployCore();
 		_updateTreasury();
-		_updateTeamTreasury();
-
-		// -- To be done manually on mainnet
-		_distributeGO();
-
-		// initialize
-		_initializeAuctioneerEmissions();
-		_initializeAuctioneerFarmEmissions();
 
 		// -- Local frontend testing setup
 		_ANVIL_initArch();
 	}
 
 	function deployTokens() public broadcast loadChain loadContracts loadConfigValues {
-		_deployTokens();
+		_deployVouchToken();
 		_setupWETH();
-	}
-
-	function distributeGO() public broadcast loadChain loadContracts loadConfigValues {
-		// ONLY ANVIL & TESTNET
-		_distributeGO();
 	}
 
 	function deployCore() public broadcast loadChain loadContracts loadConfigValues {
 		_deployCore();
 		_updateTreasury();
-		_updateTeamTreasury();
 	}
 
 	function initializeBlast() public broadcast loadChain loadContracts loadConfigValues mockBlastYield {
 		auctioneer.initializeBlast();
-		auctioneerFarm.initializeBlast();
 		auctioneerAuction.initializeBlast();
-	}
-
-	function initializeCore() public broadcast loadChain loadContracts loadConfigValues {
-		_initializeAuctioneerEmissions();
-		_initializeAuctioneerFarmEmissions();
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -118,7 +65,7 @@ contract GBScripts is GBScriptUtils {
 		if (!isBlast) revert NotBlastChain();
 
 		auctioneer.claimYieldAll(_recipient, 0);
-		auctioneerFarm.claimYieldAll(_recipient, 0);
+		auctioneerAuction.claimYieldAll(_recipient, 0);
 	}
 
 	function muteUser(address _user, bool _muted) public broadcast loadChain loadContracts loadConfigValues {
@@ -126,70 +73,6 @@ contract GBScripts is GBScriptUtils {
 	}
 
 	function syncConfigValues() public broadcast loadChain loadContracts loadConfigValues {
-		console.log(". sync bidCost");
-		if (bidCost != auctioneerAuction.bidCost()) {
-			console.log("  . bidCost updated %s --> %s", auctioneerAuction.bidCost(), bidCost);
-			auctioneerAuction.updateBidCost(bidCost);
-		} else {
-			console.log("  . skipped");
-		}
-
-		console.log(". sync startingBid");
-		if (startingBid != auctioneerAuction.startingBid()) {
-			console.log("  . startingBid updated %s --> %s", auctioneerAuction.startingBid(), startingBid);
-			auctioneerAuction.updateStartingBid(startingBid);
-		} else {
-			console.log("  . skipped");
-		}
-
-		console.log(". sync privateAuctionRequirement");
-		if (privateAuctionRequirement != auctioneerAuction.privateAuctionRequirement()) {
-			console.log(
-				"  . privateAuctionRequirement updated %s --> %s",
-				auctioneerAuction.privateAuctionRequirement(),
-				privateAuctionRequirement
-			);
-			auctioneerAuction.updatePrivateAuctionRequirement(privateAuctionRequirement);
-		} else {
-			console.log("  . skipped");
-		}
-
-		console.log(". sync earlyHarvestTax");
-		if (earlyHarvestTax != auctioneerEmissions.earlyHarvestTax()) {
-			console.log(
-				"  . earlyHarvestTax updated %s --> %s",
-				auctioneerEmissions.earlyHarvestTax(),
-				earlyHarvestTax
-			);
-			auctioneerEmissions.updateEarlyHarvestTax(earlyHarvestTax);
-		} else {
-			console.log("  . skipped");
-		}
-
-		console.log(". sync emissionTaxDuration");
-		if (emissionTaxDuration != auctioneerEmissions.emissionTaxDuration()) {
-			console.log(
-				"  . emissionTaxDuration updated %s --> %s",
-				auctioneerEmissions.emissionTaxDuration(),
-				emissionTaxDuration
-			);
-			auctioneerEmissions.updateEmissionTaxDuration(emissionTaxDuration);
-		} else {
-			console.log("  . skipped");
-		}
-
-		console.log(". sync teamTreasurySplit");
-		if (teamTreasurySplit != auctioneerAuction.teamTreasurySplit()) {
-			console.log(
-				"  . teamTreasurySplit updated %s --> %s",
-				auctioneerAuction.teamTreasurySplit(),
-				teamTreasurySplit
-			);
-			auctioneerAuction.updateTeamTreasurySplit(teamTreasurySplit);
-		} else {
-			console.log("  . skipped");
-		}
-
 		console.log(". sync treasury");
 		if (treasury != auctioneer.treasury()) {
 			console.log("  . treasury updated %s --> %s", auctioneer.treasury(), treasury);
@@ -203,10 +86,7 @@ contract GBScripts is GBScriptUtils {
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// DEPLOY - PHASE 1 - TOKENS
 
-	function _deployTokens() internal {
-		GO = new GoToken();
-		writeContractAddress("GO", address(GO));
-
+	function _deployVouchToken() internal {
 		VOUCHER = new VoucherToken();
 		writeContractAddress("VOUCHER", address(VOUCHER));
 	}
@@ -227,73 +107,18 @@ contract GBScripts is GBScriptUtils {
 	function _deployCore() internal {
 		writeFirstBlock(block.number);
 
-		auctioneer = new Auctioneer(multisig, GO, VOUCHER, WETH);
+		auctioneer = new Auctioneer(VOUCHER, WETH);
 		writeContractAddress("Auctioneer", address(auctioneer));
 
-		auctioneerAuction = new AuctioneerAuction(
-			address(auctioneer),
-			bidCost,
-			bidIncrement,
-			startingBid,
-			privateAuctionRequirement
-		);
+		auctioneerAuction = new AuctioneerAuction(address(auctioneer));
 		writeContractAddress("AuctioneerAuction", address(auctioneerAuction));
 
-		auctioneerEmissions = new AuctioneerEmissions(address(auctioneer), GO);
-		writeContractAddress("AuctioneerEmissions", address(auctioneerEmissions));
-
-		auctioneer.link(address(auctioneerEmissions), address(auctioneerAuction));
-
-		auctioneerFarm = new AuctioneerFarm(address(auctioneer), GO, VOUCHER);
-		writeContractAddress("AuctioneerFarm", address(auctioneerFarm));
-
-		auctioneer.updateFarm(address(auctioneerFarm));
-
-		// airdrop = new GoingBlastAirdrop(address(VOUCHER), treasury, 0);
-		// writeContractAddress("GoingBlastAirdrop", address(airdrop));
-
-		// INITIALIZE BLAST STUFF
-		// if (isBlast) {
-		// 	auctioneer.initializeBlast();
-		// 	auctioneerFarm.initializeBlast();
-		// 	auctioneerAuction.initializeBlast();
-		// }
+		auctioneer.link(address(auctioneerAuction));
 	}
 
 	function _updateTreasury() internal {
 		auctioneer.updateTreasury(treasury);
 		writeAddress(auctioneerConfigPath("treasury"), treasury);
-	}
-
-	function _updateTeamTreasury() internal {
-		auctioneer.updateTeamTreasury(teamTreasury);
-		writeAddress(auctioneerConfigPath("teamTreasury"), teamTreasury);
-	}
-
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// DEPLOY - PHASE 2 - INITIALIZE
-
-	function _initializeAuctioneerEmissions() internal {
-		if (auctioneerEmissions.emissionsInitialized()) revert AlreadyInitialized();
-
-		uint256 unlockTimestamp = block.timestamp;
-		auctioneerEmissions.initializeEmissions(unlockTimestamp);
-
-		EpochData memory currentEpochData = auctioneerEmissions.getEpochDataAtTimestamp(block.timestamp);
-		console.log("Epoch", currentEpochData.epoch);
-		console.log("EmissionsRemaining", currentEpochData.emissionsRemaining);
-		console.log("DaysRemaining", currentEpochData.daysRemaining);
-		console.log("Daily emission set", currentEpochData.dailyEmission);
-	}
-
-	function _initializeAuctioneerFarmEmissions() internal {
-		uint256 farmGOEmissions = uint256(GO_SUPPLY).scaleByBP(500);
-		auctioneerFarm.initializeEmissions(farmGOEmissions, 180 days);
-
-		uint256 farmVOUCHEREmissions = 200e18 * 180;
-		VOUCHER.mint(address(auctioneerFarm), farmVOUCHEREmissions);
-		auctioneerFarm.setVoucherEmissions(farmVOUCHEREmissions, 180 days);
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -305,28 +130,27 @@ contract GBScripts is GBScriptUtils {
 		uint256 jsonAuctionCount = readAuctionCount();
 
 		console.log("Auction readiness checks:");
-		console.log("    AuctioneerEmissions initialized", auctioneerEmissions.emissionsInitialized());
-		console.log("    Auctioneer treasury:", auctioneer.treasury(), treasury);
-		console.log("    Treasury ETH balance:", treasury.balance);
+		console.log("    Auctioneer treasury set?:", auctioneer.treasury());
+		console.log("    Creator ETH balance:", msg.sender.balance);
 
-		AuctionParams[] memory params = new AuctionParams[](1);
+		AuctionParams memory params;
 		console.log("Number of auctions to add: %s", jsonAuctionCount - lotCount);
 
 		for (uint256 i = lotCount; i < jsonAuctionCount; i++) {
-			params[0] = readAuction(i);
-			console.log("    Deploying auction: LOT # %s", params[0].name);
+			params = readAuction(i);
+			console.log("    Deploying auction: LOT # %s", params.name);
 			console.log("    Lot checks");
 			console.log(
 				"        Unlock in future %s, block %s auction %s",
-				block.timestamp < params[0].unlockTimestamp,
+				block.timestamp < params.unlockTimestamp,
 				block.timestamp,
-				params[0].unlockTimestamp
+				params.unlockTimestamp
 			);
-			console.log("        ETH less than treasury balance", params[0].tokens[0].amount < treasury.balance);
+			console.log("        ETH less than creator balance", params.tokens[0].amount < msg.sender.balance);
 
-			params[0].validate();
+			params.validate();
 
-			auctioneer.createAuctions(params);
+			auctioneer.createAuction(params);
 		}
 	}
 
@@ -346,7 +170,7 @@ contract GBScripts is GBScriptUtils {
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// ANVIL UTILS
 
-	function ANVIL_treasuryApproveAuctioneer() public broadcastTreasury loadChain loadContracts loadConfigValues {
+	function ANVIL_creatorApproveAuctioneer() public broadcast loadChain loadContracts loadConfigValues {
 		if (!isAnvil) return;
 		WETH.deposit{ value: 5e18 }();
 		WETH.approve(address(auctioneer), UINT256_MAX);
@@ -381,22 +205,7 @@ contract GBScripts is GBScriptUtils {
 
 		address arch = 0x3a7679E3662bC7c2EB2B1E71FA221dA430c6f64B;
 		VOUCHER.mint(arch, 100e18);
-		GO.transfer(arch, 100e18);
 		(bool sent, ) = arch.call{ value: 1e18 }("");
 		if (!sent) revert ETHTransferFailed();
-	}
-
-	function _distributeGO() internal {
-		uint256 proofOfBidEmissions = GO_SUPPLY.scaleByBP(6000);
-		IERC20(GO).safeTransfer(address(auctioneerEmissions), proofOfBidEmissions);
-
-		uint256 farmEmissions = GO_SUPPLY.scaleByBP(1000);
-		IERC20(GO).safeTransfer(address(auctioneerFarm), farmEmissions);
-
-		// Already in treasury
-		// uint256 lbpAmount = GO_SUPPLY.scaleByBP(2000);
-
-		// Already in treasury
-		// uint256 initialLiquidityAmount = GO_SUPPLY.scaleByBP(500);
 	}
 }

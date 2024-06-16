@@ -4,7 +4,6 @@ pragma solidity ^0.8.20;
 import "forge-std/Test.sol";
 import "../src/IAuctioneer.sol";
 import { AuctioneerHelper } from "./Auctioneer.base.t.sol";
-import { AuctioneerFarm } from "../src/AuctioneerFarm.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { AuctionViewUtils, GBMath } from "../src/AuctionUtils.sol";
 
@@ -16,23 +15,19 @@ contract AuctioneerMessageTest is AuctioneerHelper {
 	function setUp() public override {
 		super.setUp();
 
-		_distributeGO();
-		_initializeAuctioneerEmissions();
 		_setupAuctioneerTreasury();
-		_setupAuctioneerTeamTreasury();
+		_setupAuctioneerCreator();
 		_giveUsersTokensAndApprove();
-		_auctioneerUpdateFarm();
-		_initializeFarmEmissions();
-		_giveTreasuryXXandYYandApprove();
+		_giveCreatorXXandYYandApprove();
 
-		AuctionParams[] memory params = new AuctionParams[](2);
 		// Create single token auction
-		params[0] = _getBaseSingleAuctionParams();
+		AuctionParams memory singleTokenParams = _getBaseAuctionParams();
 		// Create multi token auction
-		params[1] = _getBaseSingleAuctionParams();
-		params[1].isPrivate = true;
+		AuctionParams memory multiTokenParams = _getMultiTokenSingleAuctionParams();
 
-		auctioneer.createAuctions(params);
+		// Create single token + nfts auction
+		_createAuction(singleTokenParams);
+		_createAuction(multiTokenParams);
 	}
 
 	function test_messageAuction_ExpectEmit_BiddingOpenAuction() public {
@@ -65,21 +60,5 @@ contract AuctioneerMessageTest is AuctioneerHelper {
 
 		vm.prank(user1);
 		auctioneer.messageAuction(0, "TEST TEST TEST");
-	}
-
-	function test_messageAuction_ExpectRevert_PrivateAuction() public {
-		_warpToUnlockTimestamp(1);
-
-		vm.expectRevert(PrivateAuction.selector);
-
-		vm.prank(user1);
-		auctioneer.messageAuction(1, "TEST TEST TEST");
-
-		_giveGO(user1, 300e18);
-
-		_expectEmitAuctionEvent_Message(1, user1, "TEST TEST TEST");
-
-		vm.prank(user1);
-		auctioneer.messageAuction(1, "TEST TEST TEST");
 	}
 }

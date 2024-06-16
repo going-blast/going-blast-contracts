@@ -4,7 +4,6 @@ pragma solidity ^0.8.20;
 import "forge-std/Test.sol";
 import "../src/IAuctioneer.sol";
 import { AuctioneerHelper } from "./Auctioneer.base.t.sol";
-import { AuctioneerFarm } from "../src/AuctioneerFarm.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { GBMath, AuctionViewUtils } from "../src/AuctionUtils.sol";
 
@@ -16,21 +15,19 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 	function setUp() public override {
 		super.setUp();
 
-		_distributeGO();
-		_initializeAuctioneerEmissions();
 		_setupAuctioneerTreasury();
-		_setupAuctioneerTeamTreasury();
+		_setupAuctioneerCreator();
 		_giveUsersTokensAndApprove();
-		_giveTreasuryXXandYYandApprove();
+		_giveCreatorXXandYYandApprove();
 
-		AuctionParams[] memory params = new AuctionParams[](2);
 		// Create single token auction
-		params[0] = _getBaseSingleAuctionParams();
+		AuctionParams memory singleTokenParams = _getBaseAuctionParams();
 		// Create multi token auction
-		params[1] = _getMultiTokenSingleAuctionParams();
+		AuctionParams memory multiTokenParams = _getMultiTokenSingleAuctionParams();
 
 		// Create single token + nfts auction
-		auctioneer.createAuctions(params);
+		_createAuction(singleTokenParams);
+		_createAuction(multiTokenParams);
 	}
 
 	function test_winning_claimLot_RevertWhen_AuctionStillRunning() public {
@@ -138,98 +135,6 @@ contract AuctioneerWinningTest is AuctioneerHelper {
 			(int256(lotPrice) * -1) + int256(lotPrize),
 			"User1. ETH decrease by lot price, increase by prize"
 		);
-	}
-
-	function test_winning_lotPriceIsDistributedCorrectly_Farm0StakedFallbackToTreasury() public {
-		// Set farm
-		auctioneer.updateFarm(address(farm));
-
-		vm.warp(auctioneerAuction.getAuction(0).unlockTimestamp);
-		_multibid(user2, 58);
-		_multibid(user3, 152);
-		_multibid(user4, 96);
-		_multibid(user1, 110);
-
-		// Claimable after next bid by
-		vm.warp(auctioneerAuction.getAuction(0).bidData.nextBidBy + 1);
-
-		// Finalize to distribute bidding revenue
-		auctioneer.finalizeAuction(0);
-
-		uint256 lotPrice = auctioneerAuction.getAuction(0).bidData.bid;
-		uint256 teamTreasurySplit = auctioneerAuction.teamTreasurySplit();
-		uint256 teamTreasuryCut = lotPrice.scaleByBP(teamTreasurySplit);
-		uint256 farmCut = lotPrice.scaleByBP(10000 - teamTreasurySplit);
-
-		vm.deal(user1, lotPrice * 5);
-
-		_prepExpectETHBalChange(0, treasury);
-		_prepExpectETHBalChange(0, teamTreasury);
-		_prepExpectETHBalChange(0, address(farm));
-
-		// Claim
-		vm.prank(user1);
-		auctioneer.claimLot{ value: lotPrice }(0, "");
-
-		_expectETHBalChange(0, treasury, int256(farmCut), "Project Treasury receives farm cut (farm not receivable)");
-		_expectETHBalChange(0, teamTreasury, int256(teamTreasuryCut), "TeamTreasury receives expected cut");
-		_expectETHBalChange(0, address(farm), int256(0), "Farm. Should not increase (0 staked)");
-	}
-
-	function _farmDeposit() public {
-		vm.prank(treasury);
-		GO.transfer(user1, 10e18);
-		vm.prank(user1);
-		GO.approve(address(farm), 10e18);
-		vm.prank(user1);
-		farm.deposit(goPid, 10e18, user1);
-	}
-
-	function test_winning_lotPriceIsDistributedCorrectly_WithoutFallback() public {
-		// Set farm
-		auctioneer.updateFarm(address(farm));
-
-		// Deposit some non zero value into farm to prevent distribution fallback
-		_farmDeposit();
-
-		vm.warp(auctioneerAuction.getAuction(0).unlockTimestamp);
-		_multibid(user2, 58);
-		_multibid(user3, 152);
-		_multibid(user4, 96);
-		_multibid(user1, 110);
-
-		// Claimable after next bid by
-		vm.warp(auctioneerAuction.getAuction(0).bidData.nextBidBy + 1);
-
-		// Finalize to distribute bidding revenue
-		auctioneer.finalizeAuction(0);
-
-		uint256 lotPrice = auctioneerAuction.getAuction(0).bidData.bid;
-		uint256 teamTreasurySplit = auctioneerAuction.teamTreasurySplit();
-		uint256 teamTreasuryCut = lotPrice.scaleByBP(teamTreasurySplit);
-		uint256 farmCut = lotPrice.scaleByBP(10000 - teamTreasurySplit);
-
-		_prepExpectETHBalChange(0, treasury);
-		_prepExpectETHBalChange(0, teamTreasury);
-		_prepExpectETHBalChange(0, address(farm));
-
-		uint256 ethPerShareInit = farm.getPool(goPid).accEthPerShare;
-		assertEq(ethPerShareInit, 0, "ETH rew per share should start at 0");
-
-		// Claim
-		vm.prank(user1);
-		vm.deal(user1, lotPrice);
-		auctioneer.claimLot{ value: lotPrice }(0, "");
-
-		_expectETHBalChange(0, treasury, 0, "Project Treasury. No change");
-		_expectETHBalChange(0, teamTreasury, int256(teamTreasuryCut), "TeamTreasury. Increase by cut of lot price");
-		_expectETHBalChange(0, address(farm), int256(farmCut), "Farm. Increase by cut of lot price");
-
-		// Farm ethPerShare should increase
-		uint256 expectedEthPerShare = (farmCut * farm.REWARD_PRECISION() * farm.getPool(goPid).allocPoint) /
-			(farm.totalAllocPoint() * farm.getPool(goPid).supply);
-		uint256 ethPerShareFinal = farm.getPool(goPid).accEthPerShare;
-		assertEq(expectedEthPerShare, ethPerShareFinal, "ETH reward per share of farm should increase");
 	}
 
 	function test_winning_auctionIsMarkedAsClaimed() public {

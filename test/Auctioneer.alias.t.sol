@@ -4,7 +4,6 @@ pragma solidity ^0.8.20;
 import "forge-std/Test.sol";
 import "../src/IAuctioneer.sol";
 import { AuctioneerHelper } from "./Auctioneer.base.t.sol";
-import { AuctioneerFarm } from "../src/AuctioneerFarm.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract AuctioneerAliasTest is AuctioneerHelper {
@@ -12,9 +11,8 @@ contract AuctioneerAliasTest is AuctioneerHelper {
 
 	function setUp() public override {
 		super.setUp();
-		_distributeGO();
 		_setupAuctioneerTreasury();
-		_setupAuctioneerTeamTreasury();
+		_setupAuctioneerCreator();
 	}
 
 	function test_setAlias_RevertWhen_InvalidAlias() public {

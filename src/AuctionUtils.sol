@@ -4,7 +4,6 @@ pragma solidity ^0.8.20;
 import { Auction, AuctionParams, BidWindow, BidWindowType, BidRune, TokenData, NftData, AuctionNotYetOpen, AuctionEnded, AuctionStillRunning, NotWinner, ETHTransferFailed, IncorrectETHPaymentAmount, UnlockAlreadyPassed, TooManyTokens, TooManyNFTs, CannotHaveNFTsWithRunes, NoRewards, InvalidBidWindowCount, InvalidWindowOrder, LastWindowNotInfinite, MultipleInfiniteWindows, WindowTooShort, InvalidBidWindowTimer, InvalidRunesCount, InvalidRuneSymbol, DuplicateRuneSymbols } from "./IAuctioneer.sol";
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { IAuctioneerFarm } from "./AuctioneerFarm.sol";
 
 //         ,                ,              ,   *,    ,  , ,   *,     ,
 //                               , , , ,   * * ,*     , *,,       ,      ,    .
@@ -129,36 +128,6 @@ library AuctionViewUtils {
 		if (auction.runes.length > 0 ? auction.bidData.bidRune != _rune : auction.bidData.bidUser != _user)
 			revert NotWinner();
 	}
-
-	function getProfitDistributions(
-		Auction storage,
-		uint256 amount,
-		uint256 teamTreasurySplit
-	) internal pure returns (uint256 farmAmount, uint256 teamTreasuryAmount) {
-		// Calculate distributions
-		teamTreasuryAmount = amount.scaleByBP(teamTreasurySplit);
-		farmAmount = amount - teamTreasuryAmount;
-	}
-
-	function getRevenueDistributions(
-		Auction storage auction,
-		uint256 teamTreasurySplit
-	) internal view returns (uint256 treasuryAmount, uint256 farmAmount, uint256 teamTreasuryAmount) {
-		uint256 lotValue = auction.rewards.estimatedValue;
-		uint256 profit = 0;
-
-		treasuryAmount = auction.bidData.revenue;
-
-		// Calculate profit, reduce reimbursement
-		if (auction.bidData.revenue > lotValue.scaleByBP(11000)) {
-			treasuryAmount = lotValue.scaleByBP(11000);
-			profit = auction.bidData.revenue - treasuryAmount;
-		}
-
-		if (profit > 0) {
-			(farmAmount, teamTreasuryAmount) = getProfitDistributions(auction, profit, teamTreasurySplit);
-		}
-	}
 }
 
 library AuctionMutateUtils {
@@ -187,8 +156,6 @@ library AuctionMutateUtils {
 	}
 
 	function addRewards(Auction storage auction, AuctionParams memory params) internal {
-		auction.rewards.estimatedValue = params.lotValue;
-
 		for (uint8 i = 0; i < params.tokens.length; i++) {
 			auction.rewards.tokens.push(params.tokens[i]);
 		}
