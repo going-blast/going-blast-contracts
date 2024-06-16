@@ -2,45 +2,45 @@ specVersion: 1.0.0
 description: Going Blast Subgraph
 repository: https://github.com/going-blast/going-blast-contracts
 schema:
-    file: ./schema.graphql
+  file: ./schema.graphql
 indexerHints:
-    prune: auto
+  prune: auto
 dataSources:
-    - kind: ethereum/contract
-      name: Auctioneer
-      network: mainnet
-      source:
-          address: "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0"
-          abi: Auctioneer
-          startBlock: 402
-      mapping:
-          kind: ethereum/events
-          apiVersion: 0.0.6
-          language: wasm/assemblyscript
-          entities:
-              - AuctionEvent
-              - AuctionParticipant
-              - Auction
-              - User
-              - Stats
-          abis:
-              - name: Auctioneer
-                file: abi/Auctioneer.json
-          eventHandlers:
-              - event: AuctionCreated(indexed address,indexed uint256)
-                handler: handleAuctionCreated
-              - event: AuctionCancelled(indexed address,indexed uint256)
-                handler: handleAuctionCancelled
-              - event: UpdatedAlias(indexed address,string)
-                handler: handleUpdatedAlias
-              - event: MutedUser(indexed address,bool)
-                handler: handleMutedUser
-              - event: Bid(indexed uint256,indexed address,string,string,uint8,uint8,uint256,uint256,uint256)
-                handler: handleBid
-              - event: SelectedRune(indexed uint256,indexed address,string,string,uint8,uint8)
-                handler: handleSelectedRune
-              - event: Claimed(indexed uint256,indexed address,string,string,uint8)
-                handler: handleClaim
-              - event: Messaged(indexed uint256,indexed address,string,string,uint8)
-                handler: handleMessaged
-          file: ./subgraph/src/mappings.ts
+  - kind: ethereum/contract
+    name: Auctioneer
+    network: mainnet
+    source:
+      address: '0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf'
+      abi: Auctioneer
+      startBlock: 298
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.6
+      language: wasm/assemblyscript
+      entities:
+        - AuctionEvent
+        - AuctionParticipant
+        - Auction
+        - User
+        - Stats
+      abis:
+        - name: Auctioneer
+          file: abi/Auctioneer.json
+      eventHandlers:
+        - event: AuctionCreated(indexed address,indexed uint256)
+          handler: handleAuctionCreated
+        - event: AuctionCancelled(indexed address,indexed uint256)
+          handler: handleAuctionCancelled
+        - event: UpdatedAlias(indexed address,string)
+          handler: handleUpdatedAlias
+        - event: MutedUser(indexed address,bool)
+          handler: handleMutedUser
+        - event: Bid(indexed uint256,indexed address,string,string,uint8,uint8,uint256,uint256,uint256)
+          handler: handleBid
+        - event: SelectedRune(indexed uint256,indexed address,string,string,uint8,uint8)
+          handler: handleSelectedRune
+        - event: Claimed(indexed uint256,indexed address,string,string,uint8)
+          handler: handleClaim
+        - event: Messaged(indexed uint256,indexed address,string,string,uint8)
+          handler: handleMessaged
+      file: ./subgraph/src/mappings.ts

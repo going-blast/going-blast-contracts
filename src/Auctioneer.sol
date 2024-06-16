@@ -282,7 +282,7 @@ contract Auctioneer is AccessControl, ReentrancyGuard, AuctioneerEvents, BlastYi
 		uint256 _bidCount,
 		PaymentType _paymentType
 	) internal {
-		if (_bidCount == 0) revert InvalidBidCount();
+		if (_bidCount != 1) revert InvalidBidCount();
 
 		AuctionUser storage user = auctionUsers[_lot][msg.sender];
 
