@@ -119,6 +119,8 @@ contract GBScripts is GBScriptUtils {
 	function _updateTreasury() internal {
 		auctioneer.updateTreasury(treasury);
 		writeAddress(auctioneerConfigPath("treasury"), treasury);
+
+		auctioneer.grantRole(keccak256("CREATOR_ROLE"), treasury);
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -1,22 +1,22 @@
 {
-	"firstBlock": 4604010,
-	"contracts": {
-		"WETH": "0x4300000000000000000000000000000000000004",
-		"USD": "0x4300000000000000000000000000000000000003",
-		"VOUCHER": "0xd11c606aEc6F2C312B7CC83253136c05F5D513a6",
-		"Auctioneer": "0x20Bf2c56628b221733d35a1E48BE77aF13c11dcb",
-		"AuctioneerAuction": "0x6046C2261140004e2CD03fc5715517420A9E6afD"
-	},
-	"config": {
-		"isBlast": true,
-		"isAnvil": false
-	},
-	"auctioneerConfig": {
-		"bidCost": 0.0003e18,
-		"startingBid": 0.0003e18,
-		"bidIncrement": 0.000003e18,
-		"createAuctionRequiresRole": true,
-		"treasuryCut": 500,
-		"treasury": "0xe521eb581af258D800e0E8f510391D82118fC31C"
-	}
+  "firstBlock": 4854181,
+  "contracts": {
+    "WETH": "0x4300000000000000000000000000000000000004",
+    "USD": "0x4300000000000000000000000000000000000003",
+    "VOUCHER": "0x8f2505e4cb1aa4E2B763de8D7Fe5519dd757186B",
+    "Auctioneer": "0xdF69C045392c9d93ED8D79b472E57b9dBd7a3B66",
+    "AuctioneerAuction": "0x28F1400F354920cfEFD32209162722d17Fc5D061"
+  },
+  "config": {
+    "isBlast": true,
+    "isAnvil": false
+  },
+  "auctioneerConfig": {
+    "bidCost": 0.0003e18,
+    "startingBid": 0.0003e18,
+    "bidIncrement": 0.000003e18,
+    "createAuctionRequiresRole": true,
+    "treasuryCut": 500,
+    "treasury": "0xe521eb581af258D800e0E8f510391D82118fC31C"
+  }
 }
