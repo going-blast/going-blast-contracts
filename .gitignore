@@ -20,6 +20,25 @@ deployments/*
 .vscode
 cache_forge
 .yarn
+.github
+.gitmodules
+.nvmrc
+.prettierignore
+.prettierrc.json
+.solhint.json
+.solhintignore
+.yarnrc.yml
+anvil-env-subgraph-yaml.sh
+blast-env-subgraph-yaml.sh
+blast-testnet-deploy-subgraph.sh
+blast-testnet-env-subgraph-yaml.sh
+GRAPH_SETUP.md
+rennovate.json
+revert-and-snapshot.sh
+snapshot.json
+take-snapshot.sh
+TODO.md
+types.d.ts
 
 # subgraph
 subgraph/graph-node/data
@@ -33,7 +52,9 @@ generated/schema.ts
 out/
 out.json
 coverage/
+lib/
 broadcast/
+ts-script/
 .gas-*
 lcov.info
 cache_forge
